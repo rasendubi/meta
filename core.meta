@@ -1,0 +1,42 @@
+# This file uses newline-delimited JSON encoding, but Meta's data model is much simpler.
+# Meta file is a set of triples (element, attribute, value).
+#
+# Elements and attributes are referenced by ids.
+# What's more, attributes _are_ elements, so they live in the same namespace.
+#
+# Values are opaque bytes. Unless you know what they represents, you can't do anything useful about them.
+
+# Now, let's create our first element (attribute)
+
+# The next line assign attribute 0 of element 0 to be "identifier". In other words, we just assigned identifier "identifier" to itself.
+["0", "0", "identifier"]
+# identifier.identifier = "identifier"
+
+# Next, let's create another attribute.
+["1", "0", "value-type"]
+# value-type.identifier = "value-type"
+
+# "value-type" is an attribute that specifies type of values of attribute.
+#
+# Do you remember that values are actually opaque byte blobs? This attribute should help you distinguish them.
+
+# So far we have only used one value type---string. Let's define it.
+["2", "0", "String"]
+# String.identifier = "String"
+
+# While we're at here, Strings must be valid UTF-8--encoded strings.
+
+# Now we can assign String type to identifier attribute. In other words, we say that identifiers are strings.
+["0", "1", "2"]
+# identifier.value-type = String
+
+# oh well, we just used another attribute type-reference! Let's define it.
+["3", "0", "Reference"]
+# Reference.identifier = "Reference"
+# and assign value-type attribute its proper value-type
+["1", "1", "3"]
+# value-type.value-type = Reference
+
+# We're done?
+#
+# We have defined a number of attributes that can define further attributes. From now on the system can define itself.
