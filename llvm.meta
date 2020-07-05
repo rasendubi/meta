@@ -1,0 +1,161 @@
+["20", "0", "Module"]                          ; Module(20).identifier(0) = "Module"
+["20", "5", "6"]                               ; Module(20).type(5) = Type(6)
+;; Module(20).comment(4) = "LLVM Module. a.k.a. Translation Unit"
+["20", "4", "LLVM Module. a.k.a. Translation Unit"]
+
+["21", "0", "module"]                          ; module(21).identifier(0) = "module"
+["21", "5", "7"]                               ; module(21).type(5) = Attribute(7)
+;; module(21).comment(4) = "Attribute to place things into a module."
+["21", "4", "Attribute to place things into a module."]
+["21", "1", "3"]                               ; module(21).attribute/value-type(1) = Reference(3)
+["21", "10", "20"]                             ; module(21).attribute/reference-type(10) = Module(20)
+
+["22", "0", "module.source_filename"]          ; module.source_filename(22).identifier(0) = "module.source_filename"
+["22", "5", "7"]                               ; module.source_filename(22).type(5) = Attribute(7)
+["22", "1", "2"]                               ; module.source_filename(22).attribute/value-type(1) = String(2)
+
+["30", "0", "FunctionDefinition"]              ; FunctionDefinition(30).identifier(0) = "FunctionDefinition"
+["30", "5", "6"]                               ; FunctionDefinition(30).type(5) = Type(6)
+["30", "4", "LLVM function definition."]       ; FunctionDefinition(30).comment(4) = "LLVM function definition."
+
+["31", "0", "Function.result-type"]            ; Function.result-type(31).identifier(0) = "Function.result-type"
+["31", "5", "7"]                               ; Function.result-type(31).type(5) = Attribute(7)
+["31", "1", "3"]                               ; Function.result-type(31).attribute/value-type(1) = Reference(3)
+["31", "10", "50"]                             ; Function.result-type(31).attribute/reference-type(10) = LlvmType(50)
+
+["32", "0", "Function.name"]                   ; Function.name(32).identifier(0) = "Function.name"
+["32", "5", "7"]                               ; Function.name(32).type(5) = Attribute(7)
+["32", "1", "2"]                               ; Function.name(32).attribute/value-type(1) = String(2)
+
+["33", "0", "Function.argument"]               ; Function.argument(33).identifier(0) = "Function.argument"
+["33", "5", "7"]                               ; Function.argument(33).type(5) = Attribute(7)
+["33", "1", "3"]                               ; Function.argument(33).attribute/value-type(1) = Reference(3)
+["33", "10", "40"]                             ; Function.argument(33).attribute/reference-type(10) = FunctionArgument(40)
+
+["34", "0", "Function.blocks"]                 ; Function.blocks(34).identifier(0) = "Function.blocks"
+["34", "5", "7"]                               ; Function.blocks(34).type(5) = Attribute(7)
+["34", "1", "3"]                               ; Function.blocks(34).attribute/value-type(1) = Reference(3)
+["34", "10", "110"]                            ; Function.blocks(34).attribute/reference-type(10) = Block(110)
+
+["40", "0", "FunctionArgument"]                ; FunctionArgument(40).identifier(0) = "FunctionArgument"
+;; TODO: finish FunctionArgument
+
+;; Types
+["50", "0", "LlvmType"]                        ; LlvmType(50).identifier(0) = "LlvmType"
+["50", "5", "6"]                               ; LlvmType(50).type(5) = Type(6)
+
+["51", "0", "Void"]                            ; Void(50).identifier(0) = "Void"
+["51", "5", "50"]                              ; Void(51).type(5) = LlvmType(50)
+["51", "4", "Void type."]                      ; Void(50).comment(4) = "Void type."
+
+["60", "0", "FunctionType"]                    ; FunctionType(60).identifier(0) = "FunctionType"
+["60", "5", "6"]                               ; FunctionType(60).type(5) = Type(6)
+["60", "4", "Function type constructor."]      ; FunctionType(60).comment(4) = "Function type constructor."
+["61", "0", "FunctionType.return-type"]        ; FunctionType.return-type(61).identifier(0) = "FunctionType.return-type"
+["61", "5", "7"]                               ; FunctionType.return-type(61).type(5) = Attribute(7)
+["61", "1", "3"]                               ; FunctionType.return-type(61).attribute/value-type(1) = Reference(3)
+["61", "10", "50"]                             ; FunctionType.return-type(61).attribute/reference-type(10) = LlvmType(50)
+["62", "0", "FunctionType.parameter"]          ; FunctionType.parameter(62).identifier(0) = "FunctionType.parameter"
+["62", "5", "7"]                               ; FunctionType.parameter(62).type(5) = Attribute(7)
+["62", "1", "3"]                               ; FunctionType.parameter(62).attribute/value-type(1) = Reference(3)
+["62", "10", "50"]                             ; FunctionType.parameter(62).attribute/reference-type(10) = LlvmType(50)
+
+["70", "0", "IntegerType"]                     ; IntegerType(70).identifier(0) = "IntegerType"
+["70", "5", "6"]                               ; IntegerType(70).type(5) = Type(6)
+["70", "4", "Integer type constructor."]       ; IntegerType(70).comment(4) = "Integer type constructor."
+["71", "0", "IntegerType.bit-width"]           ; IntegerType.bit-width(71).identifier(0) = "IntegerType.bit-width"
+;; IntegerType.bit-width(71).comment(4) = "Any bit width from 1 bit to 2^23 - 1 can be specified."
+["71", "4", "Any bit width from 1 bit to 2^23 - 1 can be specified."]
+["71", "5", "7"]                               ; IntegerType.bit-width(71).type(5) = Attribute(7)
+["71", "1", "9"]                               ; IntegerType.bit-width(71).attribute/value-type(1) = NaturalNumber(9)
+
+;; some common integer sizes
+["75", "0", "i1"]                              ; i1(75).identifier(0) = "i1"
+["75", "5", "50"]                              ; i1(75).type(5) = LlvmType(50)
+["75", "71", "1"]                              ; i1(75).IntegerType.bit-width(71) = "1"
+
+["76", "0", "i8"]                              ; i8(76).identifier(0) = "i8"
+["76", "5", "50"]                              ; i8(76).type(5) = LlvmType(50)
+["76", "71", "8"]                              ; i8(76).IntegerType.bit-width(71) = "8"
+
+["77", "0", "i32"]                             ; i32(77).identifier(0) = "i32"
+["77", "5", "50"]                              ; i32(77).type(5) = LlvmType(50)
+["77", "71", "32"]                             ; i32(77).IntegerType.bit-width(71) = "32"
+
+
+["80", "0", "PointerType"]                     ; PointerType(80).identifier(0) = "PointerType"
+["80", "5", "6"]                               ; PointerType(80).type(5) = Type(6)
+["80", "4", "Pointer type constructor."]       ; PointerType(80).comment(4) = "Pointer type constructor."
+
+["81", "0", "PointerType.base-type"]           ; PointerType.base-type(81).identifier(0) = "PointerType.base-type"
+["81", "5", "7"]                               ; PointerType.base-type(81).type(5) = Attribute(7)
+["81", "1", "3"]                               ; PointerType.base-type(81).attribute/value-type(1) = Reference(3)
+["81", "10", "50"]                             ; PointerType.base-type(81).attribute/reference-type(10) = LlvmType(50)
+
+["82", "0", "PointerType.addrspace"]           ; PointerType.addrspace(82).identifier(0) = "PointerType.addrspace"
+["82", "5", "7"]                               ; PointerType.addrspace(82).type(5) = Attribute(7)
+["82", "1", "9"]                               ; PointerType.addrspace(82).attribute/value-type(1) = NaturalNumber(9)
+
+["90", "0", "Label"]                           ; Label(90).identifier(0) = "Label"
+["90", "5", "50"]                              ; Label(90).type(5) = LlvmType(50)
+;; Label(90).comment(4) = "The label type represents code labels."
+["90", "4", "The label type represents code labels."]
+
+
+["100", "0", "Constant"]                       ; Constant(100).identifier(0) = "Constant"
+["100", "5", "6"]                              ; 100.type(5) = Type(6)
+["100", "4", "LLVM constants/literals."]
+
+["101", "0", "true"]                           ; true(101).identifier(0) = "true"
+["101", "5", "100"]                            ; true(101).type(5) = Constant(100)
+["101", "4", "LLVM true constant."]            ; true(101).comment(4) = "LLVM true constant."
+
+["102", "0", "false"]                          ; false(102).identifier(0) = "false"
+["102", "5", "100"]                            ; false(102).type(5) = Constant(100)
+["102", "4", "LLVM false constant."]           ; false(102).comment(4) = "LLVM false constant."
+
+["103", "0", "IntegerConstant"]                ; IntegerConstant(103).identifier(0) = "IntegerConstant"
+["103", "5", "6"]                              ; IntegerConstant(103).type(5) = Type(6)
+["103", "4", "Integer constant constructor"]   ; IntegerConstant(103).comment(4) = "Integer constant constructor"
+
+["104", "0", "IntegerConstant.value"]          ; IntegerConstant.value(104).identifier(0) = "IntegerConstant.value"
+["104", "5", "7"]                              ; IntegerConstant.value(104).type(5) = Attribute(7)
+["104", "4", "Value of the integer constant"]  ; IntegerConstant.value(104).comment(4) = "Value of the integer constant"
+["104", "1", "11"]                             ; IntegerConstant.value(104).attribute/value-type(1) = IntegerNumber(11)
+
+["105", "0", "null"]                           ; null(105).identifier(0) = "null"
+["105", "5", "100"]                            ; null(105).type(5) = Constant(100)
+["105", "4", "A null pointer constant."]       ; null(105).comment(4) = "A null pointer constant."
+
+["110", "0", "Block"]                          ; Block(110).identifier(0) = "Block"
+["110", "5", "6"]                              ; Block(110).type(5) = Type(6)
+
+["111", "0", "Block.label"]                    ; Block.label(111).identifier(0) = "Block.label"
+["111", "5", "7"]                              ; Block.label(111).type(5) = Attribute(7)
+["111", "1", "2"]                              ; Block.label(111).attribute/value-type(1) = String(2)
+
+["112", "0", "Block.instructions"]             ; Block.instructions(112).identifier(0) = "Block.instructions"
+["112", "5", "7"]                              ; Block.instructions(112).type(5) = Attribute(7)
+["112", "1", "3"]                              ; Block.instructions(112).attribute/value-type(1) = Reference(3)
+["112", "10", "120"]                           ; Block.instructions(112).attribute/reference-type(10) = Instruction(120)
+
+["113", "0", "Block.terminator"]               ; Block.terminator(113).identifier(0) = "Block.terminator"
+["113", "5", "7"]                              ; Block.terminator(113).type(5) = Attribute(7)
+["113", "1", "3"]                              ; Block.terminator(113).attribute/value-type(1) = Reference(3)
+["113", "10", "120"]                           ; Block.terminator(113).attribute/reference-type(10) = Instruction(120)
+
+["120", "0", "Instruction"]                    ; Instruction(120).identifier(0) = "Instruction"
+["120", "5", "6"]                              ; Instruction(120).type(5) = Type(6)
+
+["130", "0", "ret"]                            ; ret(130).identifier(0) = "ret"
+["130", "5", "6"]                              ; ret(130).type(5) = Type(6)
+["130", "4", "The 'ret' instruction is used to return control flow from a function back to the caller."]
+
+["131", "0", "ret.type"]                       ; ret.type(131).identifier(0) = "ret.type"
+["131", "5", "7"]                              ; ret.type(131).type(5) = Attribute(7)
+["131", "1", "3"]                              ; ret.type(131).attribute/value-type(1) = Reference(3)
+["131", "10", "50"]                            ; ret.type(131).attribute/reference-type(10) = LlvmType(50)
+
+["132", "0", "ret.value"]                      ; ret.value(132).identifier(0) = "ret.value"
+["132", "5", "7"]                              ; ret.value(132).type(5) = Attribute(7)
+["132", "1", "3"]                              ; ret.value(132).attribute/value-type(1) = Reference(3)

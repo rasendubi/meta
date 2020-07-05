@@ -1,42 +1,70 @@
-# This file uses newline-delimited JSON encoding, but Meta's data model is much simpler.
-# Meta file is a set of triples (element, attribute, value).
-#
-# Elements and attributes are referenced by ids.
-# What's more, attributes _are_ elements, so they live in the same namespace.
-#
-# Values are opaque bytes. Unless you know what they represents, you can't do anything useful about them.
+["0", "0", "identifier"]                       ; identifier(0).identifier(0) = "identifier"
 
-# Now, let's create our first element (attribute)
+["1", "0", "attribute/value-type"]             ; attribute/value-type(1).identifier(0) = "attribute/value-type"
+["2", "0", "String"]                           ; String(2).identifier(0) = "String"
+["3", "0", "Reference"]                        ; Reference(3).identifier(0) = "Reference"
 
-# The next line assign attribute 0 of element 0 to be "identifier". In other words, we just assigned identifier "identifier" to itself.
-["0", "0", "identifier"]
-# identifier.identifier = "identifier"
+["0", "1", "2"]                                ; identifier(0).attribute/value-type(1) = String(2)
+["1", "1", "3"]                                ; attribute/value-type(1).attribute/value-type(1) = Reference(3)
 
-# Next, let's create another attribute.
-["1", "0", "value-type"]
-# value-type.identifier = "value-type"
+["4", "0", "comment"]                          ; comment(4).identifier(0) = "comment"
+["4", "1", "2"]                                ; comment(4).attribute/value-type(1) = String(2)
+;; comment(4).comment(4) = "Comment attribute. Can be attached to any element to describe its meaning and add useful notes."
+["4", "4", "Comment attribute. Can be attached to any element to describe its meaning and add useful notes."]
 
-# "value-type" is an attribute that specifies type of values of attribute.
-#
-# Do you remember that values are actually opaque byte blobs? This attribute should help you distinguish them.
+;; Attach comments for the rest of elements.
 
-# So far we have only used one value type---string. Let's define it.
-["2", "0", "String"]
-# String.identifier = "String"
+;; identifier(0).comment(4) = "Identifier is a human-friendly name of the element. Usually assumed to be unique, so you could find element by its identifier."
+["0", "4", "Identifier is a human-friendly name of the element. Usually assumed to be unique, so you could find element by its identifier."]
+["1", "4", "Type of the attribute values."]    ; attribute/value-type(1).comment(4) = "Type of the attribute values."
+;; String(2).comment(4) = "String value must be a valid UTF-8–encoded string."
+["2", "4", "String value must be a valid UTF-8–encoded string."]
+;; Reference(3).comment(4) = "Reference value is an id of another element."
+["3", "4", "Reference value is an id of another element."]
 
-# While we're at here, Strings must be valid UTF-8--encoded strings.
 
-# Now we can assign String type to identifier attribute. In other words, we say that identifiers are strings.
-["0", "1", "2"]
-# identifier.value-type = String
+["5", "0", "type"]                             ; type(5).identifier(0) = "type"
+["5", "4", "Type of the element."]             ; type(5).comment(4) = "Type of the element."
+["5", "1", "3"]                                ; type(5).attribute/value-type(1) = Reference(3)
 
-# oh well, we just used another attribute type-reference! Let's define it.
-["3", "0", "Reference"]
-# Reference.identifier = "Reference"
-# and assign value-type attribute its proper value-type
-["1", "1", "3"]
-# value-type.value-type = Reference
+["6", "0", "Type"]                             ; Type(6).identifier(0) = "Type"
+;; Type(6).comment(4) = "Element describes a type of other elements."
+["6", "4", "Element describes a type of other elements."]
+["6", "5", "6"]                                ; Type(6).type(5) = Type(6)
 
-# We're done?
-#
-# We have defined a number of attributes that can define further attributes. From now on the system can define itself.
+["7", "0", "Attribute"]                        ; Attribute(7).identifier(0) = "Attribute"
+["7", "4", "Element describes an attribute."]  ; Attribute(7).comment(4) = "Element describes an attribute."
+["7", "5", "6"]                                ; Attribute(7).type(5) = Type(6)
+
+;; Assign types to other elements
+["0", "5", "7"]                                ; identifier(0).type(5) = Attribute(7)
+["1", "5", "7"]                                ; attribute/value-type(1).type(5) = Attribute(7)
+["4", "5", "7"]                                ; comment(4).type(5) = Attribute(7)
+["5", "5", "7"]                                ; type(5).type(5) = Attribute(7)
+
+["8", "0", "ValueType"]                        ; ValueType(8).identifier(0) = "ValueType"
+;; ValueType(8).comment(4) = "Element describes types of values."
+["8", "4", "Element describes types of values."]
+
+["2", "5", "8"]                                ; String(2).type(5) = ValueType(8)
+["3", "5", "8"]                                ; Reference(3).type(5) = ValueType(8)
+
+["9", "0", "NaturalNumber"]                    ; NaturalNumber(9).identifier(0) = "NaturalNumber"
+["9", "5", "8"]                                ; NaturalNumber(9).type(5) = ValueType(8)
+;; NaturalNumber(9).comment(4) = "Value is an ASCII-decimal-encoded natural number. e.g., \"42\" represents a number 42."
+["9", "4", "Value is an ASCII-decimal-encoded natural number. e.g., \"42\" represents a number 42."]
+
+["10", "0", "attribute/reference-type"]        ; attribute/reference-type(10).identifier(0) = "attribute/reference-type"
+;; attribute/reference-type(10).comment(4) = "When attribute/value-type(1) is Reference(3), attribute/reference-type(10) describes what type the reference is supposed to point to."
+["10", "4", "When attribute/value-type(1) is Reference(3), attribute/reference-type(10) describes what type the reference is supposed to point to."]
+["10", "1", "3"]                               ; attribute/reference-type(10).attribute/value-type(1) = Reference(3)
+["10", "10", "6"]                              ; attribute/reference-type(10).attribute/reference-type(10) = Type(6)
+
+;; assign attribute/reference-type to other reference-attributes.
+["1", "10", "8"]                               ; attribute/value-type(1).attribute/reference-type(10) = ValueType(8)
+["5", "10", "6"]                               ; type(5).attribute/reference-type(10) = Type(6)
+
+["11", "0", "IntegerNumber"]                   ; IntegerNumber(11).identifier(0) = "IntegerNumber"
+["11", "5", "8"]                               ; IntegerNumber(11).type(5) = ValueType(8)
+;; IntegerNumber(11).comment(4) = "Value is an decimal-encoded integer number. e.g., \"-42\" represents number -42."
+["11", "4", "Value is an decimal-encoded integer number. e.g., \"-42\" represents number -42."]

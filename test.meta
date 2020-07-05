@@ -1,0 +1,24 @@
+["200", "22", "test.meta"]                     ; (200).module.source_filename(22) = "test.meta"
+["200", "5", "20"]                             ; (200).type(5) = Module(20)
+
+;; define i32 @test1() {
+;;   ret i32 42
+;; }
+
+["201", "0", "test1"]                          ; test1(201).identifier(0) = "test1"
+["201", "5", "30"]                             ; test1(201).type(5) = Function(30)
+["201", "21", "200"]                           ; test1(201).module(21) = (200)
+["201", "32", "test1"]                         ; test1(201).Function.name(32) = "test1"
+["201", "31", "77"]                            ; test1(201).Function.result-type(31) = i32(77)
+
+["202", "5", "110"]                            ; (202).type(5) = Block(110)
+["202", "113", "203"]                          ; (202).Block.terminator(113) = (203)
+
+["203", "5", "130"]                            ; (203).type(5) = ret(130)
+["203", "131", "77"]                           ; (203).ret.type(131) = i32(77)
+["203", "132", "204"]                          ; (203).ret.value(132) = (204)
+
+["204", "5", "103"]                            ; (204).type(5) = IntegerConstant(103)
+["204", "104", "42"]                           ; (204).IntegerConstant.value(104) = "42"
+
+["204", "104", "42"]                           ; (204).IntegerConstant.value(104) = "42"
