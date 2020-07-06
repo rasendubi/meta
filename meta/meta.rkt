@@ -8,9 +8,10 @@
 (require "ndjson.rkt")
 
 (require "meta/base.rkt")
+(require "meta/core.rkt")
 
 (module+ main
-  (define meta (make-parameter '()))
+  (define meta (make-parameter meta-empty))
 
   (define annotate-file (make-parameter #f))
   (define annotate-line (make-parameter #f))
@@ -30,38 +31,19 @@
                     "Meta files to process"
                     (meta-files (cons f (meta-files)))])
 
-  (define (load-meta filename)
-    (meta (append* (meta) (list (read-meta-file filename)))))
+  ;; (define (load-meta filename)
+  ;;   (meta (meta-merge (meta) (read-meta-file filename))))
 
-  (meta (append* (meta) (map read-meta-file (meta-files))))
-
-  (define (meta-lookup pattern)
-    (define (match-two expected actual)
-      (or (not expected)
-          (equal? expected actual)))
-
-    (define (filter-f x)
-      (andmap match-two pattern x))
-
-    (filter filter-f (meta)))
-
-  (define (vals xs)
-    (map (lambda (x) (list-ref x 2)) xs))
-
-  (define (meta-lookup-identifiers id)
-    (vals (meta-lookup (list id "0" #f))))
-
-  (define (meta-lookup-value-types attr-id)
-    (vals (meta-lookup (list attr-id "1" #f))))
+  (meta (apply meta-merge (meta) (map read-meta-file (meta-files))))
 
   (define (pretty-name id)
-    (let ([identifiers (meta-lookup-identifiers id)])
+    (let ([identifiers (meta-lookup-identifiers (meta) id)])
       (if (empty? identifiers)
           (printf "(~a)" id)
           (printf "~a(~a)" (car identifiers) id))))
 
   (define (annotate-value attribute value)
-    (let ([types (meta-lookup-value-types attribute)])
+    (let ([types (meta-lookup-value-types (meta) attribute)])
       (if (equal? '("3") types) ; Reference
           (pretty-name value)
           (write value))))
@@ -78,7 +60,7 @@
 
   (when (annotate-file)
     (for ([atom (meta)])
-        (annotate atom)))
+      (annotate atom)))
 
   (when (annotate-line)
     (let ([j (string->jsexpr (annotate-line))])
