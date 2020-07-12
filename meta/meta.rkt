@@ -9,23 +9,34 @@
 
 (require "meta/base.rkt")
 (require "meta/core.rkt")
+(require "meta/f.rkt")
 
 (module+ main
   (define meta (make-parameter meta-empty))
 
   (define annotate-file (make-parameter #f))
   (define annotate-line (make-parameter #f))
+  (define f-eval-id (make-parameter #f))
 
   (define meta-files (make-parameter '()))
 
   (command-line
    #:program "meta"
    #:once-any
-   [("--annotate-file") "Annotate file"
-                        (annotate-file #t)]
-   [("--annotate-line") al
-                        "Annotate line"
-                        (annotate-line al)]
+   [("--annotate-file")
+    "Annotate file"
+    (annotate-file #t)]
+
+   [("--annotate-line")
+    al
+    "Annotate line"
+    (annotate-line al)]
+
+   [("--f-eval")
+    id
+    "f-evaluate element with given id"
+    (f-eval-id id)]
+
    #:multi
    [("-f" "--file") f
                     "Meta files to process"
@@ -65,4 +76,6 @@
   (when (annotate-line)
     (let ([j (string->jsexpr (annotate-line))])
       (annotate j)))
-  )
+
+  (when (f-eval-id)
+    (f-print (f-eval (meta) (f-eval-id)))))

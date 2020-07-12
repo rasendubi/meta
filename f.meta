@@ -1,0 +1,28 @@
+;; meta/f is a simple functional programming language
+
+["100", "0", "f/StringLiteral"]                ; f/StringLiteral(100).identifier(0) = "f/StringLiteral"
+["100", "5", "6"]                              ; f/StringLiteral(100).type(5) = Type(6)
+
+["101", "0", "f/StringLiteral.value"]          ; f/StringLiteral.value(101).identifier(0) = "f/StringLiteral.value"
+["101", "5", "7"]                              ; f/StringLiteral.value(101).type(5) = Attribute(7)
+["101", "1", "2"]                              ; f/StringLiteral.value(101).attribute/value-type(1) = String(2)
+
+;; Records
+["102", "0", "f/RecordLiteral"]                ; f/RecordLiteral(102).identifier(0) = "f/RecordLiteral"
+["102", "5", "6"]                              ; f/RecordLiteral(102).type(5) = Type(6)
+
+["103", "0", "f/RecordLiteral.field"]          ; f/RecordLiteral.field(103).identifier(0) = "f/RecordLiteral.field"
+["103", "5", "7"]                              ; f/RecordLiteral.field(103).type(5) = Attribute(7)
+["103", "1", "3"]                              ; f/RecordLiteral.field(103).attribute/value-type(1) = Reference(3)
+["103", "10", "104"]                           ; f/RecordLiteral.field(103).attribute/reference-type(10) = f/RecordField(104)
+
+["104", "0", "f/RecordField"]                  ; f/RecordField(104).identifier(0) = "f/RecordField"
+["104", "5", "6"]                              ; f/RecordField(104).type(5) = Type(6)
+
+["105", "0", "f/RecordField.key"]              ; f/RecordField.key(105).identifier(0) = "f/RecordField.key"
+["105", "5", "7"]                              ; f/RecordField.key(105).type(5) = Attribute(7)
+["105", "1", "3"]                              ; f/RecordField.key(105).attribute/value-type(1) = Reference(3)
+
+["106", "0", "f/RecordField.value"]            ; f/RecordField.value(106).identifier(0) = "f/RecordField.value"
+["106", "5", "7"]                              ; f/RecordField.value(106).type(5) = Attribute(7)
+["106", "1", "3"]                              ; f/RecordField.value(106).attribute/value-type(1) = Reference(3)
