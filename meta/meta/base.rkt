@@ -16,6 +16,8 @@
   [read-meta-file (-> string? meta?)]
   [meta-merge (->* () () #:rest (listof meta?) meta?)]
   [meta-lookup (-> meta? any/c (listof atom?))]
+  [meta-lookup-vals (-> meta? any/c any/c (listof any/c))]
+  [meta-lookup-val (-> meta? any/c any/c any/c)]
   [vals (-> (listof atom?) (listof string?))]))
 
 (define meta-empty '())
@@ -39,6 +41,12 @@
     (andmap match-two pattern x))
 
   (filter filter-f meta))
+
+(define (meta-lookup-vals meta entity attr)
+  (vals (meta-lookup meta (list entity attr #f))))
+
+(define (meta-lookup-val meta entity attr)
+  (car (meta-lookup-vals meta entity attr)))
 
 (define (vals xs)
   (map (lambda (x) (list-ref x 2)) xs))

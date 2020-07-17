@@ -26,3 +26,14 @@
 ["106", "0", "f/RecordField.value"]            ; f/RecordField.value(106).identifier(0) = "f/RecordField.value"
 ["106", "5", "7"]                              ; f/RecordField.value(106).type(5) = Attribute(7)
 ["106", "1", "3"]                              ; f/RecordField.value(106).attribute/value-type(1) = Reference(3)
+
+["107", "0", "f/FieldAccess"]                  ; f/FieldAccess(107).identifier(0) = "f/FieldAccess"
+["107", "5", "6"]                              ; f/FieldAccess(107).type(5) = Type(6)
+
+["108", "0", "f/FieldAccess.record"]           ; f/FieldAccess.record(108).identifier(0) = "f/FieldAccess.record"
+["108", "5", "7"]                              ; f/FieldAccess.record(108).type(5) = Attribute(7)
+["108", "1", "3"]                              ; f/FieldAccess.record(108).attribute/value-type(1) = Reference(3)
+
+["109", "0", "f/FieldAccess.field"]            ; f/FieldAccess.field(109).identifier(0) = "f/FieldAccess.field"
+["109", "5", "7"]                              ; f/FieldAccess.field(109).type(5) = Attribute(7)
+["109", "1", "3"]                              ; f/FieldAccess.field(109).attribute/value-type(1) = Reference(3)

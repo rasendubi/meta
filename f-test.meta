@@ -46,3 +46,16 @@
 ["1012", "101", "hi"]                          ; (1012).f/StringLiteral.value(101) = "hi"
 ["1013", "5", "100"]                           ; (1013).type(5) = f/StringLiteral(100)
 ["1013", "101", "there"]                       ; (1013).f/StringLiteral.value(101) = "there"
+
+;; { "hello": "world", "Kate": "foobar", "nesting": { "hi": "there" } }.nesting.hi
+["1014", "0", "f-test/field-access"]           ; f-test/field-access(1014).identifier(0) = "f-test/field-access"
+["1014", "5", "107"]                           ; f-test/field-access(1014).type(5) = f/FieldAccess(107)
+["1014", "108", "1015"]                        ; f-test/field-access(1014).f/FieldAccess.record(108) = (1015)
+["1014", "109", "1017"]                        ; f-test/field-access(1014).f/FieldAccess.field(109) = (1017)
+["1015", "5", "107"]                           ; (1015).type(5) = f/FieldAccess(107)
+["1015", "108", "1002"]                        ; (1015).f/FieldAccess.record(108) = f-test/record-test(1002)
+["1015", "109", "1016"]                        ; (1015).f/FieldAccess.field(109) = (1016)
+["1016", "5", "100"]                           ; (1016).type(5) = f/StringLiteral(100)
+["1016", "101", "nesting"]                     ; (1016).f/StringLiteral.value(101) = "nesting"
+["1017", "5", "100"]                           ; (1017).type(5) = f/StringLiteral(100)
+["1017", "101", "hi"]                          ; (1017).f/StringLiteral.value(101) = "hi"

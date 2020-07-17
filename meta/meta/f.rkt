@@ -9,26 +9,37 @@
 (define RecordField "104")
 (define RecordField.key "105")
 (define RecordField.value "106")
+(define FieldAccess "107")
+(define FieldAccess.record "108")
+(define FieldAccess.field "109")
 
 (provide f-eval)
 (define (f-eval meta id)
   (case (meta-lookup-types meta id)
     [(("100")) (eval-string meta id)]
     [(("102")) (eval-record meta id)]
-    [(("104")) (eval-field meta id)]))
+    [(("104")) (eval-field meta id)]
+    [(("107")) (eval-field-access meta id)]
+    [else (error 'f-eval "Unable to evaluate ~a" id)]))
 
 (define (eval-string meta id)
-  (let ([v (vals (meta-lookup meta (list id StringLiteral.value #f)))])
-    (car v)))
+  (meta-lookup-val meta id StringLiteral.value))
 
 (define (eval-record meta id)
-  (let ([fields (vals (meta-lookup meta (list id RecordLiteral.field #f)))])
-    (make-immutable-hash (map (lambda (x) (eval-field meta x)) fields))))
+  (let ([fields (meta-lookup-vals meta id RecordLiteral.field)])
+    (make-immutable-hash (map (lambda (x) (f-eval meta x)) fields))))
 
 (define (eval-field meta id)
-  (let ([key (car (vals (meta-lookup meta (list id RecordField.key #f))))]
-        [value (car (vals (meta-lookup meta (list id RecordField.value #f))))])
-    (cons (f-eval meta key) (f-eval meta value))))
+  (let ([key-id (meta-lookup-val meta id RecordField.key)]
+        [value-id (meta-lookup-val meta id RecordField.value)])
+    (cons (f-eval meta key-id) (f-eval meta value-id))))
+
+(define (eval-field-access meta id)
+  (let* ([record-id (meta-lookup-val meta id FieldAccess.record)]
+         [field-id  (meta-lookup-val meta id FieldAccess.field)]
+         [record    (f-eval meta record-id)]
+         [field     (f-eval meta field-id)])
+    (hash-ref record field)))
 
 (provide f-print)
 (define (f-print x)
