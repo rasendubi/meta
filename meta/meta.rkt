@@ -5,8 +5,6 @@
 (require racket/match)
 (require json)
 
-(require "ndjson.rkt")
-
 (require "meta/base.rkt")
 (require "meta/core.rkt")
 (require "meta/f.rkt")

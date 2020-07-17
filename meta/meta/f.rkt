@@ -1,4 +1,6 @@
 #lang racket/base
+(require pprint)
+
 (require "./base.rkt")
 (require "./core.rkt")
 
@@ -44,3 +46,51 @@
 (provide f-print)
 (define (f-print x)
   (println x))
+
+
+(provide f-pretty)
+(define (f-pretty meta id)
+  (case (meta-lookup-types meta id)
+    [(("100")) (pretty-string meta id)]
+    [(("102")) (pretty-record meta id)]
+    [(("104")) (pretty-field meta id)]
+    [(("107")) (pretty-field-access meta id)]
+    [else (error 'f-pretty "Unable to pretty-print ~a" id)]))
+
+(define (pretty-string meta id)
+  (let ([val (meta-lookup-val meta id StringLiteral.value)])
+    (text (format "~v" val))))
+
+(define (pretty-record meta id)
+  (let ([field-ids (meta-lookup-vals meta id RecordLiteral.field)])
+    (group (h-append (text "{")
+                     (nest 2 (h-append
+                              line
+                              (h-concat (apply-infix (h-append comma line)
+                                                     (map (lambda (x) (f-pretty meta x)) field-ids)))))
+                     line
+                     (text "}")))))
+
+(define (pretty-field meta id)
+  (let ([key-id (meta-lookup-val meta id RecordField.key)]
+        [value-id (meta-lookup-val meta id RecordField.value)])
+    (group
+     (h-append
+      (group (h-append (text "[") (f-pretty meta key-id)   (text "]") (text ":")))
+      (nest 2
+            (h-append
+             line
+             (f-pretty meta value-id)))))))
+
+(define (pretty-field-access meta id)
+  (let ([record-id (meta-lookup-val meta id FieldAccess.record)]
+        [field-id  (meta-lookup-val meta id FieldAccess.field)])
+    (group (h-append
+            (f-pretty meta record-id)
+            (nest 2
+                  (h-append
+                   break
+                   dot
+                   (text "[")
+                   (f-pretty meta field-id)
+                   (text "]")))))))
