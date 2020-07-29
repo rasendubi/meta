@@ -39,18 +39,6 @@
   (parameterize ([f-environment (cons env (f-environment))])
     body ...))
 
-(provide f-eval)
-(define (f-eval meta id)
-  (case (meta-lookup-types meta id)
-    [(("100")) (eval-string meta id)]
-    [(("102")) (eval-record meta id)]
-    [(("104")) (eval-field meta id)]
-    [(("107")) (eval-field-access meta id)]
-    [(("110")) (eval-function meta id)]
-    [(("115")) (eval-apply meta id)]
-    [(("118")) (eval-reference meta id)]
-    [else (error 'f-eval "Unable to evaluate ~a" id)]))
-
 (define (eval-string meta id)
   (meta-lookup-val meta id StringLiteral.value))
 
@@ -90,25 +78,31 @@
   (let ([reference-id (meta-lookup-val meta id Reference.reference)])
     (f-environment-lookup reference-id)))
 
+(provide f-eval)
+(define (f-eval meta id)
+  (define evaluators
+    (make-immutable-hash
+     `((,StringLiteral . ,eval-string)
+       (,RecordLiteral . ,eval-record)
+       (,RecordField   . ,eval-field)
+       (,FieldAccess   . ,eval-field-access)
+       (,Function      . ,eval-function)
+       (,Apply         . ,eval-apply)
+       (,Reference     . ,eval-reference))))
+
+  (let ([types (meta-lookup-types meta id)])
+    (if (null? types)
+        (error 'f-eval "~a does not have a type" id)
+        (let* ([type (car types)]
+               [evaluator (hash-ref evaluators type #f)])
+          (if evaluator
+              (evaluator meta id)
+              (error 'f-eval "No evaluator for type ~a" type))))))
+
 (provide f-print)
 (define (f-print x)
   (println x))
 
-
-(provide f-pretty)
-(define (f-pretty meta id)
-  (case (meta-lookup-types meta id)
-    [(("100")) (pretty-string meta id)]
-    [(("102")) (pretty-record meta id)]
-    [(("104")) (pretty-field meta id)]
-    [(("107")) (pretty-field-access meta id)]
-    [(("110")) (pretty-function meta id)]
-    [(("113")) (pretty-function-parameter meta id)]
-    [(("115")) (pretty-apply meta id)]
-    [(("118")) (pretty-reference meta id)]
-    [else (h-append (text "(") (text id) (text ")"))]
-    ;; [else (error 'f-pretty "Unable to pretty-print ~a" id)]
-    ))
 
 (define (pretty-string meta id)
   (let ([val (meta-lookup-val meta id StringLiteral.value)])
@@ -177,3 +171,25 @@
 (define (pretty-reference meta id)
   (let ([reference-id (meta-lookup-val meta id Reference.reference)])
     (f-pretty meta reference-id)))
+
+(provide f-pretty)
+(define (f-pretty meta id)
+  (define formatters
+    (make-immutable-hash
+     `((,StringLiteral     . ,pretty-string)
+       (,RecordLiteral     . ,pretty-record)
+       (,RecordField       . ,pretty-field)
+       (,FieldAccess       . ,pretty-field-access)
+       (,Function          . ,pretty-function)
+       (,FunctionParameter . ,pretty-function-parameter)
+       (,Apply             . ,pretty-apply)
+       (,Reference         . ,pretty-reference))))
+
+  (let ([types (meta-lookup-types meta id)])
+    (if (null? types)
+        (error 'f-pretty "~a does not have a type" id)
+        (let* ([type (car types)]
+               [formatter (hash-ref formatters type #f)])
+          (if formatter
+              (formatter meta id)
+              (h-append (text "(") (text id) (text ")")))))))
