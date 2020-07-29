@@ -98,3 +98,71 @@
 
 ["1027", "5", "100"]                           ; (1027).type(5) = f/StringLiteral(100)
 ["1027", "101", "hi"]                          ; (1027).f/StringLiteral.value(101) = "hi"
+
+;; let { } in "Hello"
+["1028", "0", "f-test/letrec-primitive"]       ; f-test/letrec-primitive(1028).identifier(0) = "f-test/letrec-primitive"
+["1028", "5", "120"]                           ; f-test/letrec-primitive(1028).type(5) = f/Letrec(120)
+["1028", "122", "1029"]                        ; f-test/letrec-primitive(1028).f/Letrec.value(122) = (1029)
+["1029", "5", "100"]                           ; (1029).type(5) = f/StringLiteral(100)
+["1029", "101", "Hello"]                       ; (1029).f/StringLiteral.value(101) = "Hello"
+
+;; let { x = "hi"; } in "hello"
+["1030", "0", "f-test/letrec-with-binding"]    ; f-test/letrec-with-binding(1030).identifier(0) = "f-test/letrec-with-binding"
+["1030", "5", "120"]                           ; f-test/letrec-with-binding(1030).type(5) = f/Letrec(120)
+["1030", "121", "1031"]                        ; f-test/letrec-with-binding(1030).f/Letrec.binding(121) = (1031)
+["1030", "122", "1034"]                        ; f-test/letrec-with-binding(1030).f/Letrec.value(122) = (1034)
+["1031", "5", "123"]                           ; (1031).type(5) = f/Binding(123)
+["1031", "124", "1032"]                        ; (1031).f/Binding.identifier(124) = (1032)
+["1031", "125", "1033"]                        ; (1031).f/Binding.value(125) = (1033)
+["1032", "5", "113"]                           ; (1032).type(5) = f/Identifier(113)
+["1032", "114", "x"]                           ; (1032).f/Identifier.name(114) = "x"
+["1033", "5", "100"]                           ; (1033).type(5) = f/StringLiteral(100)
+["1033", "101", "hi"]                          ; (1033).f/StringLiteral.value(101) = "hi"
+["1034", "5", "100"]                           ; (1034).type(5) = f/StringLiteral(100)
+["1034", "101", "hello"]                       ; (1034).f/StringLiteral.value(101) = "hello"
+
+;; let { x = "hi"; y = "blah"; } in "hello"
+["1035", "0", "f-test/letrec-multi-binding"]   ; f-test/letrec-multi-binding(1035).identifier(0) = "f-test/letrec-multi-binding"
+["1035", "5", "120"]                           ; f-test/letrec-multi-binding(1035).type(5) = f/Letrec(120)
+["1035", "121", "1036"]                        ; f-test/letrec-multi-binding(1035).f/Letrec.binding(121) = (1036)
+["1035", "122", "1039"]                        ; f-test/letrec-multi-binding(1035).f/Letrec.value(122) = (1039)
+["1036", "5", "123"]                           ; (1036).type(5) = f/Binding(123)
+["1036", "124", "1037"]                        ; (1036).f/Binding.identifier(124) = (1037)
+["1036", "125", "1038"]                        ; (1036).f/Binding.value(125) = (1038)
+["1037", "5", "113"]                           ; (1037).type(5) = f/Identifier(113)
+["1037", "114", "x"]                           ; (1037).f/Identifier.name(114) = "x"
+["1038", "5", "100"]                           ; (1038).type(5) = f/StringLiteral(100)
+["1038", "101", "hi"]                          ; (1038).f/StringLiteral.value(101) = "hi"
+["1039", "5", "100"]                           ; (1039).type(5) = f/StringLiteral(100)
+["1039", "101", "hello"]                       ; (1039).f/StringLiteral.value(101) = "hello"
+["1035", "121", "1040"]                        ; f-test/letrec-multi-binding(1035).f/Letrec.binding(121) = (1040)
+["1040", "5", "123"]                           ; (1040).type(5) = f/Binding(123)
+["1040", "124", "1041"]                        ; (1040).f/Binding.identifier(124) = (1041)
+["1040", "125", "1042"]                        ; (1040).f/Binding.value(125) = (1042)
+["1041", "5", "113"]                           ; (1041).type(5) = f/Identifier(113)
+["1041", "114", "y"]                           ; (1041).f/Identifier.name(114) = "y"
+["1042", "5", "100"]                           ; (1042).type(5) = f/StringLiteral(100)
+["1042", "101", "blah"]                        ; (1042).f/StringLiteral.value(101) = "blah"
+
+;; let { x = "hi"; y = x; } in y
+["1043", "0", "f-test/letrec-reference"]       ; f-test/letrec-reference(1043).identifier(0) = "f-test/letrec-reference"
+["1043", "5", "120"]                           ; f-test/letrec-reference(1043).type(5) = f/Letrec(120)
+["1043", "121", "1044"]                        ; f-test/letrec-reference(1043).f/Letrec.binding(121) = (1044)
+["1043", "122", "1047"]                        ; f-test/letrec-reference(1043).f/Letrec.value(122) = (1047)
+["1044", "5", "123"]                           ; (1044).type(5) = f/Binding(123)
+["1044", "124", "1045"]                        ; (1044).f/Binding.identifier(124) = (1045)
+["1044", "125", "1046"]                        ; (1044).f/Binding.value(125) = (1046)
+["1045", "5", "113"]                           ; (1045).type(5) = f/Identifier(113)
+["1045", "114", "x"]                           ; (1045).f/Identifier.name(114) = "x"
+["1046", "5", "100"]                           ; (1046).type(5) = f/StringLiteral(100)
+["1046", "101", "hi"]                          ; (1046).f/StringLiteral.value(101) = "hi"
+["1047", "5", "118"]                           ; (1047).type(5) = f/Reference(118)
+["1047", "119", "1049"]                        ; (1047).f/Reference.reference(119) = (1049)
+["1043", "121", "1048"]                        ; f-test/letrec-reference(1043).f/Letrec.binding(121) = (1048)
+["1048", "5", "123"]                           ; (1048).type(5) = f/Binding(123)
+["1048", "124", "1049"]                        ; (1048).f/Binding.identifier(124) = (1049)
+["1048", "125", "1050"]                        ; (1048).f/Binding.value(125) = (1050)
+["1049", "5", "113"]                           ; (1049).type(5) = f/Identifier(113)
+["1049", "114", "y"]                           ; (1049).f/Identifier.name(114) = "y"
+["1050", "5", "118"]                           ; (1050).type(5) = f/Reference(118)
+["1050", "119", "1045"]                        ; (1050).f/Reference.reference(119) = (1045)

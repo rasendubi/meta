@@ -18,77 +18,131 @@
 (define Function "110")
 (define Function.parameter "111")
 (define Function.body "112")
-(define FunctionParameter "113")
-(define FunctionParameter.name "114")
+(define Identifier "113")
+(define Identifier.name "114")
 (define Apply "115")
 (define Apply.function "116")
 (define Apply.argument "117")
 (define Reference "118")
 (define Reference.reference "119")
+(define Letrec "120")
+(define Letrec.binding "121")
+(define Letrec.value "122")
+(define Binding "123")
+(define Binding.identifier "124")
+(define Binding.value "125")
 
-(define f-environment (make-parameter '()))
-
-(define (f-environment-lookup id)
-  (let ([ctx (findf (lambda (x) (hash-has-key? x id))
-                    (f-environment))])
+(define (env-lookup env id)
+  (let ([ctx (findf (lambda (x) (hash-has-key? x id)) env)])
     (if ctx
         (hash-ref ctx id)
-        (error 'f-context-lookup "Unable to find ~a, environment = ~v" id (f-environment)))))
+        (error 'f-context-lookup "Unable to find ~a, environment = ~v" id env))))
 
-(define-syntax-rule (with-environment env body ...)
-  (parameterize ([f-environment (cons env (f-environment))])
-    body ...))
+(define (new-scope scope env)
+  (cons scope env))
 
-(define (eval-string meta id)
-  (meta-lookup-val meta id StringLiteral.value))
+;; TODO: rework as expr + env, instead of taking in lambda
+(struct f-thunk (evaluated data) #:transparent #:mutable)
+(define (f-thunk-evaluate th)
+  (when (not (f-thunk-evaluated th))
+    (let* ([evaluator (f-thunk-data th)]
+           [result (evaluator)])
+      (set-f-thunk-data! th
+                         (if (f-thunk? result)
+                             (f-thunk-force result)
+                             result))
+      (set-f-thunk-evaluated! th #t))))
+(define (f-thunk-force th)
+  (when (not (f-thunk-evaluated th))
+    (f-thunk-evaluate th))
+  (f-thunk-data th))
+(define (f-thunk-force-deep th)
+  (let ([v (f-thunk-force th)])
+    (cond
+      [(hash? v) (make-immutable-hash (hash-map v (lambda (key value)
+                                                    (cons key (f-thunk-force-deep value)))))]
+      [else v])))
+;; TODO: detect recursive evaluation
 
-(define (eval-record meta id)
+(define-syntax-rule (f-thunk-new body ...)
+  (f-thunk #f (lambda () body ...)))
+
+(define (eval-string meta env id)
+  (f-thunk-new (meta-lookup-val meta id StringLiteral.value)))
+
+(define (eval-record meta env id)
   (let ([fields (meta-lookup-vals meta id RecordLiteral.field)])
-    (make-immutable-hash (map (lambda (x) (f-eval meta x)) fields))))
+    (f-thunk-new
+     (make-immutable-hash (map (lambda (x) (eval-field meta env x)) fields)))))
 
-(define (eval-field meta id)
+(define (eval-field meta env id)
   (let ([key-id (meta-lookup-val meta id RecordField.key)]
         [value-id (meta-lookup-val meta id RecordField.value)])
-    (cons (f-eval meta key-id) (f-eval meta value-id))))
+    (cons (f-thunk-force (f-eval meta env key-id)) (f-eval meta env value-id))))
 
-(define (eval-field-access meta id)
+(define (eval-field-access meta env id)
   (let* ([record-id (meta-lookup-val meta id FieldAccess.record)]
          [field-id  (meta-lookup-val meta id FieldAccess.field)]
-         [record    (f-eval meta record-id)]
-         [field     (f-eval meta field-id)])
-    (hash-ref record field)))
+         [record    (f-eval meta env record-id)]
+         [field     (f-eval meta env field-id)])
+    (f-thunk-new
+     (hash-ref (f-thunk-force record) (f-thunk-force field)))))
 
-(struct f-function (parameter-id body-id) #:transparent)
+(struct f-function (parameter-id body-id env) #:transparent)
 
-(define (eval-function meta id)
+(define (eval-function meta env id)
   (let ([parameter-id (meta-lookup-val meta id Function.parameter)]
         [body-id      (meta-lookup-val meta id Function.body)])
-    (f-function parameter-id body-id)))
+    (f-thunk-new
+     (f-function parameter-id body-id env))))
 
-(define (eval-apply meta id)
+(define (eval-apply meta env id)
   (let ([function-id (meta-lookup-val meta id Apply.function)]
         [argument-id (meta-lookup-val meta id Apply.argument)])
-    (f-apply meta (f-eval meta function-id) (f-eval meta argument-id))))
+    (f-thunk-new
+     (f-apply meta env
+              (f-thunk-force (f-eval meta env function-id))
+              (f-eval meta env argument-id)))))
 
-(define (f-apply meta function argument)
-  (with-environment (make-immutable-hash (list (cons (f-function-parameter-id function) argument)))
-    (f-eval meta (f-function-body-id function))))
+(define (f-apply meta env function argument)
+  (let* ([function-env (f-function-env function)]
+         [new-env (new-scope (make-immutable-hash (list (cons (f-function-parameter-id function) argument))) function-env)])
+    (f-eval meta new-env (f-function-body-id function))))
 
-(define (eval-reference meta id)
+(define (eval-reference meta env id)
   (let ([reference-id (meta-lookup-val meta id Reference.reference)])
-    (f-environment-lookup reference-id)))
+    (f-thunk-new
+     (env-lookup env reference-id))))
+
+(define (eval-letrec meta env id)
+  (define scope (make-hash '()))
+  (define new-env (new-scope scope env))
+
+  (let* ([binding-ids (meta-lookup-vals meta id Letrec.binding)]
+         [bindings (map (lambda (x) (eval-binding meta new-env x)) binding-ids)]
+         [value-id (meta-lookup-val meta id Letrec.value)])
+    (for/list ([b bindings])
+      (hash-set! scope (car b) (cdr b)))
+
+    (f-thunk-new
+     (f-eval meta new-env value-id))))
+
+(define (eval-binding meta env id)
+  (let ([identifier-id (meta-lookup-val meta id Binding.identifier)]
+        [value-id (meta-lookup-val meta id Binding.value)])
+    (cons identifier-id (f-eval meta env value-id))))
 
 (provide f-eval)
-(define (f-eval meta id)
+(define (f-eval meta env id)
   (define evaluators
     (make-immutable-hash
      `((,StringLiteral . ,eval-string)
        (,RecordLiteral . ,eval-record)
-       (,RecordField   . ,eval-field)
        (,FieldAccess   . ,eval-field-access)
        (,Function      . ,eval-function)
        (,Apply         . ,eval-apply)
-       (,Reference     . ,eval-reference))))
+       (,Reference     . ,eval-reference)
+       (,Letrec        . ,eval-letrec))))
 
   (let ([types (meta-lookup-types meta id)])
     (if (null? types)
@@ -96,12 +150,48 @@
         (let* ([type (car types)]
                [evaluator (hash-ref evaluators type #f)])
           (if evaluator
-              (evaluator meta id)
+              (evaluator meta env id)
               (error 'f-eval "No evaluator for type ~a" type))))))
 
 (provide f-print)
 (define (f-print x)
-  (println x))
+  (define (f-format-string s)
+    (text (format "~s" s)))
+
+  (define (f-format-record x)
+    (group (h-append
+            (text "{")
+            (nest 2 (h-append
+                     line
+                     (v-concat (map (lambda (pair)
+                                      (group
+                                       (h-append
+                                        (f-format (car pair))
+                                        (text " ")
+                                        (text "=")
+                                        (nest 2
+                                              (h-append
+                                               line
+                                               (f-format-thunk (cdr pair))
+                                               (text ";"))))))
+                                    (hash->list x)))
+                     ))
+            line
+            (text "}"))))
+
+  (define (f-format x)
+    (cond
+      [(string? x)
+       (f-format-string x)]
+      [(hash? x)
+       (f-format-record x)]
+      [else
+       (error 'f-print "Don't know how to print ~v" x)]))
+
+  (define (f-format-thunk x)
+    (f-format (f-thunk-force x)))
+
+  (pretty-print (f-format-thunk x)))
 
 
 (define (pretty-string meta id)
@@ -152,8 +242,8 @@
                     line
                     (f-pretty meta body-id))))))
 
-(define (pretty-function-parameter meta id)
-  (let ([name (meta-lookup-val meta id FunctionParameter.name)])
+(define (pretty-identifier meta id)
+  (let ([name (meta-lookup-val meta id Identifier.name)])
     (text name)))
 
 (define (pretty-apply meta id)
@@ -172,6 +262,36 @@
   (let ([reference-id (meta-lookup-val meta id Reference.reference)])
     (f-pretty meta reference-id)))
 
+(define (pretty-letrec meta id)
+  (let ([binding-ids (meta-lookup-vals meta id Letrec.binding)]
+        [value-id (meta-lookup-val meta id Letrec.value)])
+    (group (h-append
+            (text "let")
+            (text " ")
+            (text "{")
+            (h-append
+             (nest 2
+                   (h-append
+                    line
+                    (v-concat (map (lambda (binding-id) (h-append (f-pretty meta binding-id) (text ";"))) binding-ids))))
+             line)
+            (text "}")
+            (text " ")
+            (text "in")
+            (group (nest 2 (h-append
+                            line
+                            (f-pretty meta value-id))))))))
+
+(define (pretty-binding meta id)
+  (let ([identifier-id (meta-lookup-val meta id Binding.identifier)]
+        [value-id (meta-lookup-val meta id Binding.value)])
+    (group (nest 2 (h-append
+                    (f-pretty meta identifier-id)
+                    (text " ")
+                    (text "=")
+                    line
+                    (f-pretty meta value-id))))))
+
 (provide f-pretty)
 (define (f-pretty meta id)
   (define formatters
@@ -181,9 +301,11 @@
        (,RecordField       . ,pretty-field)
        (,FieldAccess       . ,pretty-field-access)
        (,Function          . ,pretty-function)
-       (,FunctionParameter . ,pretty-function-parameter)
+       (,Identifier        . ,pretty-identifier)
        (,Apply             . ,pretty-apply)
-       (,Reference         . ,pretty-reference))))
+       (,Reference         . ,pretty-reference)
+       (,Letrec            . ,pretty-letrec)
+       (,Binding           . ,pretty-binding))))
 
   (let ([types (meta-lookup-types meta id)])
     (if (null? types)

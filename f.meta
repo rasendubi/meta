@@ -7,6 +7,7 @@
 ["101", "5", "7"]                              ; f/StringLiteral.value(101).type(5) = Attribute(7)
 ["101", "1", "2"]                              ; f/StringLiteral.value(101).attribute/value-type(1) = String(2)
 
+
 ;; Records
 ["102", "0", "f/RecordLiteral"]                ; f/RecordLiteral(102).identifier(0) = "f/RecordLiteral"
 ["102", "5", "6"]                              ; f/RecordLiteral(102).type(5) = Type(6)
@@ -27,6 +28,7 @@
 ["106", "5", "7"]                              ; f/RecordField.value(106).type(5) = Attribute(7)
 ["106", "1", "3"]                              ; f/RecordField.value(106).attribute/value-type(1) = Reference(3)
 
+
 ["107", "0", "f/FieldAccess"]                  ; f/FieldAccess(107).identifier(0) = "f/FieldAccess"
 ["107", "5", "6"]                              ; f/FieldAccess(107).type(5) = Type(6)
 
@@ -38,24 +40,29 @@
 ["109", "5", "7"]                              ; f/FieldAccess.field(109).type(5) = Attribute(7)
 ["109", "1", "3"]                              ; f/FieldAccess.field(109).attribute/value-type(1) = Reference(3)
 
+
 ["110", "0", "f/Function"]                     ; f/Function(110).identifier(0) = "f/Function"
 ["110", "5", "6"]                              ; f/Function(110).type(5) = Type(6)
 
 ["111", "0", "f/Function.parameter"]           ; f/Function.parameter(111).identifier(0) = "f/Function.parameter"
 ["111", "5", "7"]                              ; f/Function.parameter(111).type(5) = Attribute(7)
 ["111", "1", "3"]                              ; f/Function.parameter(111).attribute/value-type(1) = Reference(3)
-["111", "10", "113"]                           ; f/Function.parameter(111).attribute/reference-type(10) = f/FunctionParameter(113)
+["111", "10", "113"]                           ; f/Function.parameter(111).attribute/reference-type(10) = f/Identifier(113)
 
 ["112", "0", "f/Function.body"]                ; f/Function.body(112).identifier(0) = "f/Function.body"
 ["112", "5", "7"]                              ; f/Function.body(112).type(5) = Attribute(7)
 ["112", "1", "3"]                              ; f/Function.body(112).attribute/value-type(1) = Reference(3)
 
-["113", "0", "f/FunctionParameter"]            ; f/FunctionParameter(113).identifier(0) = "f/FunctionParameter"
-["113", "5", "6"]                              ; f/FunctionParameter(113).type(5) = Type(6)
 
-["114", "0", "f/FunctionParameter.name"]       ; f/FunctionParameter.name(114).identifier(0) = "f/FunctionParameter.name"
-["114", "5", "7"]                              ; f/FunctionParameter.name(114).type(5) = Attribute(7)
-["114", "1", "2"]                              ; f/FunctionParameter.name(114).attribute/value-type(1) = String(2)
+["113", "0", "f/Identifier"]                   ; f/Identifier(113).identifier(0) = "f/Identifier"
+["113", "5", "6"]                              ; f/Identifier(113).type(5) = Type(6)
+;; f/Identifier(113).comment(4) = "Identifiers are used in binding contexts. Two identifiers with the same name are still different identifiers."
+["113", "4", "Identifiers are used in binding contexts. Two identifiers with the same name are still different identifiers."]
+
+["114", "0", "f/Identifier.name"]              ; f/Identifier.name(114).identifier(0) = "f/Identifier.name"
+["114", "5", "7"]                              ; f/Identifier.name(114).type(5) = Attribute(7)
+["114", "1", "2"]                              ; f/Identifier.name(114).attribute/value-type(1) = String(2)
+
 
 ["115", "0", "f/Apply"]                        ; f/Apply(115).identifier(0) = "f/Apply"
 ["115", "5", "6"]                              ; f/Apply(115).type(5) = Type(6)
@@ -68,9 +75,37 @@
 ["117", "5", "7"]                              ; f/Apply.argument(117).type(5) = Attribute(7)
 ["117", "1", "3"]                              ; f/Apply.argument(117).attribute/value-type(1) = Reference(3)
 
+
 ["118", "0", "f/Reference"]                    ; f/Reference(118).identifier(0) = "f/Reference"
 ["118", "5", "6"]                              ; f/Reference(118).type(5) = Type(6)
 
 ["119", "0", "f/Reference.reference"]          ; f/Reference.reference(119).identifier(0) = "f/Reference.reference"
 ["119", "5", "7"]                              ; f/Reference.reference(119).type(5) = Attribute(7)
 ["119", "1", "3"]                              ; f/Reference.reference(119).attribute/value-type(1) = Reference(3)
+["119", "10", "113"]                           ; f/Reference.reference(119).attribute/reference-type(10) = f/Identifier(113)
+
+
+["120", "0", "f/Letrec"]                       ; f/Letrec(120).identifier(0) = "f/Letrec"
+["120", "5", "6"]                              ; f/Letrec(120).type(5) = Type(6)
+["120", "4", "Recursive let."]                 ; f/Letrec(120).comment(4) = "Recursive let."
+
+["121", "0", "f/Letrec.binding"]               ; f/Letrec.binding(121).identifier(0) = "f/Letrec.binding"
+["121", "5", "7"]                              ; f/Letrec.binding(121).type(5) = Attribute(7)
+["121", "1", "3"]                              ; f/Letrec.binding(121).attribute/value-type(1) = Reference(3)
+["121", "10", "122"]                           ; f/Letrec.binding(121).attribute/reference-type(10) = f/Binding(122)
+
+["122", "0", "f/Letrec.value"]                 ; f/Letrec.value(122).identifier(0) = "f/Letrec.value"
+["122", "5", "7"]                              ; f/Letrec.value(122).type(5) = Attribute(7)
+["122", "1", "3"]                              ; f/Letrec.value(122).attribute/value-type(1) = Reference(3)
+
+["123", "0", "f/Binding"]                      ; f/Binding(123).identifier(0) = "f/Binding"
+["123", "5", "6"]                              ; f/Binding(123).type(5) = Type(6)
+
+["124", "0", "f/Binding.identifier"]           ; f/Binding.identifier(124).identifier(0) = "f/Binding.identifier"
+["124", "5", "7"]                              ; f/Binding.identifier(124).type(5) = Attribute(7)
+["124", "1", "3"]                              ; f/Binding.identifier(124).attribute/value-type(1) = Reference(3)
+["124", "10", "113"]                           ; f/Binding.identifier(124).attribute/reference-type(10) = f/Identifier(113)
+
+["125", "0", "f/Binding.value"]                ; f/Binding.value(125).identifier(0) = "f/Binding.value"
+["125", "5", "7"]                              ; f/Binding.value(125).type(5) = Attribute(7)
+["125", "1", "3"]                              ; f/Binding.value(125).attribute/value-type(1) = Reference(3)
