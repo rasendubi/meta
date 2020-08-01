@@ -4,6 +4,15 @@
 (require "./base.rkt")
 (require "./core.rkt")
 
+(module+ test
+  (require rackunit)
+
+  (define test-files '("../../core.meta"
+                       "../../f.meta"
+                       "../../f-test.meta"))
+
+  (define meta (apply meta-merge (map read-meta-file test-files))))
+
 ;; TODO: remove hard-code and find these by identifiers
 (define StringLiteral "100")
 (define StringLiteral.value "101")
@@ -153,6 +162,46 @@
               (evaluator meta env id)
               (error 'f-eval "No evaluator for type ~a" type))))))
 
+(module+ test
+  (define-check (check-eval? id expected)
+    (check-equal? (f-thunk-force-deep (f-eval meta '() id))
+                  expected))
+
+  (test-case "string literal"
+    (check-eval? "1000" "Hello, world!"))
+
+  (test-case "string literal 2"
+    (check-eval? "1001" "foobar"))
+
+  (test-case "record literal"
+    (check-eval? "1002" (make-immutable-hash
+                         `(("hello" . "world")
+                           ("Kate" . "foobar")
+                           ("nesting" . ,(make-immutable-hash
+                                          '(("hi" . "there"))))))))
+
+  (test-case "field access"
+    (check-eval? "1014" "there"))
+
+  (test-case "function: primitive"
+    (check-eval? "1024" "hi"))
+
+  (test-case "function: with binding"
+    (check-eval? "1018" "world"))
+
+  (test-case "letrec: primitive"
+    (check-eval? "1028" "Hello"))
+
+  (test-case "letrec: with binding"
+    (check-eval? "1030" "hello"))
+
+  (test-case "letrec: multi binding"
+    (check-eval? "1035" "hello"))
+
+  (test-case "letrec: reference"
+    (check-eval? "1043" "hi")))
+
+
 (provide f-print)
 (define (f-print x)
   (define (f-format-string s)
@@ -222,14 +271,15 @@
 (define (pretty-field-access meta id)
   (let ([record-id (meta-lookup-val meta id FieldAccess.record)]
         [field-id  (meta-lookup-val meta id FieldAccess.field)])
-    (group (nest 2
-                 (h-append
-                  (f-pretty meta record-id)
-                  break
-                  dot
-                  (text "[")
-                  (f-pretty meta field-id)
-                  (text "]"))))))
+    (group
+     (h-append
+      (f-pretty meta record-id)
+      (nest 2 (h-append
+               break
+               dot
+               (text "[")
+               (f-pretty meta field-id)
+               (text "]")))))))
 
 (define (pretty-function meta id)
   (let ([parameter-id (meta-lookup-val meta id Function.parameter)]
@@ -249,14 +299,15 @@
 (define (pretty-apply meta id)
   (let ([function-id (meta-lookup-val meta id Apply.function)]
         [argument-id (meta-lookup-val meta id Apply.argument)])
-    (group (nest 2 (h-append
-                    (text "(")
-                    (f-pretty meta function-id)
-                    (text ")")
-                    line
-                    (text "(")
-                    (f-pretty meta argument-id)
-                    (text ")"))))))
+    (group (h-append
+            (text "(")
+            (f-pretty meta function-id)
+            (text ")")
+            (nest 2 (h-append
+                     line
+                     (text "(")
+                     (f-pretty meta argument-id)
+                     (text ")")))))))
 
 (define (pretty-reference meta id)
   (let ([reference-id (meta-lookup-val meta id Reference.reference)])
@@ -315,3 +366,94 @@
           (if formatter
               (formatter meta id)
               (h-append (text "(") (text id) (text ")")))))))
+
+(module+ test
+  (define (check-pretty? id expected [width (current-page-width)])
+    (check-equal? (pretty-format (f-pretty meta id) width) expected))
+
+  (test-case "pretty: string literal"
+    (check-pretty? "1000" "\"Hello, world!\""))
+
+  (test-case "pretty: record literal"
+    (check-pretty? "1002"
+                   "{ [\"hello\"]: \"world\", [\"Kate\"]: \"foobar\", [\"nesting\"]: { [\"hi\"]: \"there\" } }"))
+  (test-case "pretty: record literal (narrow)"
+    (check-pretty? "1002"
+                   "{
+  [\"hello\"]: \"world\",
+  [\"Kate\"]: \"foobar\",
+  [\"nesting\"]:
+    { [\"hi\"]: \"there\" }
+}"
+                   30))
+
+  (test-case "pretty: field access"
+    (check-pretty? "1014"
+                   "{ [\"hello\"]: \"world\", [\"Kate\"]: \"foobar\", [\"nesting\"]: { [\"hi\"]: \"there\" } }
+  .[\"nesting\"]
+  .[\"hi\"]"))
+
+  (test-case "pretty: field access (wide)"
+    (check-pretty? "1014"
+                   "{ [\"hello\"]: \"world\", [\"Kate\"]: \"foobar\", [\"nesting\"]: { [\"hi\"]: \"there\" } }.[\"nesting\"].[\"hi\"]"
+                   200))
+
+  (test-case "pretty: function"
+    (check-pretty? "1018"
+                   "(\\x -> x.[\"hello\"])\n  ({ [\"hello\"]: \"world\", [\"Kate\"]: \"foobar\", [\"nesting\"]: { [\"hi\"]: \"there\" } })"))
+  (test-case "pretty: function (narrow)"
+    (check-pretty? "1018"
+                   "(\\x -> x.[\"hello\"])
+  ({
+    [\"hello\"]: \"world\",
+    [\"Kate\"]: \"foobar\",
+    [\"nesting\"]:
+      { [\"hi\"]: \"there\" }
+  })"
+                   30))
+
+  (test-case "pretty: function (very narrow)"
+    (check-pretty? "1018"
+                   "(\\x ->
+  x
+    .[\"hello\"])
+  ({
+    [\"hello\"]:
+      \"world\",
+    [\"Kate\"]:
+      \"foobar\",
+    [\"nesting\"]:
+      {
+        [\"hi\"]:
+          \"there\"
+      }
+  })"
+                   10))
+
+  (test-case "pretty: function (primitive)"
+    (check-pretty? "1024"
+                   "(\\y -> \"hi\") (\"Hello, world!\")"))
+
+  (test-case "pretty: letrec (empty)"
+    (check-pretty? "1028"
+                   "let {  } in \"Hello\""))
+
+  (test-case "pretty: letrec (simple)"
+    (check-pretty? "1030"
+                   "let { x = \"hi\"; } in \"hello\""))
+
+  (test-case "pretty: letrec (multiple bindings)"
+    (check-pretty? "1035"
+                   "let { x = \"hi\"; y = \"blah\"; } in \"hello\""))
+
+  (test-case "pretty: letrec (reference)"
+    (check-pretty? "1043"
+                   "let { x = \"hi\"; y = x; } in y"))
+
+  (test-case "pretty: letrec (narrow)"
+    (check-pretty? "1035"
+                   "let {
+  x = \"hi\";
+  y = \"blah\";
+} in \"hello\""
+                   30)))
