@@ -70,8 +70,8 @@
 ["1019", "111", "1020"]                        ; (1019).f/Function.parameter(111) = (1020)
 ["1019", "112", "1021"]                        ; (1019).f/Function.body(112) = (1021)
 
-["1020", "5", "113"]                           ; (1020).type(5) = f/FunctionParameter(113)
-["1020", "114", "x"]                           ; (1020).f/FunctionParameter.name(114) = "x"
+["1020", "5", "113"]                           ; (1020).type(5) = f/Identifier(113)
+["1020", "114", "x"]                           ; (1020).f/Identifier.name(114) = "x"
 
 ["1021", "5", "107"]                           ; (1021).type(5) = f/FieldAccess(107)
 ["1021", "108", "1022"]                        ; (1021).f/FieldAccess.record(108) = (1022)

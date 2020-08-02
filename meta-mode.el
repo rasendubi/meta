@@ -39,7 +39,7 @@ lines.")
        t
        nil
 
-       "meta/meta.rkt" "-f" "core.meta" "-f" "f.meta" "-f" "f-test.meta" "--annotate-line" line)
+       "meta-racket/meta.rkt" "-f" "core.meta" "-f" "f.meta" "-f" "f-test.meta" "--annotate-line" line)
       (delete-char -1))))
 
 (defvar meta-mode-map
