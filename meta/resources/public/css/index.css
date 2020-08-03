@@ -2,6 +2,10 @@
     font-family: 'Source Code Pro', monospace;
 }
 
+.editor {
+    white-space: pre;
+}
+
 .editor-lead {
     display: inline-block;
     min-width: 24ch;

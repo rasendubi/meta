@@ -16,11 +16,11 @@
                           (m ?a "1" ?type)]
                         db
                         [['?a a]])]
-    (case value-type
-      "2"  #_(String) [:span.editor-value (str "\"" v "\"")]
-      "3"  #_(Reference) [annotate v]
-      "9"  #_(NaturalNumber) [:span.editor-value (str v)]
-      "11" #_(IntegerNumber) [:span.editor-value (str v)]
+    (condp = value-type
+      meta.core/String        [:span.editor-value (str "\"" v "\"")]
+      meta.core/Reference     [annotate v]
+      meta.core/NaturalNumber [:span.editor-value (str v)]
+      meta.core/IntegerNumber [:span.editor-value (str v)]
       )))
 
 (defn annotation [e a v]

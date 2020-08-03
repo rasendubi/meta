@@ -16,7 +16,7 @@
    (q query db bindings '[]))
 
   ([query db bindings rules]
-   ;; (println (str "query: " query ", bindings: " bindings))
+   #_(println (str "query: " query ", bindings: " bindings))
    (let [result
          (apply d/q
                 (into (into '[:in $ %] (map first bindings)) query)
@@ -27,7 +27,7 @@
                          [?x :v ?v]]]
                       rules)
                 (map second bindings))]
-     ;; (println (str "result: " result))
+     #_(println (str "result: " result))
      result)))
 
 (defn values [db e a]
