@@ -40,7 +40,7 @@
 (defn- env-lookup [env identifier]
   (if-let [value (-env-lookup env identifier)]
     value
-    (throw (Exception. (str "Unable to lookup " identifier " in " env)))))
+    (throw (#?(:clj Exception. :cljs js/Error.) (str "Unable to lookup " identifier " in " env)))))
 
 
 (defrecord ^:private FFunction [parameter body env])

@@ -53,4 +53,6 @@ lines.")
   "major mode for editing meta language code."
   (setq font-lock-defaults '(meta-font-lock-keywords)))
 
+(setenv "LEIN_FAST_TRAMPOLINE" "y")
+
 (provide 'meta-mode)

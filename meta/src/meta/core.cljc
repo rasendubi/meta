@@ -9,4 +9,4 @@
 (defn meta-type [meta id]
   (if-let [ty (b/value meta id attr-type)]
     ty
-    (throw (Exception. (str id ": no type found")))))
+    (throw (#?(:clj Exception. :cljs js/Error.) (str id ": no type found")))))
