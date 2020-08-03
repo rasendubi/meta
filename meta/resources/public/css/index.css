@@ -1,0 +1,26 @@
+#app {
+    font-family: 'Source Code Pro', monospace;
+}
+
+.editor-lead {
+    display: inline-block;
+    min-width: 24ch;
+    margin-right: 1ch;
+}
+
+.editor-comment {
+    font-style: italic;
+    color: #505050;
+}
+
+.editor-dim {
+    color: #505050;
+}
+
+.editor-entity {
+    color: #00538b;
+}
+
+.editor-value {
+    color: #0000bb;
+}
