@@ -1,10 +1,7 @@
 (ns meta.editor
-  (:require [meta.base :as b]
-            [meta.f :as f]
-            [meta.editor.datoms-view :as editor.datoms]
+  (:require [meta.editor.datoms-view :as editor.datoms]
             [meta.editor.entities-view :as editor.entities]
             [meta.editor.common :as editor.common]
-            [reagent.core :as r]
             [reagent.dom :as rd])
   (:require-macros [meta.parse :refer [meta-read*]]))
 

@@ -1,5 +1,6 @@
 (ns meta.editor.datoms-view
   (:require [meta.base :as b]
+            [meta.core]
             [meta.editor.common :refer [db]]))
 
 (defn annotate [e]

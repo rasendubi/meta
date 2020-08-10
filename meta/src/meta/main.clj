@@ -1,11 +1,12 @@
 (ns meta.main
-  (:require [meta.base]
+  (:require [meta.parse]
             [meta.f]
+            [meta.layout.core]
             [clojure.pprint :as pp]
             [clojure.stacktrace]))
 
 (defn -main []
-  (let [meta (meta.base/meta-read "../core.meta" "../f.meta" "../f-test.meta")]
+  (let [meta (meta.parse/meta-read "../core.meta" "../f.meta" "../f-test.meta")]
     (try
       (pp/pprint (meta.f/f-force-deep (meta.f/f-expr meta "1043")))
       (catch Exception e
