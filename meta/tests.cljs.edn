@@ -1,2 +1,3 @@
-^{:launch-js "firefox"}
+^{:launch-js "firefox"
+  :ring-server-options {:port 9501}}
 {:main meta.test-runner}

@@ -68,4 +68,25 @@
                    (text "long text")
                    (merge (l/line (text " ")) {:width 0})
                    (merge (l/indent) {:width 0})
-                   (text "more long text"))))))
+                   (text "more long text"))))
+
+    (testing "nested group"
+      (is (layout= (l/group* (text "{")
+                             (l/nest* 2
+                                      (l/line)
+                                      (l/nest 2 (l/group* (text "long text:")
+                                                          (l/line)
+                                                          (text "more long text"))))
+                             (l/line)
+                             (text "}"))
+
+                   (text "{")
+                   (merge (l/line) {:width 0})
+                   (merge (l/indent) {:width 2})
+                   (text "long text:")
+                   (merge (l/line) {:width 0})
+                   (merge (l/indent) {:width 4})
+                   (text "more long text")
+                   (merge (l/line) {:width 0})
+                   (merge (l/indent) {:width 0})
+                   (text "}"))))))
