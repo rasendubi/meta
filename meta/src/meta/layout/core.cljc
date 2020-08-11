@@ -11,8 +11,12 @@
    :width width
    :payload payload})
 
-(defn indent []
-  {:type :indent})
+(defn indent
+  ([]
+   {:type :indent})
+  ([width]
+   {:type :indent
+    :width width}))
 
 (defn line
   ([] (line (empty)))
@@ -20,11 +24,12 @@
   ([alt]
    {:type :line
     :indent (indent)
-    :alt alt}))
+    :alt alt
+    :width 0}))
 
-(defn nest [width doc]
+(defn nest [indent-level doc]
   {:type :nest
-   :width width
+   :indent-level indent-level
    :doc doc})
 
 (defn concat [parts]
@@ -38,8 +43,8 @@
 (defn concat* [& args]
   (concat args))
 
-(defn nest* [width & args]
-  (nest width (concat args)))
+(defn nest* [indent-level & args]
+  (nest indent-level (concat args)))
 
 (defn group* [& args]
   (group (concat args)))
@@ -72,7 +77,7 @@
 
          :nest
          (try-fit pos
-                  (conj rest [(+ indent-level (:width doc)) mode (:doc doc)])
+                  (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)])
                   width
                   result)
 
@@ -112,7 +117,7 @@
                           (do-layout (+ pos (:width (:alt doc))) rest width))))
 
         :nest
-        (do-layout pos (conj rest [(+ indent-level (:width doc)) mode (:doc doc)]) width)
+        (do-layout pos (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)]) width)
 
         :group
         (if-let [[next-pos next-cmds result] (try-fit pos (conj rest [indent-level :flat (:doc doc)]) width)]

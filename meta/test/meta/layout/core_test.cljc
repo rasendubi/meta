@@ -17,27 +17,30 @@
                  (text "hello"))))
 
   (testing "concat cells"
-    (is (layout= (l/concat (list (text "hello") (text " ") (text "world!")))
+    (is (layout= (l/concat* (text "hello") (text " ") (text "world!"))
                  (text "hello") (text " ") (text "world!"))))
 
   (testing "concat concat"
-    (is (layout= (l/concat (list (l/concat (list (text "1") (text "2")))
-                                 (l/concat (list (text "3") (text "4")))))
+    (is (layout= (l/concat* (l/concat* (text "1") (text "2"))
+                            (l/concat* (text "3") (text "4")))
                  (text "1") (text "2") (text "3") (text "4"))))
 
   (testing "line"
-    (is (layout= (l/concat (list (text "hello")
-                                 (l/line)
-                                 (text "world!")))
+    (is (layout= (l/concat* (text "hello")
+                            (l/line)
+                            (text "world!"))
                  (text "hello")
-                 (merge (l/line) {:width 0})
-                 (merge (l/indent) {:width 0})
+                 (l/line)
+                 (l/indent 0)
                  (text "world!"))))
 
   (testing "line + nest"
     (is (layout=
-         (l/concat (list (text "hello") (l/nest 2 (l/concat (list (l/line) (text "world!"))))))
-         (text "hello") (merge (l/line) {:width 0}) (merge (l/indent) {:width 2}) (text "world!"))))
+         (l/concat* (text "hello") (l/nest* 2 (l/line) (text "world!")))
+         (text "hello")
+         (l/line)
+         (l/indent 2)
+         (text "world!"))))
 
   (testing "group"
     (testing "text"
@@ -56,18 +59,14 @@
       (is (layout= (l/group (l/empty)))))
 
     (testing "concat + flat line"
-      (is (layout= (l/group (l/concat (list (text "text")
-                                            (l/line (text " "))
-                                            (text "more text"))))
+      (is (layout= (l/group* (text "text") (l/line (text " ")) (text "more text"))
                    (text "text") (text " ") (text "more text"))))
 
     (testing "concat + break line"
-      (is (layout= (l/group (l/concat (list (text "long text")
-                                            (l/line (text " "))
-                                            (text "more long text"))))
+      (is (layout= (l/group* (text "long text") (l/line (text " ")) (text "more long text"))
                    (text "long text")
-                   (merge (l/line (text " ")) {:width 0})
-                   (merge (l/indent) {:width 0})
+                   (l/line (text " "))
+                   (l/indent 0)
                    (text "more long text"))))
 
     (testing "nested group"
