@@ -8,9 +8,9 @@
             [meta.editor.projectional :as p]
             [meta.editor.common :refer [db]]))
 
-(def punctuation (partial p/cell :punctuation))
-(def keyword-cell (partial p/cell :keyword))
-(def error-cell (partial p/cell :error))
+(def punctuation (partial p/cell :f-punctuation))
+(def keyword-cell (partial p/cell :f-keyword))
+(def error-cell (partial p/cell :f-error))
 
 (def line (l/line (punctuation " ")))
 (def break (l/line))
@@ -19,7 +19,7 @@
 (defn- editable-text
   [meta id attr]
   (let [value (b/value meta id attr)]
-    (p/cell :editable-text value)))
+    (p/cell :f-editable-text value)))
 
 (defmulti f-pretty
   "Pretty-print meta.f into a layout document."
@@ -144,36 +144,6 @@
        (map cell->string)
        (apply str)))
 
-(defn- f-cell [x]
-  (case (:type x)
-    :empty
-    nil
-
-    :line
-    nil
-
-    :indent
-    [:span (apply str (repeat (:width x) " "))]
-
-    :cell
-    (let [cell (:payload x)
-          value (:value cell)]
-      (case (:class cell)
-        :punctuation
-        [:span.f-punctuation value]
-
-        :keyword
-        [:span.f-keyword value]
-
-        :editable-text
-        [:span.f-editable-text value]
-
-        :error
-        [:span.f-error value]
-
-        :else
-        [:span value]))))
-
 (defn split-by [pred coll]
   (lazy-seq
    (when-let [s (seq coll)]
@@ -187,13 +157,32 @@
            (cons (concat skip xs)
                  (split-by pred ys))))))))
 
+(def layout-2d (r/atom []))
+(defn set-layout-2d [simple-doc]
+  (reset! layout-2d (vec (split-by #(= (:type %) :line) simple-doc))))
+
+(defn cursor-to-cell [{:keys [row col]}]
+  (let [line (get @layout-2d row nil)
+        cell (reduce (fn [pos c]
+                       (let [next-pos (+ pos (:width c))]
+                         (if (> next-pos col)
+                           (reduced c)
+                           next-pos)))
+                     0
+                     line)]
+    cell))
+
 (def cursor-position (r/atom {:row 9 :col 5}))
+
+(defn- current-cell []
+  (cursor-to-cell @cursor-position))
 
 (defn move-cursor [drow dcol]
   (swap! cursor-position #(merge-with + % {:row drow :col dcol})))
 
 (def line-height 1.28125)
 (defn cursor []
+  (prn (:path (cursor-to-cell @cursor-position)))
   (let [{:keys [row col]} @cursor-position]
     [:div.cursor {:style {:position :absolute
                           :left (str col "ch")
@@ -226,15 +215,33 @@
    [:input {:onKeyDown (fn [x] (handle-event (event->cljs x)))
             :autoFocus true}]])
 
+(defn- f-cell [x]
+  (let [current-class (when (= x (current-cell)) :f-current-cell)]
+    (case (:type x)
+      :empty
+      nil
+
+      :line
+      nil
+
+      :indent
+      [:span {:class current-class} (apply str (repeat (:width x) " "))]
+
+      :cell
+      (let [cell (:payload x)
+            value (:value cell)]
+        [:span {:class [current-class (:class cell)]} value]))))
+
 (defn- f-editor [document]
-  (let [simple (l/layout document 30)]
-    [:div {:style {:position :relative}}
-     [hidden-input]
-     [cursor]
-     (for [line (split-by #(= (:type %) :line) simple)]
-       [:div (for [cell line]
-               [f-cell cell])])]))
+  [:div {:style {:position :relative}}
+   [hidden-input]
+   [cursor]
+   (for [line @layout-2d]
+     [:div (for [cell line]
+             [f-cell cell])])])
 
 (defn f [id]
-  (let [document (pathify/pathify (f-pretty db id))]
+  (let [document (pathify/pathify (f-pretty db id))
+        simple-doc (l/layout document 30)]
+    (set-layout-2d simple-doc)
     [f-editor document]))
