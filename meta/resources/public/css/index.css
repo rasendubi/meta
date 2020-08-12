@@ -28,3 +28,19 @@
 .editor-value {
     color: #0000bb;
 }
+
+.f-punctuation {
+    color: #505050;
+}
+.f-keyword {
+    color: #5317ac;
+    font-weight: 700;
+}
+.f-editable-text {
+    color: #00538b;
+    color: #0000bb;
+}
+.f-error {
+    color: #a60000;
+    font-weight: 700;
+}

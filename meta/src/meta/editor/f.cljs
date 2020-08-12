@@ -22,40 +22,52 @@
           {:type :keyword
            :value text}))
 
+(defn- error-cell [text]
+  (l/cell (count text)
+          {:type :error
+           :value text}))
+
 (def line (l/line (punctuation " ")))
 (def break (l/line))
 (def comma (punctuation ","))
 
 (defmulti f-pretty
   "Pretty-print meta.f into a layout document."
-  (fn [meta id] (c/meta-type meta id)))
+  (fn [meta id]
+    (try
+      (c/meta-type meta id)
+      (catch :default e
+        :error))))
+
+(defmethod f-pretty :error [meta id]
+  (error-cell (str "(" id ")")))
 
 (defmethod f-pretty f/StringLiteral [meta id]
-  (l/concat (list (punctuation "\"")
-                  (editable-text meta id f/StringLiteral-value)
-                  (punctuation "\""))))
+  (l/concat* (punctuation "\"")
+             (editable-text meta id f/StringLiteral-value)
+             (punctuation "\"")))
 
 (defmethod f-pretty f/RecordLiteral [meta id]
   (let [field-ids (b/values meta id f/RecordLiteral-field)]
-    (l/group (l/concat (list (punctuation "{")
-                             (l/nest 2 (l/concat
-                                        (interpose comma (map #(f-pretty meta %) field-ids))))
-                             line
-                             (punctuation "}"))))))
+    (l/group* (punctuation "{")
+              (l/nest 2 (l/concat
+                         (interpose comma (map #(f-pretty meta %) field-ids))))
+              line
+              (punctuation "}"))))
 
 (defmethod f-pretty f/RecordField [meta id]
   (let [key-id   (b/value meta id f/RecordField-key)
         value-id (b/value meta id f/RecordField-value)]
-    (l/concat
-     (list line
-           (l/nest 2 (l/concat
-                      (list (l/group (l/concat
-                                      (list (punctuation "[")
-                                            (f-pretty meta key-id)
-                                            (punctuation "]")
-                                            (punctuation ":")
-                                            line
-                                            (f-pretty meta value-id)))))))))))
+    (l/concat*
+     line
+     (l/nest* 2
+              (l/group*
+               (punctuation "[")
+               (f-pretty meta key-id)
+               (punctuation "]")
+               (punctuation ":")
+               line
+               (f-pretty meta value-id))))))
 
 (defmethod f-pretty f/FieldAccess [meta id]
   (let [record-id (b/value meta id f/FieldAccess-record)
@@ -126,7 +138,7 @@
                        (f-pretty meta value-id)
                        (punctuation ";"))))))
 
-(defn- pretty->string [x]
+(defn- cell->string [x]
   (case (:type x)
     :empty ""
 
@@ -137,9 +149,58 @@
     :cell
     (:value (:payload x))))
 
+(defn- pretty->string [xs]
+  (->> xs
+       (map cell->string)
+       (apply str)))
+
+(defn- f-cell [x]
+  (case (:type x)
+    :empty
+    nil
+
+    :line
+    nil
+
+    :indent
+    [:span (apply str (repeat (:width x) " "))]
+
+    :cell
+    (let [cell (:payload x)
+          value (:value cell)]
+      (case (:type cell)
+        :punctuation
+        [:span.f-punctuation value]
+
+        :keyword
+        [:span.f-keyword value]
+
+        :editable-text
+        [:span.f-editable-text value]
+
+        :error
+        [:span.f-error value]
+
+        :else
+        [:span value]))))
+
+(defn split-by [pred coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [!pred (complement pred)
+           [xs ys] (split-with !pred s)]
+       (if (seq xs)
+         (cons xs (split-by pred ys))
+         (let [skip (take-while pred s)
+               others (drop-while pred s)
+               [xs ys] (split-with !pred others)]
+           (cons (concat skip xs)
+                 (split-by pred ys))))))))
+
 (defn f [id]
   (let [document (f-pretty db id)
-        simple   (l/layout document 30)
-        string   (apply str (map pretty->string simple))]
-    (prn simple)
-    string))
+        simple   (l/layout document 30)]
+    [:div
+     (for [line (split-by #(= (:type %) :line) simple)]
+       [:div (for [cell line]
+               [f-cell cell])])]))

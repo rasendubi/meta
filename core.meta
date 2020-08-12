@@ -1,6 +1,6 @@
 ["0", "0", "identifier"]                       ; identifier(0).identifier(0) = "identifier"
 
-["1", "0", "attribute/value-type"]             ; attribute/value-type(1).identifier(0) = "attribute/value-type"
+["1", "0", "Attribute.value-type"]             ; attribute/value-type(1).identifier(0) = "attribute/value-type"
 ["2", "0", "String"]                           ; String(2).identifier(0) = "String"
 ["3", "0", "Reference"]                        ; Reference(3).identifier(0) = "Reference"
 
@@ -55,7 +55,7 @@
 ;; NaturalNumber(9).comment(4) = "Value is an ASCII-decimal-encoded natural number. e.g., \"42\" represents a number 42."
 ["9", "4", "Value is an ASCII-decimal-encoded natural number. e.g., \"42\" represents a number 42."]
 
-["10", "0", "attribute/reference-type"]        ; attribute/reference-type(10).identifier(0) = "attribute/reference-type"
+["10", "0", "Attribute.reference-type"]        ; attribute/reference-type(10).identifier(0) = "attribute/reference-type"
 ["10", "5", "7"]                               ; attribute/reference-type(10).type(5) = Attribute(7)
 ;; attribute/reference-type(10).comment(4) = "When attribute/value-type(1) is Reference(3), attribute/reference-type(10) describes what type the reference is supposed to point to."
 ["10", "4", "When attribute/value-type(1) is Reference(3), attribute/reference-type(10) describes what type the reference is supposed to point to."]

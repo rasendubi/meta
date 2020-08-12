@@ -11,7 +11,7 @@
 (defn editor []
   [:div.editor
    #_[editor.entities/entities-list]
-   [editor.f/f "1043"]
+   [editor.f/f "1051"]
    #_[editor.datoms/datoms-list]])
 
 (binding [editor.common/db (meta-read* "../core.meta" "../f.meta" "../f-test.meta")]
