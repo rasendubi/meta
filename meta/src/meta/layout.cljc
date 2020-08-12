@@ -1,4 +1,4 @@
-(ns meta.layout.core
+(ns meta.layout
   (:require [clojure.core :refer [lazy-seq]])
   (:refer-clojure :exclude [empty concat]))
 

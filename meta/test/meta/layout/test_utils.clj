@@ -1,7 +1,7 @@
 (ns meta.layout.test-utils
   (:require [cljs.test]
             [clojure.test]
-            [meta.layout.core :as l]))
+            [meta.layout :as l]))
 
 (defmethod cljs.test/assert-expr 'layout= [env msg form]
   (let [doc (nth form 1)

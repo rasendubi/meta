@@ -1,35 +1,25 @@
 (ns meta.editor.f
-  (:require [meta.core :as c]
+  (:require [reagent.core :as r]
+            [meta.core :as c]
             [meta.base :as b]
             [meta.f :as f]
-            [meta.layout.core :as l]
+            [meta.layout :as l]
+            [meta.pathify :as pathify]
+            [meta.editor.projectional :as p]
             [meta.editor.common :refer [db]]))
 
-(defn- editable-text
-  [meta id attr]
-  (let [value (b/value meta id attr)]
-    (l/cell (count value)
-            {:type :editable-text
-             :value value})))
-
-(defn- punctuation [text]
-  (l/cell (count text)
-          {:type :punctuation
-           :value text}))
-
-(defn- keyword-cell [text]
-  (l/cell (count text)
-          {:type :keyword
-           :value text}))
-
-(defn- error-cell [text]
-  (l/cell (count text)
-          {:type :error
-           :value text}))
+(def punctuation (partial p/cell :punctuation))
+(def keyword-cell (partial p/cell :keyword))
+(def error-cell (partial p/cell :error))
 
 (def line (l/line (punctuation " ")))
 (def break (l/line))
 (def comma (punctuation ","))
+
+(defn- editable-text
+  [meta id attr]
+  (let [value (b/value meta id attr)]
+    (p/cell :editable-text value)))
 
 (defmulti f-pretty
   "Pretty-print meta.f into a layout document."
@@ -168,7 +158,7 @@
     :cell
     (let [cell (:payload x)
           value (:value cell)]
-      (case (:type cell)
+      (case (:class cell)
         :punctuation
         [:span.f-punctuation value]
 
@@ -197,10 +187,54 @@
            (cons (concat skip xs)
                  (split-by pred ys))))))))
 
-(defn f [id]
-  (let [document (f-pretty db id)
-        simple   (l/layout document 30)]
-    [:div
+(def cursor-position (r/atom {:row 9 :col 5}))
+
+(defn move-cursor [drow dcol]
+  (swap! cursor-position #(merge-with + % {:row drow :col dcol})))
+
+(def line-height 1.28125)
+(defn cursor []
+  (let [{:keys [row col]} @cursor-position]
+    [:div.cursor {:style {:position :absolute
+                          :left (str col "ch")
+                          :top (str (* row line-height) "em")
+                          :height (str line-height "em")
+                          :background :black
+                          :width "1px"}}]))
+
+(defn handle-event [e]
+  (case (:key e)
+    "ArrowLeft"  (move-cursor 0 -1)
+    "ArrowDown"  (move-cursor 1 0)
+    "ArrowUp"    (move-cursor -1 0)
+    "ArrowRight" (move-cursor 0 1)
+    nil))
+
+(defn event->cljs [e]
+  {:key       (.-key e)
+   :alt       (.-altKey e)
+   :ctrl      (.-ctrlKey e)
+   :meta      (.-metaKey e)
+   :shift     (.-shiftKey e)
+   :repeat    (.-repeat e)
+   :composing (.-isComposing e)})
+
+(defn hidden-input []
+  [:div {:style {:width 0
+                 :height 0
+                 :overflow :hidden}}
+   [:input {:onKeyDown (fn [x] (handle-event (event->cljs x)))
+            :autoFocus true}]])
+
+(defn- f-editor [document]
+  (let [simple (l/layout document 30)]
+    [:div {:style {:position :relative}}
+     [hidden-input]
+     [cursor]
      (for [line (split-by #(= (:type %) :line) simple)]
        [:div (for [cell line]
                [f-cell cell])])]))
+
+(defn f [id]
+  (let [document (pathify/pathify (f-pretty db id))]
+    [f-editor document]))

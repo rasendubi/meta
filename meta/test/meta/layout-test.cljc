@@ -1,6 +1,6 @@
-(ns meta.layout.core-test
+(ns meta.layout-test
   #?(:cljs (:require-macros [meta.layout.test-utils]))
-  (:require [meta.layout.core :as l]
+  (:require [meta.layout :as l]
             #?(:clj [meta.layout.test-utils])
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer [deftest testing is]])))

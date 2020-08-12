@@ -1,7 +1,6 @@
 (ns meta.main
   (:require [meta.parse]
             [meta.f]
-            [meta.layout.core]
             [clojure.pprint :as pp]
             [clojure.stacktrace]))
 
