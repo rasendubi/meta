@@ -11,8 +11,9 @@
 (defn editor []
   [:div.editor
    #_[editor.entities/entities-list]
-   [editor.f/f "1051"]
+   [editor.f/f]
    #_[editor.datoms/datoms-list]])
 
-(binding [editor.common/db (meta-read* "../core.meta" "../f.meta" "../f-test.meta")]
-  (rd/render [editor] (.getElementById js/document "app")))
+(reset! editor.common/db (meta-read* "../core.meta" "../f.meta" "../f-test.meta"))
+(reset! editor.f/f-current-root "1051")
+(rd/render [editor] (.getElementById js/document "app"))

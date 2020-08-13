@@ -1,3 +1,4 @@
-(ns meta.editor.common)
+(ns meta.editor.common
+  (:require [reagent.core :as r]))
 
-(declare ^:dynamic db)
+(def db (r/atom nil))

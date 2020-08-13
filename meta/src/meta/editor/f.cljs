@@ -1,150 +1,15 @@
 (ns meta.editor.f
   (:require [reagent.core :as r]
-            [meta.core :as c]
-            [meta.base :as b]
-            [meta.f :as f]
             [meta.layout :as l]
             [meta.pathify :as pathify]
-            [meta.editor.projectional :as p]
+            [meta.editor.f-pretty :refer [f-pretty cell-priority]]
             [meta.editor.common :refer [db]]))
 
-(def punctuation (partial p/cell :f-punctuation))
-(def keyword-cell (partial p/cell :f-keyword))
-(def error-cell (partial p/cell :f-error))
+(def f-current-root
+  "Id of the root element to display."
+  (r/atom nil))
 
-(def line (l/line (punctuation " ")))
-(def break (l/line))
-(def comma (punctuation ","))
-
-(defn- editable-text
-  [meta id attr]
-  (let [value (b/value meta id attr)]
-    (p/cell :f-editable-text value)))
-
-(defmulti f-pretty
-  "Pretty-print meta.f into a layout document."
-  (fn [meta id]
-    (try
-      (c/meta-type meta id)
-      (catch :default e
-        :error))))
-
-(defmethod f-pretty :error [meta id]
-  (error-cell (str "(" id ")")))
-
-(defmethod f-pretty f/StringLiteral [meta id]
-  (l/concat* (punctuation "\"")
-             (editable-text meta id f/StringLiteral-value)
-             (punctuation "\"")))
-
-(defmethod f-pretty f/RecordLiteral [meta id]
-  (let [field-ids (b/values meta id f/RecordLiteral-field)]
-    (l/group* (punctuation "{")
-              (l/nest 2 (l/concat
-                         (interpose comma (map #(f-pretty meta %) field-ids))))
-              line
-              (punctuation "}"))))
-
-(defmethod f-pretty f/RecordField [meta id]
-  (let [key-id   (b/value meta id f/RecordField-key)
-        value-id (b/value meta id f/RecordField-value)]
-    (l/concat*
-     line
-     (l/nest* 2
-              (l/group*
-               (punctuation "[")
-               (f-pretty meta key-id)
-               (punctuation "]")
-               (punctuation ":")
-               line
-               (f-pretty meta value-id))))))
-
-(defmethod f-pretty f/FieldAccess [meta id]
-  (let [record-id (b/value meta id f/FieldAccess-record)
-        field-id  (b/value meta id f/FieldAccess-field)]
-    (l/group*
-     (f-pretty meta record-id)
-     (l/nest* 2
-              break
-              (punctuation ".")
-              (punctuation "[")
-              (f-pretty meta field-id)
-              (punctuation "]")))))
-
-(defmethod f-pretty f/Function [meta id]
-  (let [parameter-id (b/value meta id f/Function-parameter)
-        body-id      (b/value meta id f/Function-body)]
-    (l/group (l/nest* 2
-                      (punctuation "\\")
-                      (f-pretty meta parameter-id)
-                      (punctuation " ")
-                      (punctuation "->")
-                      line
-                      (f-pretty meta body-id)))))
-
-(defmethod f-pretty f/Identifier [meta id]
-  (editable-text meta id f/Identifier-name))
-
-(defmethod f-pretty f/Apply [meta id]
-  (let [function-id (b/value meta id f/Apply-function)
-        argument-id (b/value meta id f/Apply-argument)]
-    (l/group*
-     (punctuation "(")
-     (f-pretty meta function-id)
-     (punctuation ")")
-     (l/nest* 2
-              line
-              (punctuation "(")
-              (f-pretty meta argument-id)
-              (punctuation ")")))))
-
-(defmethod f-pretty f/Reference [meta id]
-  (f-pretty meta (b/value meta id f/Reference-reference)))
-
-(defmethod f-pretty f/Letrec [meta id]
-  (let [binding-ids (b/values meta id f/Letrec-binding)
-        value-id    (b/value  meta id f/Letrec-value)]
-    (l/group*
-     (keyword-cell "let")
-     (punctuation " ")
-     (punctuation "{")
-     (l/nest 2 (l/concat (map #(f-pretty meta %) binding-ids)))
-     line
-     (punctuation "}")
-     (punctuation " ")
-     (keyword-cell "in")
-     (l/group (l/nest* 2 line (f-pretty meta value-id))))))
-
-(defmethod f-pretty f/Binding [meta id]
-  (let [identifier-id (b/value meta id f/Binding-identifier)
-        value-id      (b/value meta id f/Binding-value)]
-    (l/concat*
-     line
-     (l/group (l/nest* 2
-                       (f-pretty meta identifier-id)
-                       (punctuation " ")
-                       (punctuation "=")
-                       line
-                       (f-pretty meta value-id)
-                       (punctuation ";"))))))
-
-(defn- cell->string [x]
-  (case (:type x)
-    :empty ""
-
-    :line "\n"
-
-    :indent (apply str (repeat (:width x) " "))
-
-    :cell
-    (:value (:payload x))))
-
-(defn- pretty->string [xs]
-  (->> xs
-       (map cell->string)
-       (apply str)))
-
-(defn split-by [pred coll]
+(defn- split-by [pred coll]
   (lazy-seq
    (when-let [s (seq coll)]
      (let [!pred (complement pred)
@@ -157,32 +22,66 @@
            (cons (concat skip xs)
                  (split-by pred ys))))))))
 
-(def layout-2d (r/atom []))
-(defn set-layout-2d [simple-doc]
-  (reset! layout-2d (vec (split-by #(= (:type %) :line) simple-doc))))
+(def ^:private layout-2d (r/atom []))
 
-(defn cursor-to-cell [{:keys [row col]}]
-  (let [line (get @layout-2d row nil)
-        cell (reduce (fn [pos c]
-                       (let [next-pos (+ pos (:width c))]
-                         (if (> next-pos col)
-                           (reduced c)
-                           next-pos)))
-                     0
+(add-watch f-current-root :calculate-layout
+           (fn [_key _ref _old root]
+             (let [document (pathify/pathify (f-pretty @db root))
+                   simple-doc (l/layout document 30)
+                   layout (vec (split-by #(= (:type %) :line) simple-doc))]
+               (reset! layout-2d layout))))
+
+(def ^:private cursor-position (r/atom {:row 9 :col 5}))
+(defn- move-cursor [drow dcol]
+  (swap! cursor-position #(merge-with + % {:row drow :col dcol})))
+
+(defn- cursor-to-cell
+  "Get information about the cells around the cursor."
+  [layout-2d {:keys [row col]}]
+  (let [line (get layout-2d row nil)
+        cell (reduce (fn [{:keys [pos after] :as s} c]
+                       (let [next-pos (- pos (:width c))]
+                         (cond
+                           (= 0 (:width c))
+                           s
+
+                           (and after (= pos 0))
+                           (reduced {:after after :before c})
+
+                           (= next-pos 0)
+                           {:after c :pos next-pos}
+
+                           (<= next-pos 0)
+                           (reduced {:inside c :pos pos})
+
+                           :else
+                           {:after c :pos next-pos})))
+                     {:pos col}
                      line)]
     cell))
 
-(def cursor-position (r/atom {:row 9 :col 5}))
+(def ^:private current-cell (r/atom nil))
 
-(defn- current-cell []
-  (cursor-to-cell @cursor-position))
+(defn- find-current-cell
+  "Select current cell according to `cursor-to-cell` and `cell-priority`."
+  [layout cursor]
+  (let [{:keys [inside before after]} (cursor-to-cell layout cursor)]
+    (if (and before after)
+      (if (< (cell-priority before) (cell-priority after))
+        after
+        before)
+      (or inside before after))))
 
-(defn move-cursor [drow dcol]
-  (swap! cursor-position #(merge-with + % {:row drow :col dcol})))
+(add-watch cursor-position :current-cell
+           (fn [_key _ref _old cursor-position]
+             (reset! current-cell (find-current-cell @layout-2d cursor-position))))
+(add-watch layout-2d :current-cell
+           (fn [_key _ref _old layout-2d]
+             (reset! current-cell (find-current-cell layout-2d @cursor-position))))
 
-(def line-height 1.28125)
-(defn cursor []
-  (prn (:path (cursor-to-cell @cursor-position)))
+(def ^:private line-height 1.28125)
+(defn- cursor []
+  (prn @current-cell)
   (let [{:keys [row col]} @cursor-position]
     [:div.cursor {:style {:position :absolute
                           :left (str col "ch")
@@ -191,7 +90,7 @@
                           :background :black
                           :width "1px"}}]))
 
-(defn handle-event [e]
+(defn- handle-event [e]
   (case (:key e)
     "ArrowLeft"  (move-cursor 0 -1)
     "ArrowDown"  (move-cursor 1 0)
@@ -199,7 +98,7 @@
     "ArrowRight" (move-cursor 0 1)
     nil))
 
-(defn event->cljs [e]
+(defn- event->cljs [e]
   {:key       (.-key e)
    :alt       (.-altKey e)
    :ctrl      (.-ctrlKey e)
@@ -208,15 +107,15 @@
    :repeat    (.-repeat e)
    :composing (.-isComposing e)})
 
-(defn hidden-input []
-  [:div {:style {:width 0
-                 :height 0
-                 :overflow :hidden}}
+(defn- hidden-input []
+  [:div #_{:style {:width 0
+                   :height 0
+                   :overflow :hidden}}
    [:input {:onKeyDown (fn [x] (handle-event (event->cljs x)))
             :autoFocus true}]])
 
 (defn- f-cell [x]
-  (let [current-class (when (= x (current-cell)) :f-current-cell)]
+  (let [current-class (when (= x @current-cell) :f-current-cell)]
     (case (:type x)
       :empty
       nil
@@ -232,16 +131,10 @@
             value (:value cell)]
         [:span {:class [current-class (:class cell)]} value]))))
 
-(defn- f-editor [document]
+(defn f [id]
   [:div {:style {:position :relative}}
-   [hidden-input]
    [cursor]
    (for [line @layout-2d]
      [:div (for [cell line]
-             [f-cell cell])])])
-
-(defn f [id]
-  (let [document (pathify/pathify (f-pretty db id))
-        simple-doc (l/layout document 30)]
-    (set-layout-2d simple-doc)
-    [f-editor document]))
+             [f-cell cell])])
+   [hidden-input]])

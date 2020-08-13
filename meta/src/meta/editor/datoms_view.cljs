@@ -7,7 +7,7 @@
   (let [id (b/q '[:find ?v .
                   :where
                   (m ?e "0" ?v)]
-                db
+                @db
                 [['?e e]])]
     [:span [:span.editor-entity id] [:span.editor-dim "("] e [:span.editor-dim ")"]]))
 
@@ -15,7 +15,7 @@
   (let [value-type (b/q '[:find ?type .
                           :where
                           (m ?a "1" ?type)]
-                        db
+                        @db
                         [['?a a]])]
     (condp = value-type
       meta.core/String        [:span.editor-value (str "\"" v "\"")]
@@ -35,7 +35,7 @@
                        [?m :e ?e]
                        [?m :a ?a]
                        [?m :v ?v]]
-                     db
+                     @db
                      [['?m x]])]
     [annotation e a v]))
 
@@ -44,7 +44,7 @@
         (->> (b/q '[:find ?e
                     :where
                     [?e :e _]]
-                  db)
+                  @db)
              (map first)
              sort)]
     [:div

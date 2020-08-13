@@ -14,10 +14,10 @@
                     (b/q '[:find ?a ?v
                            :where
                            (m ?e ?a ?v)]
-                         db
+                         @db
                          [['?e id]]))
-        comment (b/value db id core/comment)
-        type (b/value db id core/type)]
+        comment (b/value @db id core/comment)
+        type (b/value @db id core/type)]
     [:div
      (when comment
        [:div.editor-comment "# " comment])
@@ -35,7 +35,7 @@
         (->> (b/q '[:find ?e
                     :where
                     (m ?e _ _)]
-                  db)
+                  @db)
              (map first)
              (sort-by #(js/parseInt % 10)))]
     [:div
