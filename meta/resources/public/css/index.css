@@ -29,21 +29,26 @@
     color: #0000bb;
 }
 
-.f-punctuation {
+.line {
+    height: 1.28125em;
+}
+
+.punctuation {
     color: #505050;
 }
-.f-keyword {
+.keyword {
     color: #5317ac;
     font-weight: 700;
 }
-.f-editable-text {
+.editable-text {
     color: #00538b;
     color: #0000bb;
 }
-.f-error {
+.error {
     color: #a60000;
     font-weight: 700;
 }
-.f-current-cell {
+
+.current-cell {
     background: #e0e0e0;
 }

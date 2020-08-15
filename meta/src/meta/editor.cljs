@@ -10,8 +10,8 @@
 
 (defn editor []
   [:div.editor
-   #_[editor.entities/entities-list]
-   [editor.f/f]
+   [editor.entities/entities-list]
+   #_[editor.f/f]
    #_[editor.datoms/datoms-list]])
 
 (reset! editor.common/db (meta-read* "../core.meta" "../f.meta" "../f-test.meta"))

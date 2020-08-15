@@ -84,7 +84,11 @@
          :line
          (if (= mode :break)
            [pos cmds result]
-           (try-fit (+ pos (:width (:alt doc))) rest width (conj result (:alt doc))))
+           (if (:alt doc)
+             (try-fit (+ pos (:width (:alt doc))) rest width (conj result (:alt doc)))
+
+             ;; :alt = nil means that's a hard-break
+             false))
 
          :group
          (try-fit pos (conj rest [indent-level :flat (:doc doc)]) width result))))))

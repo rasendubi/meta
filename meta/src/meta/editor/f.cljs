@@ -3,33 +3,19 @@
             [meta.layout :as l]
             [meta.pathify :as pathify]
             [meta.editor.f-pretty :refer [f-pretty cell-priority]]
+            [meta.editor.projectional :as p]
             [meta.editor.common :refer [db]]))
 
 (def f-current-root
   "Id of the root element to display."
   (r/atom nil))
 
-(defn- split-by [pred coll]
-  (lazy-seq
-   (when-let [s (seq coll)]
-     (let [!pred (complement pred)
-           [xs ys] (split-with !pred s)]
-       (if (seq xs)
-         (cons xs (split-by pred ys))
-         (let [skip (take-while pred s)
-               others (drop-while pred s)
-               [xs ys] (split-with !pred others)]
-           (cons (concat skip xs)
-                 (split-by pred ys))))))))
-
 (def ^:private layout-2d (r/atom []))
 
 (add-watch f-current-root :calculate-layout
            (fn [_key _ref _old root]
-             (let [document (pathify/pathify (f-pretty @db root))
-                   simple-doc (l/layout document 30)
-                   layout (vec (split-by #(= (:type %) :line) simple-doc))]
-               (reset! layout-2d layout))))
+             (let [document (f-pretty @db root)]
+               (reset! layout-2d (p/doc->layout document)))))
 
 (def ^:private cursor-position (r/atom {:row 9 :col 5}))
 (defn- move-cursor [drow dcol]
@@ -115,7 +101,7 @@
             :autoFocus true}]])
 
 (defn- f-cell [x]
-  (let [current-class (when (= x @current-cell) :f-current-cell)]
+  (let [current-class (when (= x @current-cell) :current-cell)]
     (case (:type x)
       :empty
       nil

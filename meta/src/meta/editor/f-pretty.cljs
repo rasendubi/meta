@@ -3,22 +3,12 @@
             [meta.core :as c]
             [meta.layout :as l]
             [meta.f :as f]
-            [meta.editor.projectional :as p]))
-
-(def ^:private whitespace (partial p/cell :f-whitespace))
-(def ^:private punctuation (partial p/cell :f-punctuation))
-(def ^:private keyword-cell (partial p/cell :f-keyword))
-(def ^:private error-cell (partial p/cell :f-error))
-
-(def ^:private space (whitespace " "))
-(def ^:private line (l/line space))
-(def ^:private break (l/line))
-(def ^:private comma (punctuation ","))
+            [meta.editor.projectional :refer [whitespace punctuation keyword-cell error-cell editable-cell space line break comma] :as p]))
 
 (defn- editable-text
   [meta id attr]
   (let [value (b/value meta id attr)]
-    (p/cell :f-editable-text value)))
+    (editable-cell value)))
 
 (defn cell-priority
   "If cursor is between two cells, cell priority will determine which cell will be selected."
@@ -29,11 +19,11 @@
 
     :cell
     (case (:class (:payload x))
-      :f-whitespace 1
-      :f-punctuation 2
-      :f-keyword 3
-      :f-editable-text 4
-      :f-error 5)))
+      :whitespace 1
+      :punctuation 2
+      :keyword 3
+      :editable 4
+      :error 5)))
 
 (defmulti f-pretty
   "Pretty-print meta.f into a layout document."

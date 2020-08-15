@@ -16,6 +16,9 @@
 (def meta.core/Attribute-reference-type "10")
 (def meta.core/IntegerNumber "11")
 
+(defn meta-identifier [meta id]
+  (b/value meta id meta.core/identifier))
+
 (defn meta-type [meta id]
   (if-let [ty (b/value meta id meta.core/type)]
     ty
