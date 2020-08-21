@@ -10,12 +10,14 @@
   "Id of the root element to display."
   (r/atom nil))
 
-(def ^:private layout-2d (r/atom []))
+(defn- f-pretty-document []
+  (f-pretty @db @f-current-root))
 
-(add-watch f-current-root :calculate-layout
-           (fn [_key _ref _old root]
-             (let [document (f-pretty @db root)]
-               (reset! layout-2d (p/doc->layout document)))))
+(defn- calculate-layout []
+  (let [document @(r/track f-pretty-document)]
+    (p/doc->layout document)))
+
+(def ^:private layout-2d (r/track calculate-layout))
 
 (def ^:private cursor-position (r/atom {:row 9 :col 5}))
 (defn- move-cursor [drow dcol]
@@ -46,8 +48,6 @@
                      line)]
     cell))
 
-(def ^:private current-cell (r/atom nil))
-
 (defn- find-current-cell
   "Select current cell according to `cursor-to-cell` and `cell-priority`."
   [layout cursor]
@@ -58,12 +58,10 @@
         before)
       (or inside before after))))
 
-(add-watch cursor-position :current-cell
-           (fn [_key _ref _old cursor-position]
-             (reset! current-cell (find-current-cell @layout-2d cursor-position))))
-(add-watch layout-2d :current-cell
-           (fn [_key _ref _old layout-2d]
-             (reset! current-cell (find-current-cell layout-2d @cursor-position))))
+(defn- calculate-current-cell []
+  (find-current-cell @layout-2d @cursor-position))
+
+(def ^:private current-cell (r/track calculate-current-cell))
 
 (def ^:private line-height 1.28125)
 (defn- cursor []

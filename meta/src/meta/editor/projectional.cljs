@@ -1,36 +1,7 @@
 (ns meta.editor.projectional
-  (:require [meta.layout :as l]
+  (:require [reagent.core :as r]
+            [meta.editor.projectional.pretty :as pretty]
             [meta.pathify :as pathify]))
-
-(defn cell [class text]
-  (l/cell (count text)
-          {:class class
-           :value text}))
-
-(def whitespace (partial cell :whitespace))
-(def punctuation (partial cell :punctuation))
-(def keyword-cell (partial cell :keyword))
-(def error-cell (partial cell :error))
-(def editable-cell (partial cell :editable))
-
-(def space (whitespace " "))
-(def line (l/line space))
-(def break (l/line))
-(def hardbreak (l/line nil))
-(def comma (punctuation ","))
-
-(defn surround
-  ([left right]
-   (fn [doc]
-     (surround left right doc)))
-
-  ([left right doc]
-   (l/concat* left doc right)))
-
-(def square-brackets (surround (punctuation "[") (punctuation "]")))
-(def round-brackets  (surround (punctuation "(") (punctuation ")")))
-(def curly-brackets  (surround (punctuation "{") (punctuation "}")))
-
 
 (defn- split-by [pred coll]
   (lazy-seq
@@ -45,13 +16,17 @@
            (cons (concat skip xs)
                  (split-by pred ys))))))))
 
+(defn- split-lines [x]
+  (split-by #(= (:type %) :line) x))
+
 (defn doc->layout
   ([doc] (doc->layout doc 80))
   ([doc width]
-   (as-> doc x
-     (pathify/pathify x)
-     (l/layout x width)
-     (vec (split-by #(= (:type %) :line) x)))))
+   (-> doc
+       (pathify/pathify)
+       (pretty/layout width)
+       (split-lines)
+       (vec))))
 
 (defn- c [x]
   (case (:type x)
@@ -69,8 +44,24 @@
           value (:value cell)]
       [:span {:class (:class cell)} value])))
 
+(defn- enumerate [coll]
+  (map-indexed (fn [id x] [x id]) coll))
+
+(defn- hidden-input []
+  [:div {:style {;; :width 0
+                 ;; :height 0
+                 :overflow :hidden
+                 :top 0
+                 :left 400
+                 :position :absolute}}
+   [:input #_{:onKeyDown (fn [x] (handle-event (event->cljs x)))
+              :autoFocus true}]])
+
 (defn projectional [layout]
   [:div {:style {:position :relative}}
-   (for [line layout]
+   [hidden-input]
+   (for [[line i] (enumerate layout)]
+     ^{:key (if (seq line) (:path (first line)) i)}
      [:div.line (for [cell line]
+                  ^{:key (:path cell)}
                   [c cell])])])

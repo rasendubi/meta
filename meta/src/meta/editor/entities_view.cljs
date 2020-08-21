@@ -1,12 +1,11 @@
 (ns meta.editor.entities-view
-  (:require [meta.base :as b]
-            [meta.core :as core]
+  (:require [reagent.core :as r]
+            [meta.base :as b]
             [meta.editor.common :refer [db]]
-            [meta.editor.datoms-view :as datoms]
             [meta.editor.projectional :as p]
             [meta.editor.core-pretty :refer [pretty-entities]]))
 
-(defn entities-list []
+(defn- get-core-document []
   (let [entities
         (->> (b/q '[:find ?e
                     :where
@@ -14,4 +13,13 @@
                   @db)
              (map first)
              (sort-by #(js/parseInt % 10)))]
-    [p/projectional (p/doc->layout (pretty-entities @db entities))]))
+    (pretty-entities @db entities)))
+(def ^:private document (r/track get-core-document))
+
+(defn- get-core-layout []
+  (p/doc->layout @document))
+(def ^:private layout-2d (r/track get-core-layout))
+
+
+(defn entities-list []
+  [p/projectional @layout-2d])

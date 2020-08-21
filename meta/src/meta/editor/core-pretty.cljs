@@ -1,29 +1,28 @@
 (ns meta.editor.core-pretty
   (:require [meta.base :as b]
             [meta.core :as c]
-            [meta.layout :as l]
-            [meta.editor.projectional :as p]))
+            [meta.editor.projectional.pretty :as p]))
 
 (def hide-attrs #{c/identifier c/type c/comment})
 
 (defn- editable-text
   [meta id attr]
   (let [value (b/value meta id attr)]
-    (p/editable-cell value)))
+    (p/editable-string id attr value)))
 
 (defn- identifier [meta id]
   (editable-text meta id c/identifier))
 
 (defn- annotated-identifier [meta id]
-  (l/concat* (identifier meta id)
+  (p/concat* (identifier meta id)
              (p/round-brackets (p/keyword-cell id))))
 
 (defn pretty-attribute [meta id [attr val]]
-  (l/concat*
+  (p/concat*
    p/hardbreak
-   (l/nest
+   (p/nest
     2
-    (l/group*
+    (p/group*
      (annotated-identifier meta attr)
      p/space
      (p/punctuation "=")
@@ -38,13 +37,13 @@
                          meta
                          [['?e id]]))
         type (c/meta-type meta id)]
-    (l/concat*
+    (p/concat*
      (p/punctuation "#")
      p/space
      (editable-text meta id c/comment)
      p/hardbreak
 
-     (l/group*
+     (p/group*
       (annotated-identifier meta id)
       p/space
       (p/punctuation ":")
@@ -52,11 +51,11 @@
       (annotated-identifier meta type)
       p/space
       (p/curly-brackets
-       (l/concat*
-        (l/nest* 2
-                 (l/concat (map (partial pretty-attribute meta id) avs)))
+       (p/concat*
+        (p/nest* 2
+                 (p/concat (map (partial pretty-attribute meta id) avs)))
         p/break)))
      p/hardbreak)))
 
 (defn pretty-entities [meta ids]
-  (l/concat (interpose p/hardbreak (map (partial pretty-entity meta) ids))))
+  (p/concat (interpose p/hardbreak (map (partial pretty-entity meta) ids))))

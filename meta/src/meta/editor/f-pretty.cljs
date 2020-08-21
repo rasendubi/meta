@@ -1,9 +1,10 @@
 (ns meta.editor.f-pretty
   (:require [meta.base :as b]
             [meta.core :as c]
-            [meta.layout :as l]
             [meta.f :as f]
-            [meta.editor.projectional :refer [whitespace punctuation keyword-cell error-cell editable-cell space line break comma] :as p]))
+            [meta.editor.projectional.pretty
+             :refer [whitespace punctuation keyword-cell error-cell editable-cell space line break comma]
+             :as p]))
 
 (defn- editable-text
   [meta id attr]
@@ -37,14 +38,14 @@
   (error-cell (str "(" id ")")))
 
 (defmethod f-pretty f/StringLiteral [meta id]
-  (l/concat* (punctuation "\"")
+  (p/concat* (punctuation "\"")
              (editable-text meta id f/StringLiteral-value)
              (punctuation "\"")))
 
 (defmethod f-pretty f/RecordLiteral [meta id]
   (let [field-ids (b/values meta id f/RecordLiteral-field)]
-    (l/group* (punctuation "{")
-              (l/nest 2 (l/concat
+    (p/group* (punctuation "{")
+              (p/nest 2 (p/concat
                          (interpose comma (map #(f-pretty meta %) field-ids))))
               line
               (punctuation "}"))))
@@ -52,10 +53,10 @@
 (defmethod f-pretty f/RecordField [meta id]
   (let [key-id   (b/value meta id f/RecordField-key)
         value-id (b/value meta id f/RecordField-value)]
-    (l/concat*
+    (p/concat*
      line
-     (l/nest* 2
-              (l/group*
+     (p/nest* 2
+              (p/group*
                (punctuation "[")
                (f-pretty meta key-id)
                (punctuation "]")
@@ -66,9 +67,9 @@
 (defmethod f-pretty f/FieldAccess [meta id]
   (let [record-id (b/value meta id f/FieldAccess-record)
         field-id  (b/value meta id f/FieldAccess-field)]
-    (l/group*
+    (p/group*
      (f-pretty meta record-id)
-     (l/nest* 2
+     (p/nest* 2
               break
               (punctuation ".")
               (punctuation "[")
@@ -78,7 +79,7 @@
 (defmethod f-pretty f/Function [meta id]
   (let [parameter-id (b/value meta id f/Function-parameter)
         body-id      (b/value meta id f/Function-body)]
-    (l/group (l/nest* 2
+    (p/group (p/nest* 2
                       (punctuation "\\")
                       (f-pretty meta parameter-id)
                       space
@@ -92,11 +93,11 @@
 (defmethod f-pretty f/Apply [meta id]
   (let [function-id (b/value meta id f/Apply-function)
         argument-id (b/value meta id f/Apply-argument)]
-    (l/group*
+    (p/group*
      (punctuation "(")
      (f-pretty meta function-id)
      (punctuation ")")
-     (l/nest* 2
+     (p/nest* 2
               line
               (punctuation "(")
               (f-pretty meta argument-id)
@@ -108,23 +109,23 @@
 (defmethod f-pretty f/Letrec [meta id]
   (let [binding-ids (b/values meta id f/Letrec-binding)
         value-id    (b/value  meta id f/Letrec-value)]
-    (l/group*
+    (p/group*
      (keyword-cell "let")
      space
      (punctuation "{")
-     (l/nest 2 (l/concat (map #(f-pretty meta %) binding-ids)))
+     (p/nest 2 (p/concat (map #(f-pretty meta %) binding-ids)))
      line
      (punctuation "}")
      space
      (keyword-cell "in")
-     (l/group (l/nest* 2 line (f-pretty meta value-id))))))
+     (p/group (p/nest* 2 line (f-pretty meta value-id))))))
 
 (defmethod f-pretty f/Binding [meta id]
   (let [identifier-id (b/value meta id f/Binding-identifier)
         value-id      (b/value meta id f/Binding-value)]
-    (l/concat*
+    (p/concat*
      line
-     (l/group (l/nest* 2
+     (p/group (p/nest* 2
                        (f-pretty meta identifier-id)
                        space
                        (punctuation "=")
