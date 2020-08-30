@@ -34,3 +34,6 @@
 (def ave
   "Lookup entities by attribute then value"
   (index-lookup :ave))
+
+(defn entities [store]
+  (set (keys (:eav store))))

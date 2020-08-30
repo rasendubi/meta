@@ -30,12 +30,7 @@
      (editable-text meta id attr)))))
 
 (defn pretty-entity [meta id]
-  (let [avs (filter (comp not hide-attrs first)
-                    (b/q '[:find ?a ?v
-                           :where
-                           (m ?e ?a ?v)]
-                         meta
-                         [['?e id]]))
+  (let [avs (apply dissoc (b/entity meta id) hide-attrs)
         type (c/meta-type meta id)]
     (p/concat*
      (p/punctuation "#")

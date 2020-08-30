@@ -46,4 +46,8 @@
             "String" #{"2"}
             "Reference" #{"3"}
             "comment" #{"4"}}
-           (store/ave test-store "0")))))
+           (store/ave test-store "0"))))
+
+  (testing "get entities"
+    (is (= #{"0" "1" "2" "3" "4"}
+           (store/entities test-store)))))

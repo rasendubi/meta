@@ -1,7 +1,6 @@
 (ns meta.editor.entities-view
   (:require [reagent.core :as r]
             [reagent.ratom :as ratom]
-            [datascript.core :as d]
             [meta.base :as b]
             [meta.editor.common :refer [db]]
             [meta.editor.projectional :as p]
@@ -10,13 +9,9 @@
 
 (def ^:private document
   (ratom/reaction
-   (let [entities
-         (->> (b/q '[:find ?e
-                     :where
-                     (m ?e _ _)]
-                   @db)
-              (map first)
-              (sort-by #(js/parseInt % 10)))]
+   (let [entities (->> @db
+                       (b/entities)
+                       (sort-by #(js/parseInt % 10)))]
      (pretty-entities @db entities))))
 
 (def ^:private layout (ratom/reaction (p/doc->layout @document)))
@@ -52,24 +47,25 @@
        (= 1 (count (:key e)))))
 
 (defn- edit! [cursor key]
-  (swap! db
-         (fn [db]
-           (let [cell (get-in cursor [:inside :payload])
-                 value (:value cell)
-                 pos (:pos cursor)
-                 new-value (str (subs value 0 pos) key (subs value pos))
+  ;; TODO: update for meta.store
+  #_(swap! db
+           (fn [db]
+             (let [cell (get-in cursor [:inside :payload])
+                   value (:value cell)
+                   pos (:pos cursor)
+                   new-value (str (subs value 0 pos) key (subs value pos))
 
-                 entity (:entity cell)
-                 attribute (:attribute cell)
-                 did (d/q '[:find ?did .
-                            :in $ ?e ?a ?v
-                            :where
-                            [?did :e ?e]
-                            [?did :a ?a]
-                            [?did :v ?v]]
-                          db entity attribute value)]
-             (prn 'updating did entity attribute new-value)
-             (d/db-with db [[:db/cas did :v value new-value]])))))
+                   entity (:entity cell)
+                   attribute (:attribute cell)
+                   did (d/q '[:find ?did .
+                              :in $ ?e ?a ?v
+                              :where
+                              [?did :e ?e]
+                              [?did :a ?a]
+                              [?did :v ?v]]
+                            db entity attribute value)]
+               (prn 'updating did entity attribute new-value)
+               (d/db-with db [[:db/cas did :v value new-value]])))))
 
 (defn- handle-event [e]
   (prn 'handle-event e)
