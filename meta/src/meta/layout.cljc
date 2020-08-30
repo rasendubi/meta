@@ -66,35 +66,35 @@
            rest (pop cmds)]
        (case (:type doc)
          :empty
-         (try-fit pos rest width result)
+         (recur pos rest width result)
 
          :cell
-         (try-fit (+ pos (:width doc)) rest width (conj result doc))
+         (recur (+ pos (:width doc)) rest width (conj result doc))
 
          :concat
-         (try-fit pos
-                  (apply conj rest
-                         (map #(vector indent-level mode %) (reverse (:parts doc))))
-                  width
-                  result)
+         (recur pos
+                (apply conj rest
+                       (map #(vector indent-level mode %) (reverse (:parts doc))))
+                width
+                result)
 
          :nest
-         (try-fit pos
-                  (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)])
-                  width
-                  result)
+         (recur pos
+                (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)])
+                width
+                result)
 
          :line
          (if (= mode :break)
            [pos cmds result]
            (if (:alt doc)
-             (try-fit (+ pos (:width (:alt doc))) rest width (conj result (:alt doc)))
+             (recur (+ pos (:width (:alt doc))) rest width (conj result (:alt doc)))
 
              ;; :alt = nil means that's a hard-break
              false))
 
          :group
-         (try-fit pos (conj rest [indent-level :flat (:doc doc)]) width result))))))
+         (recur pos (conj rest [indent-level :flat (:doc doc)]) width result))))))
 
 (defn- do-layout [pos cmds width]
   #_(prn "do-layout" pos cmds width)
@@ -104,16 +104,16 @@
           rest (pop cmds)]
       (case (:type doc)
         :empty
-        (do-layout pos rest width)
+        (recur pos rest width)
 
         :cell
         (lazy-seq (cons doc (do-layout pos rest width)))
 
         :concat
-        (do-layout pos
-                   (apply conj rest
-                          (map #(vector indent-level mode %) (reverse (:parts doc))))
-                   width)
+        (recur pos
+               (apply conj rest
+                      (map #(vector indent-level mode %) (reverse (:parts doc))))
+               width)
 
         :line
         (if (= mode :break)
@@ -124,12 +124,12 @@
                           (do-layout (+ pos (:width (:alt doc))) rest width))))
 
         :nest
-        (do-layout pos (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)]) width)
+        (recur pos (conj rest [(+ indent-level (:indent-level doc)) mode (:doc doc)]) width)
 
         :group
         (if-let [[next-pos next-cmds result] (try-fit pos (conj rest [indent-level :flat (:doc doc)]) width)]
           (clojure.core/concat result (lazy-seq (do-layout next-pos next-cmds width)))
-          (do-layout pos (conj rest [indent-level :break (:doc doc)]) width))))))
+          (recur pos (conj rest [indent-level :break (:doc doc)]) width))))))
 
 (defn layout
   ([doc] (layout doc 80))
