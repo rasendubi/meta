@@ -1,7 +1,10 @@
 (ns meta.editor.projectional
   (:require [reagent.core :as r]
             [meta.editor.projectional.pretty :as pretty]
+            [meta.editor.projectional.view :as view]
             [meta.pathify :as pathify]))
+
+(def projectional view/projectional)
 
 (defn- split-by [pred coll]
   (lazy-seq
@@ -27,41 +30,3 @@
        (pretty/layout width)
        (split-lines)
        (vec))))
-
-(defn- c [x]
-  (case (:type x)
-    :empty
-    nil
-
-    :line
-    nil
-
-    :indent
-    [:span (apply str (repeat (:width x) " "))]
-
-    :cell
-    (let [cell (:payload x)
-          value (:value cell)]
-      [:span {:class (:class cell)} value])))
-
-(defn- enumerate [coll]
-  (map-indexed (fn [id x] [x id]) coll))
-
-(defn- hidden-input []
-  [:div {:style {;; :width 0
-                 ;; :height 0
-                 :overflow :hidden
-                 :top 0
-                 :left 400
-                 :position :absolute}}
-   [:input #_{:onKeyDown (fn [x] (handle-event (event->cljs x)))
-              :autoFocus true}]])
-
-(defn projectional [layout]
-  [:div {:style {:position :relative}}
-   [hidden-input]
-   (for [[line i] (enumerate layout)]
-     ^{:key (if (seq line) (:path (first line)) i)}
-     [:div.line (for [cell line]
-                  ^{:key (:path cell)}
-                  [c cell])])])
