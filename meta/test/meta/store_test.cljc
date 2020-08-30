@@ -50,4 +50,16 @@
 
   (testing "get entities"
     (is (= #{"0" "1" "2" "3" "4"}
-           (store/entities test-store)))))
+           (store/entities test-store))))
+
+  (testing "remove datom"
+    (let [s (store/remove test-store ["0" "0" "identifier"])]
+      (is (= nil (store/eav s "0" "0")))
+      (is (= nil (store/aev s "0" "0")))
+      (is (= nil (store/ave s "0" "identifier")))))
+
+  (testing "add datom"
+    (let [s (-> test-store
+                (store/add ["0" "0" "my-identifier"]))]
+      (is (= #{"identifier" "my-identifier"}
+             (store/eav s "0" "0"))))))

@@ -1,6 +1,7 @@
 (ns meta.editor.entities-view
   (:require [reagent.core :as r]
             [reagent.ratom :as ratom]
+            [meta.store :as store]
             [meta.base :as b]
             [meta.editor.common :refer [db]]
             [meta.editor.projectional :as p]
@@ -48,24 +49,19 @@
 
 (defn- edit! [cursor key]
   ;; TODO: update for meta.store
-  #_(swap! db
-           (fn [db]
-             (let [cell (get-in cursor [:inside :payload])
-                   value (:value cell)
-                   pos (:pos cursor)
-                   new-value (str (subs value 0 pos) key (subs value pos))
+  (swap! db
+         (fn [db]
+           (let [cell (get-in cursor [:inside :payload])
+                 value (:value cell)
+                 pos (:pos cursor)
+                 new-value (str (subs value 0 pos) key (subs value pos))
 
-                   entity (:entity cell)
-                   attribute (:attribute cell)
-                   did (d/q '[:find ?did .
-                              :in $ ?e ?a ?v
-                              :where
-                              [?did :e ?e]
-                              [?did :a ?a]
-                              [?did :v ?v]]
-                            db entity attribute value)]
-               (prn 'updating did entity attribute new-value)
-               (d/db-with db [[:db/cas did :v value new-value]])))))
+                 entity (:entity cell)
+                 attribute (:attribute cell)]
+             (prn 'updating entity attribute new-value)
+             (-> db
+                 (store/remove [entity attribute value])
+                 (store/add    [entity attribute new-value]))))))
 
 (defn- handle-event [e]
   (prn 'handle-event e)
