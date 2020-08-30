@@ -1,6 +1,9 @@
 (ns meta.layout
-  (:require [clojure.core :refer [lazy-seq]])
-  (:refer-clojure :exclude [empty concat]))
+  #_(:require [clojure.core :refer [lazy-seq]])
+  (:refer-clojure :exclude [empty concat lazy-seq]))
+
+;; TODO(fixme): suppress laziness
+(defn- lazy-seq [x] x)
 
 (defn empty []
   {:type :empty
