@@ -4,9 +4,26 @@ use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde::de::{Deserialize, Deserializer};
 use serde_json;
 
+use string_cache::{Atom, DefaultAtom};
+
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-type Field = String;
+#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+pub struct Field(DefaultAtom);
+
+impl From<String> for Field {
+    #[inline]
+    fn from(s: String) -> Self {
+        Field(Atom::from(s))
+    }
+}
+
+impl<'a> From<&'a str> for Field {
+    #[inline]
+    fn from(s: &'a str) -> Self {
+        Field(Atom::from(s))
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Datom {
@@ -25,7 +42,6 @@ pub struct MetaStore {
     ave: Index,
 }
 
-// TODO: Implement string interning
 impl MetaStore {
     pub fn new() -> MetaStore {
         MetaStore {
@@ -106,7 +122,11 @@ impl Index {
 
 impl Datom {
     pub fn new(entity: Field, attribute: Field, value: Field) -> Datom {
-        Datom { entity, attribute, value }
+        Datom {
+            entity,
+            attribute,
+            value
+        }
     }
 }
 
@@ -128,8 +148,8 @@ impl<'de> Deserialize<'de> for Datom {
     where
         D: Deserializer<'de>,
     {
-        let (entity, attribute, value) = Deserialize::deserialize(deserializer)?;
-        Ok(Datom::new(entity, attribute, value))
+        let (entity, attribute, value): (String, String, String) = Deserialize::deserialize(deserializer)?;
+        Ok(Datom::new(Field::from(entity), Field::from(attribute), Field::from(value)))
     }
 }
 
@@ -181,13 +201,13 @@ mod tests {
 
     #[test]
     fn datom_deserialize_array() {
-        let x = Datom::new(String::from("1"), String::from("2"), String::from("3"));
+        let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
         assert_eq!(serde_json::from_str::<Datom>(r#"["1", "2", "3"]"#).unwrap(), x);
     }
 
     #[test]
     fn datom_serialize_deserialize() {
-        let x = Datom::new(String::from("1"), String::from("2"), String::from("3"));
+        let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
         assert_eq!(serde_json::from_str::<Datom>(&serde_json::to_string(&x).unwrap()).unwrap(), x);
     }
 
@@ -199,7 +219,7 @@ mod tests {
     #[test]
     fn store_parse_trailing_comment() {
         let store = MetaStore::from_str(r#"["0", "0", "identifier"] ;; trailing comment"#).unwrap();
-        assert_eq!(Some(&hashset!{"identifier".to_string()}), store.eav2(&"0".to_string(), &"0".to_string()))
+        assert_eq!(Some(&hashset!{Field::from("identifier")}), store.eav2(&Field::from("0"), &Field::from("0")));
     }
 
     #[test]
@@ -207,8 +227,8 @@ mod tests {
         let store = MetaStore::from_str(TEST).unwrap();
 
         assert_eq!(
-            Some(&hashset!{String::from("identifier")}),
-            store.eav2(&String::from("0"), &String::from("0")));
+            Some(&hashset!{Field::from("identifier")}),
+            store.eav2(&Field::from("0"), &Field::from("0")));
     }
 
     #[test]
@@ -217,11 +237,11 @@ mod tests {
 
         assert_eq!(
             Some(&hashmap!{
-                String::from("0") => hashset!{String::from("identifier")},
-                String::from("1") => hashset!{String::from("2")},
-                String::from("4") => hashset!{String::from("Unique identifier of element"),
-                                              String::from("Additional comment")},
+                Field::from("0") => hashset!{Field::from("identifier")},
+                Field::from("1") => hashset!{Field::from("2")},
+                Field::from("4") => hashset!{Field::from("Unique identifier of element"),
+                                             Field::from("Additional comment")},
             }),
-            store.eav1(&String::from("0")));
+            store.eav1(&Field::from("0")));
     }
 }
