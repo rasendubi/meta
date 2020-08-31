@@ -79,28 +79,43 @@ impl MetaStore {
         self.ave.add(attribute.clone(), value.clone(), entity.clone());
     }
 
+    #[inline]
     pub fn eav1(&self, e: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
         self.eav.get(e)
     }
 
+    #[inline]
     pub fn eav2(&self, e: &Field, a: &Field) -> Option<&HashSet<Field>> {
         self.eav.get(e)?.get(a)
     }
 
+    #[inline]
     pub fn aev1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
         self.aev.get(a)
     }
 
+    #[inline]
     pub fn aev2(&self, a: &Field, e: &Field) -> Option<&HashSet<Field>> {
         self.aev.get(a)?.get(e)
     }
 
+    #[inline]
     pub fn ave1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
         self.ave.get(a)
     }
 
+    #[inline]
     pub fn ave2(&self, a: &Field, v: &Field) -> Option<&HashSet<Field>> {
         self.ave.get(a)?.get(v)
+    }
+
+    #[inline]
+    pub fn values(&self, e: &Field, a: &Field) -> Option<&HashSet<Field>> {
+        self.eav2(e, a)
+    }
+
+    pub fn value(&self, e: &Field, a: &Field) -> Option<&Field> {
+        self.values(e, a)?.iter().next()
     }
 }
 
@@ -115,12 +130,14 @@ impl Index {
         zs.insert(z);
     }
 
+    #[inline]
     pub fn get(&self, x: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
         self.0.get(x)
     }
 }
 
 impl Datom {
+    #[inline]
     pub fn new(entity: Field, attribute: Field, value: Field) -> Datom {
         Datom {
             entity,
