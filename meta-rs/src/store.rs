@@ -42,8 +42,9 @@ impl MetaStore {
         let mut store = MetaStore::new();
 
         for line in r.lines() {
-            let mdatom: serde_json::Result<Datom> = serde_json::from_str(&line?);
-            if let Ok(datom) = mdatom {
+            let line = line?;
+            let mut datoms = serde_json::Deserializer::from_str(&line).into_iter::<Datom>();
+            if let Some(Ok(datom)) = datoms.next() {
                 store.add_datom(&datom);
             }
         }
@@ -167,15 +168,15 @@ mod tests {
     use maplit::{hashset, hashmap};
 
     static TEST: &str = r#"
-["0", "0", "identifier"]
-["0", "1", "2"]
-["1", "1", "3"]
-["1", "0", "Attribute.value-type"]
-["2", "0", "String"]
-["3", "0", "Reference"]
-["4", "0", "comment"]
-["0", "4", "Unique identifier of element"]
-["0", "4", "Additional comment"]
+        ["0", "0", "identifier"]
+        ["0", "1", "2"]
+        ["1", "1", "3"]
+        ["1", "0", "Attribute.value-type"]
+        ["2", "0", "String"]
+        ["3", "0", "Reference"]
+        ["4", "0", "comment"]
+        ["0", "4", "Unique identifier of element"]
+        ["0", "4", "Additional comment"]
     "#;
 
     #[test]
@@ -193,6 +194,12 @@ mod tests {
     #[test]
     fn store_from_buf() {
         let _store = MetaStore::from_reader(std::io::Cursor::new(TEST)).unwrap();
+    }
+
+    #[test]
+    fn store_parse_trailing_comment() {
+        let store = MetaStore::from_str(r#"["0", "0", "identifier"] ;; trailing comment"#).unwrap();
+        assert_eq!(Some(&hashset!{"identifier".to_string()}), store.eav2(&"0".to_string(), &"0".to_string()))
     }
 
     #[test]
