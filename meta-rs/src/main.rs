@@ -1,8 +1,8 @@
-mod store;
 mod meta;
+mod store;
 
-use std::io::BufReader;
 use std::fs::File;
+use std::io::BufReader;
 
 fn main() -> store::Result<()> {
     let f = File::open("../core.meta")?;

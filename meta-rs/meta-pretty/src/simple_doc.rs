@@ -3,9 +3,7 @@ pub use crate::rich_doc::Cell;
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum SimpleDoc<'a, T> {
     Cell(&'a Cell<T>),
-    Linebreak {
-        indent_width: usize,
-    }
+    Linebreak { indent_width: usize },
 }
 
 impl<'a, T> SimpleDoc<'a, T> {

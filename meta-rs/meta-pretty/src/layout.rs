@@ -27,34 +27,32 @@ fn fits<T>(cmd: Cmd<T>, rest: &Vec<Cmd<T>>, max_width: usize) -> bool {
                 } else {
                     return true;
                 }
-            },
+            }
 
-            Some((indent, mode, doc)) => {
-                match doc {
-                    RichDoc::Empty => {},
-                    RichDoc::Cell(cell) => {
-                        width += cell.width;
-                    },
-                    RichDoc::Concat { parts } => {
-                        for part in parts.iter().rev() {
-                            cmds.push((indent, mode, part));
-                        }
-                    },
-                    RichDoc::Nest { nest_width, doc } => {
-                        cmds.push((indent + nest_width, mode, doc));
-                    },
-                    RichDoc::Line { alt } => {
-                        if mode == Mode::Break {
-                            return true;
-                        }
-
-                        if let Some(cell) = alt {
-                            width += cell.width;
-                        }
-                    },
-                    RichDoc::Group { doc } => {
-                        cmds.push((indent, Mode::Flat, doc));
+            Some((indent, mode, doc)) => match doc {
+                RichDoc::Empty => {}
+                RichDoc::Cell(cell) => {
+                    width += cell.width;
+                }
+                RichDoc::Concat { parts } => {
+                    for part in parts.iter().rev() {
+                        cmds.push((indent, mode, part));
                     }
+                }
+                RichDoc::Nest { nest_width, doc } => {
+                    cmds.push((indent + nest_width, mode, doc));
+                }
+                RichDoc::Line { alt } => {
+                    if mode == Mode::Break {
+                        return true;
+                    }
+
+                    if let Some(cell) = alt {
+                        width += cell.width;
+                    }
+                }
+                RichDoc::Group { doc } => {
+                    cmds.push((indent, Mode::Flat, doc));
                 }
             },
         }
@@ -71,33 +69,31 @@ pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>> {
 
     while let Some((indent, mode, doc)) = cmds.pop() {
         match doc {
-            RichDoc::Empty => {},
+            RichDoc::Empty => {}
             RichDoc::Cell(cell) => {
                 out.push(SimpleDoc::cell(cell));
                 pos += cell.width;
-            },
+            }
             RichDoc::Concat { parts } => {
                 cmds.reserve(parts.len());
                 for part in parts.iter().rev() {
                     cmds.push((indent, mode, part));
                 }
-            },
-            RichDoc::Line { alt } => {
-                match mode {
-                    Mode::Break => {
-                        out.push(SimpleDoc::linebreak(indent));
-                        pos = indent;
-                    },
-                    Mode::Flat => {
-                        if let Some(alt) = alt {
-                            out.push(SimpleDoc::cell(alt));
-                        }
-                    },
+            }
+            RichDoc::Line { alt } => match mode {
+                Mode::Break => {
+                    out.push(SimpleDoc::linebreak(indent));
+                    pos = indent;
+                }
+                Mode::Flat => {
+                    if let Some(alt) = alt {
+                        out.push(SimpleDoc::cell(alt));
+                    }
                 }
             },
             RichDoc::Nest { nest_width, doc } => {
                 cmds.push((indent + nest_width, mode, doc));
-            },
+            }
             RichDoc::Group { doc } => {
                 let mode = if fits((indent, Mode::Flat, doc), &cmds, page_width - pos) {
                     Mode::Flat
@@ -115,7 +111,7 @@ pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::rich_doc::{RichDoc, Cell, cell};
+    use crate::rich_doc::{cell, Cell, RichDoc};
     use crate::simple_doc::SimpleDoc;
 
     fn text(s: &str) -> RichDoc<&str> {
@@ -129,13 +125,13 @@ mod tests {
             match s {
                 SimpleDoc::Cell(Cell { payload, .. }) => {
                     result.push_str(payload);
-                },
+                }
                 SimpleDoc::Linebreak { indent_width } => {
                     result.push('\n');
                     for _ in 0..*indent_width {
                         result.push(' ')
                     }
-                },
+                }
             }
         }
 
@@ -159,14 +155,23 @@ mod tests {
     #[test]
     fn test_concat_cells() {
         assert_eq!(
-            layout(RichDoc::concat(vec![text("hello,"), text(" "), text("world!")])),
-            "hello, world!");
+            layout(RichDoc::concat(vec![
+                text("hello,"),
+                text(" "),
+                text("world!")
+            ])),
+            "hello, world!"
+        );
     }
 
     #[test]
     fn test_line() {
         assert_eq!(
-            layout(RichDoc::concat(vec![text("hello"), RichDoc::linebreak(), text("world!")])),
+            layout(RichDoc::concat(vec![
+                text("hello"),
+                RichDoc::linebreak(),
+                text("world!")
+            ])),
             "hello\nworld!"
         )
     }
@@ -176,7 +181,10 @@ mod tests {
         assert_eq!(
             layout(RichDoc::concat(vec![
                 text("hello"),
-                RichDoc::nest(2, RichDoc::concat(vec![RichDoc::linebreak(), text("world!")]))
+                RichDoc::nest(
+                    2,
+                    RichDoc::concat(vec![RichDoc::linebreak(), text("world!")])
+                )
             ])),
             "hello\n  world!"
         )
@@ -184,10 +192,7 @@ mod tests {
 
     #[test]
     fn test_group_text() {
-        assert_eq!(
-            layout(RichDoc::group(text("blah"))),
-            "blah"
-        );
+        assert_eq!(layout(RichDoc::group(text("blah"))), "blah");
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde::de::{Deserialize, Deserializer};
+use serde::ser::{Serialize, SerializeSeq, Serializer};
 use serde_json;
 
 use string_cache::{Atom, DefaultAtom};
@@ -53,7 +53,7 @@ impl MetaStore {
 
     pub fn from_reader<R>(r: R) -> Result<MetaStore>
     where
-        R: std::io::BufRead
+        R: std::io::BufRead,
     {
         let mut store = MetaStore::new();
 
@@ -73,10 +73,17 @@ impl MetaStore {
     }
 
     pub fn add_datom(&mut self, datom: &Datom) {
-        let Datom{ entity, attribute, value } = datom;
-        self.eav.add(entity.clone(), attribute.clone(), value.clone());
-        self.aev.add(attribute.clone(), entity.clone(), value.clone());
-        self.ave.add(attribute.clone(), value.clone(), entity.clone());
+        let Datom {
+            entity,
+            attribute,
+            value,
+        } = datom;
+        self.eav
+            .add(entity.clone(), attribute.clone(), value.clone());
+        self.aev
+            .add(attribute.clone(), entity.clone(), value.clone());
+        self.ave
+            .add(attribute.clone(), value.clone(), entity.clone());
     }
 
     #[inline]
@@ -142,7 +149,7 @@ impl Datom {
         Datom {
             entity,
             attribute,
-            value
+            value,
         }
     }
 }
@@ -165,11 +172,15 @@ impl<'de> Deserialize<'de> for Datom {
     where
         D: Deserializer<'de>,
     {
-        let (entity, attribute, value): (String, String, String) = Deserialize::deserialize(deserializer)?;
-        Ok(Datom::new(Field::from(entity), Field::from(attribute), Field::from(value)))
+        let (entity, attribute, value): (String, String, String) =
+            Deserialize::deserialize(deserializer)?;
+        Ok(Datom::new(
+            Field::from(entity),
+            Field::from(attribute),
+            Field::from(value),
+        ))
     }
 }
-
 
 #[derive(Debug)]
 pub enum Error {
@@ -201,8 +212,8 @@ impl From<serde_json::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use maplit::{hashmap, hashset};
     use serde_json;
-    use maplit::{hashset, hashmap};
 
     static TEST: &str = r#"
         ["0", "0", "identifier"]
@@ -219,13 +230,19 @@ mod tests {
     #[test]
     fn datom_deserialize_array() {
         let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
-        assert_eq!(serde_json::from_str::<Datom>(r#"["1", "2", "3"]"#).unwrap(), x);
+        assert_eq!(
+            serde_json::from_str::<Datom>(r#"["1", "2", "3"]"#).unwrap(),
+            x
+        );
     }
 
     #[test]
     fn datom_serialize_deserialize() {
         let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
-        assert_eq!(serde_json::from_str::<Datom>(&serde_json::to_string(&x).unwrap()).unwrap(), x);
+        assert_eq!(
+            serde_json::from_str::<Datom>(&serde_json::to_string(&x).unwrap()).unwrap(),
+            x
+        );
     }
 
     #[test]
@@ -236,7 +253,10 @@ mod tests {
     #[test]
     fn store_parse_trailing_comment() {
         let store = MetaStore::from_str(r#"["0", "0", "identifier"] ;; trailing comment"#).unwrap();
-        assert_eq!(Some(&hashset!{Field::from("identifier")}), store.eav2(&Field::from("0"), &Field::from("0")));
+        assert_eq!(
+            Some(&hashset! {Field::from("identifier")}),
+            store.eav2(&Field::from("0"), &Field::from("0"))
+        );
     }
 
     #[test]
@@ -244,8 +264,9 @@ mod tests {
         let store = MetaStore::from_str(TEST).unwrap();
 
         assert_eq!(
-            Some(&hashset!{Field::from("identifier")}),
-            store.eav2(&Field::from("0"), &Field::from("0")));
+            Some(&hashset! {Field::from("identifier")}),
+            store.eav2(&Field::from("0"), &Field::from("0"))
+        );
     }
 
     #[test]
@@ -253,12 +274,13 @@ mod tests {
         let store = MetaStore::from_str(TEST).unwrap();
 
         assert_eq!(
-            Some(&hashmap!{
+            Some(&hashmap! {
                 Field::from("0") => hashset!{Field::from("identifier")},
                 Field::from("1") => hashset!{Field::from("2")},
                 Field::from("4") => hashset!{Field::from("Unique identifier of element"),
                                              Field::from("Additional comment")},
             }),
-            store.eav1(&Field::from("0")));
+            store.eav1(&Field::from("0"))
+        );
     }
 }

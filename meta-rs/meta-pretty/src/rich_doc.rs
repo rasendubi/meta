@@ -21,11 +21,11 @@ pub enum RichDoc<T> {
         doc: Box<RichDoc<T>>,
     },
     Concat {
-        parts: Vec<RichDoc<T>>
+        parts: Vec<RichDoc<T>>,
     },
     Group {
         doc: Box<RichDoc<T>>,
-    }
+    },
 }
 
 impl<T> RichDoc<T> {
@@ -64,9 +64,7 @@ impl<T> RichDoc<T> {
 
     #[inline]
     pub fn group(doc: RichDoc<T>) -> Self {
-        RichDoc::Group {
-            doc: Box::new(doc),
-        }
+        RichDoc::Group { doc: Box::new(doc) }
     }
 }
 
@@ -82,20 +80,25 @@ mod tests {
     #[test]
     fn test_cell() {
         let cell = RichDoc::cell(5, "hello");
-        assert_eq!(RichDoc::Cell(Cell { width: 5, payload: "hello" }), cell);
+        assert_eq!(
+            RichDoc::Cell(Cell {
+                width: 5,
+                payload: "hello"
+            }),
+            cell
+        );
     }
 
     #[test]
     fn test_complex() {
-        let _doc =
-            RichDoc::group(
-                RichDoc::nest(
-                    2,
-                    RichDoc::concat(vec![
-                        RichDoc::cell(2, 11),
-                        RichDoc::empty(),
-                        RichDoc::line(cell(2, 22)),
-                        RichDoc::linebreak(),
-                    ])));
+        let _doc = RichDoc::group(RichDoc::nest(
+            2,
+            RichDoc::concat(vec![
+                RichDoc::cell(2, 11),
+                RichDoc::empty(),
+                RichDoc::line(cell(2, 22)),
+                RichDoc::linebreak(),
+            ]),
+        ));
     }
 }

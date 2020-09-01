@@ -9,6 +9,7 @@
           pkgs.rustc
           pkgs.cargo
           pkgs.rls
+          pkgs.rustfmt
         ];
       };
   };

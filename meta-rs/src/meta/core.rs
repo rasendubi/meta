@@ -1,5 +1,5 @@
 //! Some helpers for the meta.core language.
-use crate::store::{MetaStore, Field};
+use crate::store::{Field, MetaStore};
 
 struct MetaCore<'a> {
     store: &'a MetaStore,
@@ -27,11 +27,10 @@ impl<'a> MetaCore<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::{MetaStore, Field};
+    use crate::store::{Field, MetaStore};
 
     static TEST: &'static str = include_str!("../../../core.meta");
 
@@ -40,7 +39,10 @@ mod tests {
         let store = MetaStore::from_str(TEST).unwrap();
         let core = MetaCore::new(&store);
 
-        assert_eq!(Some(&Field::from("identifier")), core.identifier(&Field::from("0")));
+        assert_eq!(
+            Some(&Field::from("identifier")),
+            core.identifier(&Field::from("0"))
+        );
     }
 
     #[test]
