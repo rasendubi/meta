@@ -1,5 +1,4 @@
-mod meta;
-mod store;
+use meta::store;
 
 use std::fs::File;
 use std::io::BufReader;

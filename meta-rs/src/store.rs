@@ -41,6 +41,12 @@ pub struct MetaStore {
     ave: Index,
 }
 
+impl Default for MetaStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetaStore {
     pub fn new() -> MetaStore {
         MetaStore {
@@ -65,10 +71,6 @@ impl MetaStore {
         }
 
         Ok(store)
-    }
-
-    pub fn from_str(s: &str) -> Result<MetaStore> {
-        MetaStore::from_reader(std::io::Cursor::new(s))
     }
 
     pub fn add_datom(&mut self, datom: &Datom) {
@@ -139,6 +141,14 @@ impl Index {
     #[inline]
     pub fn get(&self, x: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
         self.0.get(x)
+    }
+}
+
+impl std::str::FromStr for MetaStore {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<MetaStore> {
+        MetaStore::from_reader(std::io::Cursor::new(s))
     }
 }
 
@@ -213,6 +223,7 @@ mod tests {
     use super::*;
     use maplit::{hashmap, hashset};
     use serde_json;
+    use std::str::FromStr;
 
     static TEST: &str = r#"
         ["0", "0", "identifier"]

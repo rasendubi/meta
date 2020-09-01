@@ -1,7 +1,7 @@
 //! Some helpers for the meta.core language.
 use crate::store::{Field, MetaStore};
 
-struct MetaCore<'a> {
+pub struct MetaCore<'a> {
     store: &'a MetaStore,
     // TODO: remove hard-code ids and cache them in struct
 }
@@ -31,6 +31,7 @@ impl<'a> MetaCore<'a> {
 mod tests {
     use super::*;
     use crate::store::{Field, MetaStore};
+    use std::str::FromStr;
 
     static TEST: &'static str = include_str!("../../../core.meta");
 
