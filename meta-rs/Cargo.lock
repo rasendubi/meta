@@ -22,16 +22,29 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 name = "meta"
 version = "0.1.0"
 dependencies = [
- "maplit",
- "meta-pretty",
- "serde",
- "serde_json",
- "string_cache",
+ "meta-store",
+]
+
+[[package]]
+name = "meta-core"
+version = "0.1.0"
+dependencies = [
+ "meta-store",
 ]
 
 [[package]]
 name = "meta-pretty"
 version = "0.1.0"
+
+[[package]]
+name = "meta-store"
+version = "0.1.0"
+dependencies = [
+ "maplit",
+ "serde",
+ "serde_json",
+ "string_cache",
+]
 
 [[package]]
 name = "new_debug_unreachable"

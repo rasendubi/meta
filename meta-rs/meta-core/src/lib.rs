@@ -1,5 +1,5 @@
 //! Some helpers for the meta.core language.
-use crate::store::{Field, MetaStore};
+use meta_store::{Field, MetaStore};
 
 pub struct MetaCore<'a> {
     store: &'a MetaStore,
@@ -30,7 +30,7 @@ impl<'a> MetaCore<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::{Field, MetaStore};
+    use meta_store::{Field, MetaStore};
     use std::str::FromStr;
 
     static TEST: &'static str = include_str!("../../../core.meta");

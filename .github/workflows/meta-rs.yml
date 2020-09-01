@@ -52,5 +52,5 @@ jobs:
       uses: MarcoPolo/cargo@a527bf4d534717ff4424a84446c5d710f8833139
       with:
         command: clippy
-        args: -- -D warnings
+        args: --all -- -D warnings
         working-directory: ./meta-rs

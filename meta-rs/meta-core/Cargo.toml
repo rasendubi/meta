@@ -1,0 +1,8 @@
+[package]
+name = "meta-core"
+version = "0.1.0"
+authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+meta-store = { path = "../meta-store" }

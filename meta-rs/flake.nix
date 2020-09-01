@@ -10,6 +10,7 @@
           pkgs.cargo
           pkgs.rls
           pkgs.rustfmt
+          pkgs.rustracer
           pkgs.clippy
         ];
       };
