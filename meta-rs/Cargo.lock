@@ -23,10 +23,15 @@ name = "meta"
 version = "0.1.0"
 dependencies = [
  "maplit",
+ "meta-pretty",
  "serde",
  "serde_json",
  "string_cache",
 ]
+
+[[package]]
+name = "meta-pretty"
+version = "0.1.0"
 
 [[package]]
 name = "new_debug_unreachable"
