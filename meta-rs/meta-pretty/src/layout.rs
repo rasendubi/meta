@@ -9,7 +9,7 @@ enum Mode {
 
 type Cmd<'a, T> = (usize, Mode, &'a RichDoc<T>);
 
-fn fits<T>(cmd: Cmd<T>, rest: &Vec<Cmd<T>>, max_width: usize) -> bool {
+fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
     // Semantically, this function should take `cmds: Vec<Cmd<T>>`. However, that would imply a copy
     // of the cmds vector which we try to avoid.
     //

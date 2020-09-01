@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
-use serde_json;
 
 use string_cache::{Atom, DefaultAtom};
 
@@ -132,8 +131,8 @@ impl Index {
     }
 
     pub fn add(&mut self, x: Field, y: Field, z: Field) {
-        let yzs = self.0.entry(x).or_insert(HashMap::new());
-        let zs = yzs.entry(y).or_insert(HashSet::new());
+        let yzs = self.0.entry(x).or_insert_with(HashMap::new);
+        let zs = yzs.entry(y).or_insert_with(HashSet::new);
         zs.insert(z);
     }
 
