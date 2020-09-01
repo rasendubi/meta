@@ -1,0 +1,56 @@
+on: [push, pull_request]
+
+name: meta-rs CI
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: install rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust }}
+        override: true
+        components: rustfmt, clippy
+
+    - name: build
+      # uses: actions-rs/cargo@v1
+      uses: MarcoPolo/cargo@a527bf4d534717ff4424a84446c5d710f8833139
+      with:
+        command: build
+        working-directory: ./meta-rs
+
+    - name: test
+      # uses: actions-rs/cargo@v1
+      uses: MarcoPolo/cargo@a527bf4d534717ff4424a84446c5d710f8833139
+      with:
+        command: test
+        args: --all
+        working-directory: ./meta-rs
+
+    - name: fmt
+      # uses: actions-rs/cargo@v1
+      uses: MarcoPolo/cargo@a527bf4d534717ff4424a84446c5d710f8833139
+      with:
+        command: fmt
+        args: --all -- --check
+        working-directory: ./meta-rs
+
+    - name: clippy
+      # uses: actions-rs/cargo@v1
+      uses: MarcoPolo/cargo@a527bf4d534717ff4424a84446c5d710f8833139
+      with:
+        command: clippy
+        args: -- -D warnings
+        working-directory: ./meta-rs
