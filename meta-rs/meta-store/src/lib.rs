@@ -7,8 +7,16 @@ use string_cache::{Atom, DefaultAtom};
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct Field(DefaultAtom);
+
+impl AsRef<str> for Field {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
 
 impl From<String> for Field {
     #[inline]
@@ -115,6 +123,10 @@ impl MetaStore {
     #[inline]
     pub fn ave2(&self, a: &Field, v: &Field) -> Option<&HashSet<Field>> {
         self.ave.get(a)?.get(v)
+    }
+
+    pub fn entities(&self) -> HashSet<&Field> {
+        self.eav.0.keys().collect()
     }
 
     #[inline]

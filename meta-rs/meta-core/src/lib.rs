@@ -2,7 +2,7 @@
 use meta_store::{Field, MetaStore};
 
 pub struct MetaCore<'a> {
-    store: &'a MetaStore,
+    pub store: &'a MetaStore,
     // TODO: remove hard-code ids and cache them in struct
 }
 

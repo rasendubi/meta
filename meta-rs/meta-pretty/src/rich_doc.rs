@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Cell<T> {
     pub width: usize,
     pub payload: T,
@@ -8,7 +8,7 @@ pub fn cell<T>(width: usize, payload: T) -> Cell<T> {
     Cell { width, payload }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RichDoc<T> {
     Empty,
     Cell(Cell<T>),

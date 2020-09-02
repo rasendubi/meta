@@ -6,9 +6,13 @@ edition = "2018"
 
 [dependencies]
 meta-store = { path = "./meta-store" }
+meta-core = { path = "./meta-core" }
+meta-editor = { path = "./meta-editor" }
+meta-pretty = { path = "./meta-pretty" }
 
 [workspace]
 members = [
+    "meta-editor",
     "meta-store",
     "meta-pretty",
     "meta-core",
