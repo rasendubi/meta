@@ -12,7 +12,11 @@
           pkgs.rustfmt
           pkgs.rustracer
           pkgs.clippy
+
+          pkgs.gtk3
         ];
+
+        RUST_BACKTRACE = "1";
       };
   };
 }

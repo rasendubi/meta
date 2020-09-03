@@ -48,7 +48,7 @@ pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload>]) -> String {
         match doc {
             SimpleDoc::Linebreak { indent_width } => {
                 out.reserve(indent_width + 1);
-                out.push('\n');
+                out.push('\r');
                 for _ in 0..*indent_width {
                     out.push(' ');
                 }

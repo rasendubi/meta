@@ -58,7 +58,7 @@ fn core_layout_attribute(
     ])
 }
 
-pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RichDoc<EditorCellPayload> {
+pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
     let attributes = core
         .store
         .eav1(entity)
