@@ -13,6 +13,9 @@ jobs:
           - nightly
 
     steps:
+    - name: install druid dependencies
+      run: sudo apt-get install libgtk-3-dev
+
     - name: checkout
       uses: actions/checkout@v2
 
