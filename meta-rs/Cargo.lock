@@ -776,6 +776,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "meta-gui"
+version = "0.1.0"
+dependencies = [
+ "druid-shell",
+]
+
+[[package]]
 name = "meta-pretty"
 version = "0.1.0"
 

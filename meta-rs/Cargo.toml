@@ -16,4 +16,5 @@ members = [
     "meta-store",
     "meta-pretty",
     "meta-core",
+    "meta-gui",
 ]
