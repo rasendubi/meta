@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: meta-rs CI
+name: meta-rs
 
 jobs:
   ci:
@@ -9,8 +9,8 @@ jobs:
       matrix:
         rust:
           - stable
-          - beta
-          - nightly
+          # - beta
+          # - nightly
 
     steps:
     - name: install druid dependencies
