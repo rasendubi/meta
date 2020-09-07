@@ -18,17 +18,19 @@ pub struct ButtonState {
 ///
 /// Useful for button-like behavior.
 pub fn button_behavior(ctx: &mut GuiContext, bb: Rect) -> ButtonState {
+    let widget_id = ctx.get_widget_id();
+
     let is_hovered = ctx.state.mouse.as_ref().map_or(false, |x| bb.contains(x.0));
 
     if ctx.state.mouse_left_down.is_some() && ctx.state.active_widget.is_none() {
         let (left, _) = ctx.state.mouse_left_down.as_ref().unwrap();
         if bb.contains(left.pos) {
             // we have been clicked
-            ctx.state.active_widget = Some(ctx.get_widget_id());
+            ctx.state.active_widget = Some(widget_id);
         }
     }
 
-    let is_active = ctx.state.active_widget == Some(ctx.get_widget_id());
+    let is_active = ctx.state.active_widget == Some(widget_id);
 
     let click = if is_active && ctx.state.mouse_left_down.is_none() {
         ctx.state.active_widget = None;
@@ -37,6 +39,9 @@ pub fn button_behavior(ctx: &mut GuiContext, bb: Rect) -> ButtonState {
     } else {
         false
     };
+
+    // update is_active after we calculate click (it might have changed)
+    let is_active = ctx.state.active_widget == Some(widget_id);
 
     ButtonState {
         is_hovered,
