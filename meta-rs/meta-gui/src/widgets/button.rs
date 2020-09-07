@@ -115,6 +115,8 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
 
     // text
     Text::new(&s.to_uppercase(), TextPosition::Center(bb.center()))
+        .with_font("Roboto Medium")
+        .with_size(7.0)
         .with_color(Color::WHITE)
         .draw(ctx);
 

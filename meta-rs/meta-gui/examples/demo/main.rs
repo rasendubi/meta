@@ -14,8 +14,14 @@ fn ui(ctx: &mut GuiContext) {
     ctx.piet.clear(Color::WHITE);
 
     Text::new("Hello, world!", TextPosition::TopLeft(Point::new(0.0, 0.0)))
-        .with_font("Input", 9.0)
+        .with_font("Input")
         .draw(ctx);
+
+    Text::new(
+        "Almost before we knew it, we had left the ground.",
+        TextPosition::TopLeft(Point::new(0.0, 12.0)),
+    )
+    .draw(ctx);
 
     ctx.with_key(&"button1", |ctx| {
         if button(

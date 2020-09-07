@@ -17,7 +17,8 @@ pub enum TextPosition {
 pub struct Text<'a> {
     text: &'a str,
     position: TextPosition,
-    font: (&'a str, f64),
+    font_name: &'a str,
+    font_size: f64,
     color: Color,
 }
 
@@ -26,13 +27,19 @@ impl<'a> Text<'a> {
         Text {
             text,
             position,
-            font: ("Roboto Medium", 7.0),
+            font_name: "Roboto",
+            font_size: 8.5,
             color: Color::BLACK,
         }
     }
 
-    pub fn with_font(mut self, name: &'a str, size: f64) -> Self {
-        self.font = (name, size);
+    pub fn with_font(mut self, name: &'a str) -> Self {
+        self.font_name = name;
+        self
+    }
+
+    pub fn with_size(mut self, size: f64) -> Self {
+        self.font_size = size;
         self
     }
 
@@ -44,8 +51,10 @@ impl<'a> Text<'a> {
     pub fn draw(self, ctx: &mut GuiContext) {
         let text = ctx.piet.text();
 
-        let (font_name, font_size) = self.font;
-        let font = text.new_font_by_name(font_name, font_size).build().unwrap();
+        let font = text
+            .new_font_by_name(self.font_name, self.font_size)
+            .build()
+            .unwrap();
 
         let text_layout = text
             .new_text_layout(&font, self.text, None)
