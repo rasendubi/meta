@@ -12,11 +12,14 @@
           pkgs.rustfmt
           pkgs.rustracer
           pkgs.clippy
+          pkgs.rustPlatform.rustcSrc
+          pkgs.rustup
 
           pkgs.gtk3
         ];
 
         RUST_BACKTRACE = "1";
+        RUST_SRC_PATH = "${pkgs.rustPlatform.rustcSrc}";
       };
   };
 }

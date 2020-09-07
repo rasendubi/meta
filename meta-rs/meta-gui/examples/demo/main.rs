@@ -24,11 +24,24 @@ fn ui(ctx: &mut GuiContext) {
     ctx.piet
         .draw_text(&text_layout, Point::new(0.0, line_baseline), &brush);
 
-    button(
-        ctx,
-        Rect::from_origin_size(Point::new(40.0, 40.0), Size::new(94.0 / 2.0, 36.0 / 2.0)),
-        "Button",
-    );
+    ctx.with_key(&"button1", |ctx| {
+        if button(
+            ctx,
+            Rect::from_origin_size(Point::new(40.0, 40.0), Size::new(94.0 / 2.0, 36.0 / 2.0)),
+            "Button1",
+        ) {
+            println!("button1 clicked");
+        }
+    });
+    ctx.with_key(&"button2", |ctx| {
+        if button(
+            ctx,
+            Rect::from_origin_size(Point::new(40.0, 60.0), Size::new(94.0 / 2.0, 36.0 / 2.0)),
+            "Button2",
+        ) {
+            println!("button2 clicked");
+        }
+    });
 
     // mouse_rect(ctx);
 }
@@ -36,7 +49,7 @@ fn ui(ctx: &mut GuiContext) {
 #[allow(unused)]
 fn mouse_rect(ctx: &mut GuiContext) {
     if let Some(mouse) = &ctx.state.mouse {
-        let rect = Rect::from_center_size(mouse.pos, Size::new(10.0, 10.0));
+        let rect = Rect::from_center_size(mouse.0, Size::new(10.0, 10.0));
         let brush = ctx.piet.solid_brush(Color::rgb(0, 255, 0));
         ctx.piet.fill(rect, &brush);
     }

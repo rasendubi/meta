@@ -3,10 +3,50 @@ use crate::gui::GuiContext;
 use druid_shell::kurbo::{Point, Rect, Size, Vec2};
 use druid_shell::piet::{Color, FontBuilder, RenderContext, Text, TextLayout, TextLayoutBuilder};
 
+pub struct ButtonState {
+    /// Mouse is over the button.
+    pub is_hovered: bool,
+    /// The button has been pushed down.
+    pub is_active: bool,
+    /// The button has been clicked and is released now.
+    pub click: bool,
+}
+
+/// Calculate button interaction with mouse position and left button.
+///
+/// Useful for button-like behavior.
+pub fn button_behavior(ctx: &mut GuiContext, bb: Rect) -> ButtonState {
+    let is_hovered = ctx.state.mouse.as_ref().map_or(false, |x| bb.contains(x.0));
+
+    if ctx.state.mouse_left_down.is_some() && ctx.state.active_widget.is_none() {
+        let (left, _) = ctx.state.mouse_left_down.as_ref().unwrap();
+        if bb.contains(left.pos) {
+            // we have been clicked
+            ctx.state.active_widget = Some(ctx.get_widget_id());
+        }
+    }
+
+    let is_active = ctx.state.active_widget == Some(ctx.get_widget_id());
+
+    let click = if is_active && ctx.state.mouse_left_down.is_none() {
+        ctx.state.active_widget = None;
+
+        is_hovered
+    } else {
+        false
+    };
+
+    ButtonState {
+        is_hovered,
+        is_active,
+        click,
+    }
+}
+
 pub enum ButtonStyle {
-    // Contained,
+    Contained,
     // Outlined,
-    Text,
+    // Text,
 }
 
 fn shadow(
@@ -41,18 +81,13 @@ fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: b
     }
 }
 
-pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) {
-    let is_hovered = ctx
-        .state
-        .mouse
-        .as_ref()
-        .map_or(false, |x| bb.contains(x.pos));
-    let is_clicked = is_hovered
-        && ctx
-            .state
-            .mouse
-            .as_ref()
-            .map_or(false, |x| x.buttons.has_left());
+pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
+    let ButtonState {
+        is_hovered,
+        is_active,
+        click,
+    } = button_behavior(ctx, bb);
+    let is_clicked = is_active && is_hovered;
 
     // drop shadows
     button_shadows(ctx, bb, is_hovered, is_clicked);
@@ -85,8 +120,9 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) {
     let text_rect = Rect::from_center_size(bb.center(), text_size);
     let text_baseline_point = Point::new(text_rect.x0, text_rect.y0 + text_baseline - 0.5);
 
-    // let line_baseline = text_layout.line_metric(0).map_or(9.0, |x| x.baseline);
     let text_brush = ctx.piet.solid_brush(Color::WHITE);
     ctx.piet
         .draw_text(&text_layout, text_baseline_point, &text_brush);
+
+    click
 }
