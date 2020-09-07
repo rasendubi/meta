@@ -109,7 +109,9 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
     ctx.piet.fill(rect, &fg_brush);
 
     // text
-    Text::new(&s.to_uppercase(), TextPosition::Center(bb.center())).draw(ctx);
+    Text::new(&s.to_uppercase(), TextPosition::Center(bb.center()))
+        .with_color(Color::WHITE)
+        .draw(ctx);
 
     click
 }

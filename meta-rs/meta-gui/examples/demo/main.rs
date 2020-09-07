@@ -1,7 +1,7 @@
-use meta_gui::{button, Gui, GuiContext};
+use meta_gui::{button, Gui, GuiContext, Text, TextPosition};
 
 use druid_shell::kurbo::{Point, Rect, Size};
-use druid_shell::piet::{Color, FontBuilder, RenderContext, Text, TextLayout, TextLayoutBuilder};
+use druid_shell::piet::{Color, RenderContext};
 use druid_shell::Application;
 
 fn main() {
@@ -13,16 +13,9 @@ fn main() {
 fn ui(ctx: &mut GuiContext) {
     ctx.piet.clear(Color::WHITE);
 
-    let text = ctx.piet.text();
-    let font = text.new_font_by_name("Input", 9.0).build().unwrap();
-    let text_layout = text
-        .new_text_layout(&font, "Hello, world!", None)
-        .build()
-        .unwrap();
-    let line_baseline = text_layout.line_metric(0).map_or(9.0, |x| x.baseline);
-    let brush = ctx.piet.solid_brush(Color::BLACK);
-    ctx.piet
-        .draw_text(&text_layout, Point::new(0.0, line_baseline), &brush);
+    Text::new("Hello, world!", TextPosition::TopLeft(Point::new(0.0, 0.0)))
+        .with_font("Input", 9.0)
+        .draw(ctx);
 
     ctx.with_key(&"button1", |ctx| {
         if button(
@@ -42,15 +35,4 @@ fn ui(ctx: &mut GuiContext) {
             println!("button2 clicked");
         }
     });
-
-    // mouse_rect(ctx);
-}
-
-#[allow(unused)]
-fn mouse_rect(ctx: &mut GuiContext) {
-    if let Some(mouse) = &ctx.state.mouse {
-        let rect = Rect::from_center_size(mouse.0, Size::new(10.0, 10.0));
-        let brush = ctx.piet.solid_brush(Color::rgb(0, 255, 0));
-        ctx.piet.fill(rect, &brush);
-    }
 }
