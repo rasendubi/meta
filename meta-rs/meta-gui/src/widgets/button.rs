@@ -1,7 +1,9 @@
 use crate::gui::GuiContext;
 
-use druid_shell::kurbo::{Point, Rect, Size, Vec2};
-use druid_shell::piet::{Color, FontBuilder, RenderContext, Text, TextLayout, TextLayoutBuilder};
+use crate::widgets::text::{Text, TextPosition};
+
+use druid_shell::kurbo::{Rect, Vec2};
+use druid_shell::piet::{Color, RenderContext};
 
 pub struct ButtonState {
     /// Mouse is over the button.
@@ -107,22 +109,7 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
     ctx.piet.fill(rect, &fg_brush);
 
     // text
-    let s = s.to_uppercase();
-    let text = ctx.piet.text();
-    let font = text.new_font_by_name("Roboto Medium", 7.0).build().unwrap();
-    let text_layout = text.new_text_layout(&font, &s, None).build().unwrap();
-    let last_line = text_layout.line_metric(text_layout.line_count() - 1);
-    let text_size = Size::new(
-        text_layout.width(),
-        last_line.as_ref().map_or(10.0, |x| x.cumulative_height),
-    );
-    let text_baseline = last_line.map_or(10.0, |x| x.baseline);
-    let text_rect = Rect::from_center_size(bb.center(), text_size);
-    let text_baseline_point = Point::new(text_rect.x0, text_rect.y0 + text_baseline - 0.5);
-
-    let text_brush = ctx.piet.solid_brush(Color::WHITE);
-    ctx.piet
-        .draw_text(&text_layout, text_baseline_point, &text_brush);
+    Text::new(&s.to_uppercase(), TextPosition::Center(bb.center())).draw(ctx);
 
     click
 }
