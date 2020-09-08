@@ -1,4 +1,4 @@
-use meta_gui::{button, Gui, GuiContext, Text, TextPosition};
+use meta_gui::{button, Constraint, Gui, GuiContext, Layout, Row, Text, TextPosition};
 
 use druid_shell::kurbo::{Point, Rect, Size};
 use druid_shell::piet::{Color, RenderContext};
@@ -21,6 +21,18 @@ fn ui(ctx: &mut GuiContext) {
     Text::new("Almost before we knew it, we had left the ground.")
         .with_position(TextPosition::TopLeft(Point::new(0.0, 12.0)))
         .draw(ctx);
+
+    let mut text1 = Text::new("Hello, ");
+    let mut text2 = Text::new("world!");
+
+    let mut row = Row::new();
+    row.add_child(&mut text1);
+    row.add_child(&mut text2);
+    row.set_constraint(ctx, Constraint::unbound());
+    row.set_origin(Point::new(0.0, 24.0));
+
+    text1.draw(ctx);
+    text2.draw(ctx);
 
     ctx.with_key(&"button1", |ctx| {
         if button(

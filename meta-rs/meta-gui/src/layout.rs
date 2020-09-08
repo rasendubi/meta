@@ -18,12 +18,16 @@ impl Constraint {
         Constraint::new(Size::ZERO, max)
     }
 
-    pub fn to_loose(self) -> Self {
-        Constraint::loose(self.max)
-    }
-
     pub fn tight(size: Size) -> Self {
         Constraint::new(size, size)
+    }
+
+    pub fn unbound() -> Self {
+        Constraint::new(Size::ZERO, Size::new(f64::INFINITY, f64::INFINITY))
+    }
+
+    pub fn to_loose(self) -> Self {
+        Constraint::loose(self.max)
     }
 
     /// Whether `size` satisfies the constraint.
