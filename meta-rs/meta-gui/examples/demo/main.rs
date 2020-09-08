@@ -1,6 +1,6 @@
-use meta_gui::{button, Column, Constraint, Gui, GuiContext, Layout, Row, Text};
+use meta_gui::{Button, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, Text};
 
-use druid_shell::kurbo::{Point, Rect, Size};
+use druid_shell::kurbo::Insets;
 use druid_shell::piet::Color;
 use druid_shell::Application;
 
@@ -23,24 +23,13 @@ fn ui(ctx: &mut GuiContext) {
                 .with_child(&mut Text::new("Hello, "))
                 .with_child(&mut Text::new("world!")),
         )
+        .with_child(&mut Inset::new(
+            &mut Button::new("button1"),
+            Insets::uniform_xy(2.0, 4.0),
+        ))
+        .with_child(&mut Inset::new(
+            &mut Button::new("button2"),
+            Insets::uniform_xy(2.0, 4.0),
+        ))
         .layout(ctx, Constraint::unbound());
-
-    ctx.with_key(&"button1", |ctx| {
-        if button(
-            ctx,
-            Rect::from_origin_size(Point::new(40.0, 40.0), Size::new(94.0 / 2.0, 36.0 / 2.0)),
-            "Button1",
-        ) {
-            println!("button1 clicked");
-        }
-    });
-    ctx.with_key(&"button2", |ctx| {
-        if button(
-            ctx,
-            Rect::from_origin_size(Point::new(40.0, 60.0), Size::new(94.0 / 2.0, 36.0 / 2.0)),
-            "Button2",
-        ) {
-            println!("button2 clicked");
-        }
-    });
 }
