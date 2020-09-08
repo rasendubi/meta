@@ -7,6 +7,8 @@ use druid_shell::piet::{
 };
 use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
+use crate::ops::{Op, Ops, ShapeBox};
+
 #[derive(Debug)]
 pub struct GuiState {
     pub size: Size,
@@ -25,6 +27,8 @@ pub struct GuiContext<'a, 'b: 'a> {
     piet: &'a mut Piet<'b>,
     pub state: &'a mut GuiState,
 
+    ops: Ops<'b>,
+
     now: Instant,
     key_stack: Vec<String>,
 }
@@ -34,6 +38,7 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         GuiContext {
             piet,
             state,
+            ops: Ops::new(),
             key_stack: Vec::new(),
             now: Instant::now(),
         }
@@ -89,7 +94,12 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         pos: impl Into<Point>,
         brush: &<Piet as RenderContext>::Brush,
     ) {
-        self.piet.draw_text(layout, pos, brush);
+        let pos = pos.into();
+        self.ops.push(Op::SetBrush(brush.clone()));
+        self.ops.push(Op::DrawText {
+            layout: layout.clone(),
+            pos,
+        });
     }
 
     pub fn blurred_rect(
@@ -98,15 +108,17 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         blur_radius: f64,
         brush: &<Piet as RenderContext>::Brush,
     ) {
-        self.piet.blurred_rect(rect, blur_radius, brush);
+        self.ops.push(Op::SetBrush(brush.clone()));
+        self.ops.push(Op::BlurredRect { rect, blur_radius });
     }
 
     pub fn clear(&mut self, color: Color) {
-        self.piet.clear(color);
+        self.ops.push(Op::Clear(color));
     }
 
     pub fn fill(&mut self, shape: impl Shape, brush: &<Piet as RenderContext>::Brush) {
-        self.piet.fill(shape, brush);
+        self.ops.push(Op::SetBrush(brush.clone()));
+        self.ops.push(Op::Fill(ShapeBox::from_shape(shape)));
     }
 }
 
@@ -153,6 +165,7 @@ impl WinHandler for Gui {
         let mut ctx = GuiContext::new(piet, &mut self.state);
         // println!("Paint context: {:?}", ctx.state);
         (&self.ui)(&mut ctx);
+        ctx.ops.execute(piet);
         // println!("Paint done in {:?}", start.elapsed());
 
         false
