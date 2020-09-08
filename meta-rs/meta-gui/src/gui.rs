@@ -125,10 +125,11 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         self.ops.push(Op::Transform(transform));
     }
 
-    pub fn with_save<F: FnOnce(&mut Self)>(&mut self, f: F) {
+    pub fn with_save<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
         self.ops.push(Op::Save);
-        f(self);
+        let r = f(self);
         self.ops.push(Op::Restore);
+        r
     }
 
     pub fn capture<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> (R, Ops<'b>) {

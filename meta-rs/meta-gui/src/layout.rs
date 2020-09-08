@@ -1,4 +1,4 @@
-use druid_shell::kurbo::{Point, Size};
+use druid_shell::kurbo::Size;
 
 use crate::gui::GuiContext;
 
@@ -44,8 +44,5 @@ pub trait Layout {
     /// Sets the constraints for the widget.
     ///
     /// This function must return the Size widget will occupy (within the provided constraints).
-    fn set_constraint(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size;
-
-    /// Set the origin (top left corner) where the widget should be drawn.
-    fn set_origin(&mut self, origin: Point);
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size;
 }

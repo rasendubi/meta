@@ -1,10 +1,10 @@
 use crate::gui::GuiContext;
 use crate::layout::*;
 
-use druid_shell::kurbo::{Point, Size, Vec2};
+use druid_shell::kurbo::{Affine, Size, Vec2};
 
 pub struct Row<'a> {
-    children: Vec<(&'a mut dyn Layout, Size)>,
+    children: Vec<&'a mut dyn Layout>,
 }
 
 impl<'a> Row<'a> {
@@ -15,18 +15,21 @@ impl<'a> Row<'a> {
         }
     }
 
-    pub fn add_child(&mut self, child: &'a mut impl Layout) {
-        self.children.push((child, Size::ZERO));
+    pub fn with_child(mut self, child: &'a mut impl Layout) -> Self {
+        self.children.push(child);
+        self
     }
 }
 
 impl<'a> Layout for Row<'a> {
-    fn set_constraint(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let mut size_left = constraint.max;
         let mut my_size = Size::ZERO;
-        for (child, child_size) in self.children.iter_mut() {
-            let x = child.set_constraint(ctx, Constraint::loose(size_left));
-            *child_size = x;
+        for child in self.children.iter_mut() {
+            let x = ctx.with_save(|ctx| {
+                ctx.transform(Affine::translate(Vec2::new(my_size.width, 0.0)));
+                child.layout(ctx, Constraint::loose(size_left))
+            });
 
             size_left.width -= x.width;
 
@@ -35,13 +38,5 @@ impl<'a> Layout for Row<'a> {
         }
 
         my_size
-    }
-
-    fn set_origin(&mut self, origin: Point) {
-        let mut x_offset = 0.0;
-        for (child, size) in self.children.iter_mut() {
-            child.set_origin(origin + Vec2::new(x_offset, 0.0));
-            x_offset += size.width;
-        }
     }
 }

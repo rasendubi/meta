@@ -4,7 +4,7 @@ use crate::layout::{Constraint, Layout};
 use crate::widgets::center::Center;
 use crate::widgets::text::Text;
 
-use druid_shell::kurbo::{Rect, Vec2};
+use druid_shell::kurbo::{Affine, Rect, Vec2};
 use druid_shell::piet::Color;
 
 pub struct ButtonState {
@@ -123,10 +123,10 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
         .with_color(Color::WHITE);
 
     let mut center = Center::new(&mut text);
-    center.set_constraint(ctx, Constraint::tight(bb.size()));
-    center.set_origin(bb.origin());
-
-    text.draw(ctx);
+    ctx.with_save(|ctx| {
+        ctx.transform(Affine::translate(bb.origin().to_vec2()));
+        center.layout(ctx, Constraint::tight(bb.size()));
+    });
 
     click
 }

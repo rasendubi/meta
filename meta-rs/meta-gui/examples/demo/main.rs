@@ -1,4 +1,4 @@
-use meta_gui::{button, Constraint, Gui, GuiContext, Layout, Row, Text, TextPosition};
+use meta_gui::{button, Column, Constraint, Gui, GuiContext, Layout, Row, Text};
 
 use druid_shell::kurbo::{Point, Rect, Size};
 use druid_shell::piet::Color;
@@ -13,26 +13,17 @@ fn main() {
 fn ui(ctx: &mut GuiContext) {
     ctx.clear(Color::WHITE);
 
-    Text::new("Hello, world!")
-        .with_position(TextPosition::TopLeft(Point::new(0.0, 0.0)))
-        .with_font("Input")
-        .draw(ctx);
-
-    Text::new("Almost before we knew it, we had left the ground.")
-        .with_position(TextPosition::TopLeft(Point::new(0.0, 12.0)))
-        .draw(ctx);
-
-    let mut text1 = Text::new("Hello, ");
-    let mut text2 = Text::new("world!");
-
-    let mut row = Row::new();
-    row.add_child(&mut text1);
-    row.add_child(&mut text2);
-    row.set_constraint(ctx, Constraint::unbound());
-    row.set_origin(Point::new(0.0, 24.0));
-
-    text1.draw(ctx);
-    text2.draw(ctx);
+    Column::new()
+        .with_child(&mut Text::new("Hello, world!").with_font("Input"))
+        .with_child(&mut Text::new(
+            "Almost before we knew it, we had left the ground.",
+        ))
+        .with_child(
+            &mut Row::new()
+                .with_child(&mut Text::new("Hello, "))
+                .with_child(&mut Text::new("world!")),
+        )
+        .layout(ctx, Constraint::unbound());
 
     ctx.with_key(&"button1", |ctx| {
         if button(
