@@ -1,7 +1,7 @@
-use druid_shell::kurbo::{Point, Rect, RoundedRect, Shape};
+use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
-pub(crate) struct Ops<'a> {
+pub struct Ops<'a> {
     ops: Vec<Op<'a>>,
 }
 
@@ -17,6 +17,9 @@ pub(crate) enum Op<'a> {
         rect: Rect,
         blur_radius: f64,
     },
+    Transform(Affine),
+    Save,
+    Restore,
 }
 
 /// A wrapper around common Shapes.
@@ -25,15 +28,21 @@ pub(crate) enum ShapeBox {
 }
 
 impl<'a> Ops<'a> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Ops { ops: Vec::new() }
     }
 
-    pub fn push(&mut self, op: Op<'a>) {
+    pub(crate) fn push(&mut self, op: Op<'a>) {
         self.ops.push(op);
     }
 
-    pub fn execute(&self, piet: &mut Piet<'a>) {
+    pub(crate) fn push_all(&mut self, mut ops: Ops<'a>) {
+        self.ops.append(&mut ops.ops);
+    }
+
+    pub(crate) fn execute(&self, piet: &mut Piet<'a>) {
+        let mut state_stack = Vec::new();
+
         let mut current_brush = piet.solid_brush(Color::BLACK);
 
         for op in self.ops.iter() {
@@ -50,6 +59,18 @@ impl<'a> Ops<'a> {
                 },
                 Op::BlurredRect { rect, blur_radius } => {
                     piet.blurred_rect(*rect, *blur_radius, &current_brush)
+                }
+                Op::Transform(transform) => {
+                    piet.transform(*transform);
+                }
+                Op::Save => {
+                    state_stack.push((current_brush.clone(),));
+                    piet.save().unwrap();
+                }
+                Op::Restore => {
+                    let (brush,) = state_stack.pop().unwrap();
+                    current_brush = brush;
+                    piet.restore().unwrap();
                 }
             }
         }

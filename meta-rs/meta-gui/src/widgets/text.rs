@@ -1,7 +1,7 @@
 use crate::gui::GuiContext;
 use crate::layout::*;
 
-use druid_shell::kurbo::{Point, Rect, Size};
+use druid_shell::kurbo::{Affine, Point, Rect, Size};
 use druid_shell::piet::{Color, TextLayout};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -74,7 +74,11 @@ impl<'a> Text<'a> {
         };
 
         let text_brush = ctx.solid_brush(self.color);
-        ctx.draw_text(&text_layout, point, &text_brush);
+
+        ctx.with_save(|ctx| {
+            ctx.transform(Affine::translate(point.to_vec2()));
+            ctx.draw_text(&text_layout, Point::ZERO, &text_brush);
+        })
     }
 }
 

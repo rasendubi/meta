@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::time::Instant;
 
-use druid_shell::kurbo::{Point, Rect, Shape, Size};
+use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
 use druid_shell::piet::{
     Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
 };
@@ -119,6 +119,28 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
     pub fn fill(&mut self, shape: impl Shape, brush: &<Piet as RenderContext>::Brush) {
         self.ops.push(Op::SetBrush(brush.clone()));
         self.ops.push(Op::Fill(ShapeBox::from_shape(shape)));
+    }
+
+    pub fn transform(&mut self, transform: Affine) {
+        self.ops.push(Op::Transform(transform));
+    }
+
+    pub fn with_save<F: FnOnce(&mut Self)>(&mut self, f: F) {
+        self.ops.push(Op::Save);
+        f(self);
+        self.ops.push(Op::Restore);
+    }
+
+    pub fn capture<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> (R, Ops<'b>) {
+        let mut ops = Ops::<'b>::new();
+        std::mem::swap(&mut self.ops, &mut ops);
+        let r = f(self);
+        std::mem::swap(&mut self.ops, &mut ops);
+        (r, ops)
+    }
+
+    pub fn replay(&mut self, ops: Ops<'b>) {
+        self.ops.push_all(ops);
     }
 }
 
