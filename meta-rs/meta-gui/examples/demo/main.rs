@@ -1,7 +1,7 @@
 use meta_gui::{button, Constraint, Gui, GuiContext, Layout, Row, Text, TextPosition};
 
 use druid_shell::kurbo::{Point, Rect, Size};
-use druid_shell::piet::{Color, RenderContext};
+use druid_shell::piet::Color;
 use druid_shell::Application;
 
 fn main() {
@@ -11,7 +11,7 @@ fn main() {
 }
 
 fn ui(ctx: &mut GuiContext) {
-    ctx.piet.clear(Color::WHITE);
+    ctx.clear(Color::WHITE);
 
     Text::new("Hello, world!")
         .with_position(TextPosition::TopLeft(Point::new(0.0, 0.0)))

@@ -5,7 +5,7 @@ use crate::widgets::center::Center;
 use crate::widgets::text::Text;
 
 use druid_shell::kurbo::{Rect, Vec2};
-use druid_shell::piet::{Color, RenderContext};
+use druid_shell::piet::Color;
 
 pub struct ButtonState {
     /// Mouse is over the button.
@@ -67,9 +67,9 @@ fn shadow(
     spread: f64,
     color: Color,
 ) {
-    let brush = ctx.piet.solid_brush(color);
+    let brush = ctx.solid_brush(color);
     let rect = bb.inflate(spread, spread) + Vec2::new(horizontal_offset, vertical_offset);
-    ctx.piet.blurred_rect(rect, blur_radius, &brush);
+    ctx.blurred_rect(rect, blur_radius, &brush);
 }
 
 fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: bool) {
@@ -111,9 +111,9 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
             0.0
         },
     );
-    let fg_brush = ctx.piet.solid_brush(fg_color);
+    let fg_brush = ctx.solid_brush(fg_color);
     let rect = bb.to_rounded_rect(2.0);
-    ctx.piet.fill(rect, &fg_brush);
+    ctx.fill(rect, &fg_brush);
 
     // text
     let s = s.to_uppercase();

@@ -1,8 +1,10 @@
 use std::any::Any;
 use std::time::Instant;
 
-use druid_shell::kurbo::{Point, Rect, Size};
-use druid_shell::piet::Piet;
+use druid_shell::kurbo::{Point, Rect, Shape, Size};
+use druid_shell::piet::{
+    Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
+};
 use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
 #[derive(Debug)]
@@ -20,7 +22,7 @@ pub struct GuiState {
 pub struct WidgetId(u64);
 
 pub struct GuiContext<'a, 'b: 'a> {
-    pub piet: &'a mut Piet<'b>,
+    piet: &'a mut Piet<'b>,
     pub state: &'a mut GuiState,
 
     now: Instant,
@@ -58,6 +60,53 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
 
     pub fn now(&self) -> Instant {
         self.now
+    }
+
+    pub fn solid_brush(&mut self, color: Color) -> <Piet as RenderContext>::Brush {
+        self.piet.solid_brush(color)
+    }
+
+    pub fn new_font_by_name(
+        &mut self,
+        name: &str,
+        size: f64,
+    ) -> Result<<<Piet as RenderContext>::Text as Text>::Font, PietError> {
+        self.piet.text().new_font_by_name(name, size).build()
+    }
+
+    pub fn new_text_layout(
+        &mut self,
+        font: &<<Piet as RenderContext>::Text as Text>::Font,
+        text: &str,
+        width: impl Into<Option<f64>>,
+    ) -> Result<<<Piet as RenderContext>::Text as Text>::TextLayout, PietError> {
+        self.piet.text().new_text_layout(font, text, width).build()
+    }
+
+    pub fn draw_text(
+        &mut self,
+        layout: &<<Piet as RenderContext>::Text as Text>::TextLayout,
+        pos: impl Into<Point>,
+        brush: &<Piet as RenderContext>::Brush,
+    ) {
+        self.piet.draw_text(layout, pos, brush);
+    }
+
+    pub fn blurred_rect(
+        &mut self,
+        rect: Rect,
+        blur_radius: f64,
+        brush: &<Piet as RenderContext>::Brush,
+    ) {
+        self.piet.blurred_rect(rect, blur_radius, brush);
+    }
+
+    pub fn clear(&mut self, color: Color) {
+        self.piet.clear(color);
+    }
+
+    pub fn fill(&mut self, shape: impl Shape, brush: &<Piet as RenderContext>::Brush) {
+        self.piet.fill(shape, brush);
     }
 }
 

@@ -2,9 +2,7 @@ use crate::gui::GuiContext;
 use crate::layout::*;
 
 use druid_shell::kurbo::{Point, Rect, Size};
-use druid_shell::piet::{
-    Color, FontBuilder, RenderContext, Text as _, TextLayout, TextLayoutBuilder,
-};
+use druid_shell::piet::{Color, TextLayout};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TextPosition {
@@ -55,17 +53,11 @@ impl<'a> Text<'a> {
     }
 
     pub fn draw(self, ctx: &mut GuiContext) {
-        let text = ctx.piet.text();
-
-        let font = text
+        let font = ctx
             .new_font_by_name(self.font_name, self.font_size)
-            .build()
             .unwrap();
 
-        let text_layout = text
-            .new_text_layout(&font, self.text, None)
-            .build()
-            .unwrap();
+        let text_layout = ctx.new_text_layout(&font, self.text, None).unwrap();
 
         let last_line = text_layout
             .line_metric(text_layout.line_count() - 1)
@@ -81,8 +73,8 @@ impl<'a> Text<'a> {
             }
         };
 
-        let text_brush = ctx.piet.solid_brush(self.color);
-        ctx.piet.draw_text(&text_layout, point, &text_brush);
+        let text_brush = ctx.solid_brush(self.color);
+        ctx.draw_text(&text_layout, point, &text_brush);
     }
 }
 
@@ -90,16 +82,12 @@ impl Layout for Text<'_> {
     fn set_constraint(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         self.width = constraint.max.width;
 
-        let text = ctx.piet.text();
-
-        let font = text
+        let font = ctx
             .new_font_by_name(self.font_name, self.font_size)
-            .build()
             .unwrap();
 
-        let text_layout = text
+        let text_layout = ctx
             .new_text_layout(&font, self.text, Some(self.width))
-            .build()
             .unwrap();
 
         let last_line = text_layout
