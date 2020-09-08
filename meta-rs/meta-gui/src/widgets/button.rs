@@ -1,6 +1,8 @@
 use crate::gui::GuiContext;
 
-use crate::widgets::text::{Text, TextPosition};
+use crate::layout::{Constraint, Layout};
+use crate::widgets::center::Center;
+use crate::widgets::text::Text;
 
 use druid_shell::kurbo::{Rect, Vec2};
 use druid_shell::piet::{Color, RenderContext};
@@ -114,11 +116,17 @@ pub fn button(ctx: &mut GuiContext, bb: Rect, s: &str) -> bool {
     ctx.piet.fill(rect, &fg_brush);
 
     // text
-    Text::new(&s.to_uppercase(), TextPosition::Center(bb.center()))
+    let s = s.to_uppercase();
+    let mut text = Text::new(&s)
         .with_font("Roboto Medium")
         .with_size(7.0)
-        .with_color(Color::WHITE)
-        .draw(ctx);
+        .with_color(Color::WHITE);
+
+    let mut center = Center::new(&mut text);
+    center.set_constraint(ctx, Constraint::tight(bb.size()));
+    center.set_origin(bb.origin());
+
+    text.draw(ctx);
 
     click
 }
