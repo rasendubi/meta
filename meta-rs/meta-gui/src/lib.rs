@@ -1,6 +1,7 @@
 mod gui;
 mod layout;
 mod ops;
+mod subscriptions;
 mod widgets;
 
 pub use gui::*;

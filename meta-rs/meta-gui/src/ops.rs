@@ -1,6 +1,8 @@
 use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
+use crate::subscriptions::{Subscription, Subscriptions};
+
 pub struct Ops<'a> {
     ops: Vec<Op<'a>>,
 }
@@ -20,6 +22,7 @@ pub(crate) enum Op<'a> {
     Transform(Affine),
     Save,
     Restore,
+    Subscribe(Subscription),
 }
 
 /// A wrapper around common Shapes.
@@ -40,7 +43,9 @@ impl<'a> Ops<'a> {
         self.ops.append(&mut ops.ops);
     }
 
-    pub(crate) fn execute(&self, piet: &mut Piet<'a>) {
+    pub(crate) fn execute(&self, piet: &mut Piet<'a>) -> Subscriptions {
+        let mut subscriptions = Subscriptions::new();
+
         let mut state_stack = Vec::new();
 
         let mut current_brush = piet.solid_brush(Color::BLACK);
@@ -72,8 +77,13 @@ impl<'a> Ops<'a> {
                     current_brush = brush;
                     piet.restore().unwrap();
                 }
+                Op::Subscribe(sub) => {
+                    subscriptions.subscribe(sub.transform(piet.current_transform()));
+                }
             }
         }
+
+        subscriptions
     }
 }
 

@@ -1,5 +1,4 @@
-use crate::gui::GuiContext;
-
+use crate::gui::{EventType, GuiContext};
 use crate::layout::{Constraint, Layout};
 use crate::widgets::inset::Inset;
 use crate::widgets::text::Text;
@@ -32,12 +31,14 @@ impl<'a> Layout for Button<'a> {
 
         let bb = size.to_rect();
 
-        let ButtonState {
-            is_hovered,
-            is_active,
-            // TODO: handle events
-            click: _click,
-        } = button_behavior(ctx, bb);
+        ctx.subscribe(bb, EventType::MOUSE_DOWN | EventType::MOUSE_UP);
+
+        for event in ctx.events() {
+            println!("got event: {:?}", event);
+        }
+
+        let is_hovered = false;
+        let is_active = false;
         let is_clicked = is_active && is_hovered;
 
         // drop shadows
@@ -63,71 +64,6 @@ impl<'a> Layout for Button<'a> {
     }
 }
 
-pub struct ButtonState {
-    /// Mouse is over the button.
-    pub is_hovered: bool,
-    /// The button has been pushed down.
-    pub is_active: bool,
-    /// The button has been clicked and is released now.
-    pub click: bool,
-}
-
-/// Calculate button interaction with mouse position and left button.
-///
-/// Useful for button-like behavior.
-pub fn button_behavior(ctx: &mut GuiContext, bb: Rect) -> ButtonState {
-    let widget_id = ctx.get_widget_id();
-
-    let is_hovered = ctx.state.mouse.as_ref().map_or(false, |x| bb.contains(x.0));
-
-    if ctx.state.mouse_left_down.is_some() && ctx.state.active_widget.is_none() {
-        let (left, _) = ctx.state.mouse_left_down.as_ref().unwrap();
-        if bb.contains(left.pos) {
-            // we have been clicked
-            ctx.state.active_widget = Some(widget_id);
-        }
-    }
-
-    let is_active = ctx.state.active_widget == Some(widget_id);
-
-    let click = if is_active && ctx.state.mouse_left_down.is_none() {
-        ctx.state.active_widget = None;
-
-        is_hovered
-    } else {
-        false
-    };
-
-    // update is_active after we calculate click (it might have changed)
-    let is_active = ctx.state.active_widget == Some(widget_id);
-
-    ButtonState {
-        is_hovered,
-        is_active,
-        click,
-    }
-}
-
-pub enum ButtonStyle {
-    Contained,
-    // Outlined,
-    // Text,
-}
-
-fn shadow(
-    ctx: &mut GuiContext,
-    bb: Rect,
-    horizontal_offset: f64,
-    vertical_offset: f64,
-    blur_radius: f64,
-    spread: f64,
-    color: Color,
-) {
-    let brush = ctx.solid_brush(color);
-    let rect = bb.inflate(spread, spread) + Vec2::new(horizontal_offset, vertical_offset);
-    ctx.blurred_rect(rect, blur_radius, &brush);
-}
-
 fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: bool) {
     let mut sh = |vo, blur, spread, color| shadow(ctx, bb, 0.0, vo, blur, spread, color);
 
@@ -144,4 +80,18 @@ fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: b
         sh(2.0, 2.0, 0.0, Color::rgba(0.0, 0.0, 0.0, 0.14));
         sh(1.0, 5.0, 0.0, Color::rgba(0.0, 0.0, 0.0, 0.12));
     }
+}
+
+fn shadow(
+    ctx: &mut GuiContext,
+    bb: Rect,
+    horizontal_offset: f64,
+    vertical_offset: f64,
+    blur_radius: f64,
+    spread: f64,
+    color: Color,
+) {
+    let brush = ctx.solid_brush(color);
+    let rect = bb.inflate(spread, spread) + Vec2::new(horizontal_offset, vertical_offset);
+    ctx.blurred_rect(rect, blur_radius, &brush);
 }

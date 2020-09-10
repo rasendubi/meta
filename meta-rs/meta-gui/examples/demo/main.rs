@@ -1,4 +1,4 @@
-use meta_gui::{Button, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, Text};
+use meta_gui::{Button, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, Text, WithKey};
 
 use druid_shell::kurbo::Insets;
 use druid_shell::piet::Color;
@@ -24,11 +24,11 @@ fn ui(ctx: &mut GuiContext) {
                 .with_child(&mut Text::new("world!")),
         )
         .with_child(&mut Inset::new(
-            &mut Button::new("button1"),
+            &mut WithKey::new(&"button1", &mut Button::new("button1")),
             Insets::uniform_xy(2.0, 4.0),
         ))
         .with_child(&mut Inset::new(
-            &mut Button::new("button2"),
+            &mut WithKey::new(&"button2", &mut Button::new("button2")),
             Insets::uniform_xy(2.0, 4.0),
         ))
         .layout(ctx, Constraint::unbound());

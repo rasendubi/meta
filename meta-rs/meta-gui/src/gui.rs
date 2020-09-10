@@ -8,24 +8,12 @@ use druid_shell::piet::{
 use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
 use crate::ops::{Op, Ops, ShapeBox};
-
-#[derive(Debug)]
-pub struct GuiState {
-    pub size: Size,
-    /// Mouse position
-    pub mouse: Option<(Point, Instant)>,
-    /// The mouse down event
-    pub mouse_left_down: Option<(MouseEvent, Instant)>,
-    /// Widget that has been clicked
-    pub active_widget: Option<WidgetId>,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct WidgetId(u64);
+pub use crate::subscriptions::{Event, EventType, WidgetId};
+use crate::subscriptions::{Subscription, Subscriptions};
 
 pub struct GuiContext<'a, 'b: 'a> {
     piet: &'a mut Piet<'b>,
-    pub state: &'a mut GuiState,
+    subscriptions: &'a mut Subscriptions,
 
     ops: Ops<'b>,
 
@@ -34,10 +22,10 @@ pub struct GuiContext<'a, 'b: 'a> {
 }
 
 impl<'a, 'b: 'a> GuiContext<'a, 'b> {
-    fn new(piet: &'a mut Piet<'b>, state: &'a mut GuiState) -> Self {
+    fn new(piet: &'a mut Piet<'b>, subscriptions: &'a mut Subscriptions) -> Self {
         GuiContext {
             piet,
-            state,
+            subscriptions,
             ops: Ops::new(),
             key_stack: Vec::new(),
             now: Instant::now(),
@@ -143,12 +131,26 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
     pub fn replay(&mut self, ops: Ops<'b>) {
         self.ops.push_all(ops);
     }
+
+    pub fn subscribe(&mut self, rect: Rect, events: EventType) {
+        let widget_id = self.get_widget_id();
+        self.ops.push(Op::Subscribe(Subscription {
+            widget_id,
+            rect,
+            events,
+        }));
+    }
+
+    pub fn events(&mut self) -> Vec<Event> {
+        let widget_id = self.get_widget_id();
+        self.subscriptions.widget_events(widget_id)
+    }
 }
 
 pub struct Gui {
     handle: Option<WindowHandle>,
     ui: Box<dyn Fn(&mut GuiContext)>,
-    state: GuiState,
+    subscriptions: Subscriptions,
 }
 
 impl Gui {
@@ -156,12 +158,7 @@ impl Gui {
         let gui = Box::new(Gui {
             handle: None,
             ui: Box::new(ui),
-            state: GuiState {
-                size: Size::default(),
-                mouse: None,
-                mouse_left_down: None,
-                active_widget: None,
-            },
+            subscriptions: Subscriptions::new(),
         });
 
         let mut window_builder = WindowBuilder::new(app);
@@ -174,6 +171,12 @@ impl Gui {
     fn invalidate(&mut self) {
         self.handle.as_mut().unwrap().invalidate();
     }
+
+    fn dispatch(&mut self, event: Event) {
+        if self.subscriptions.dispatch(event) {
+            self.invalidate();
+        }
+    }
 }
 
 impl WinHandler for Gui {
@@ -185,10 +188,9 @@ impl WinHandler for Gui {
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
         // let start = std::time::Instant::now();
 
-        let mut ctx = GuiContext::new(piet, &mut self.state);
-        // println!("Paint context: {:?}", ctx.state);
+        let mut ctx = GuiContext::new(piet, &mut self.subscriptions);
         (&self.ui)(&mut ctx);
-        ctx.ops.execute(piet);
+        self.subscriptions = ctx.ops.execute(piet);
         // println!("Paint done in {:?}", start.elapsed());
 
         false
@@ -198,45 +200,24 @@ impl WinHandler for Gui {
         todo!();
     }
 
-    fn size(&mut self, size: Size) {
-        self.state.size = size;
+    fn size(&mut self, _size: Size) {
+        // TODO: handle size
         self.invalidate();
     }
 
-    fn wheel(&mut self, event: &MouseEvent) {
-        // println!("wheel: {:?}", event);
-        self.state.mouse = Some((event.pos, Instant::now()));
-        self.invalidate();
-    }
+    fn wheel(&mut self, _event: &MouseEvent) {}
 
     fn mouse_move(&mut self, event: &MouseEvent) {
-        // println!("mouse_move: {:?}", event);
-        self.state.mouse = Some((event.pos, Instant::now()));
-        self.invalidate();
+        self.dispatch(Event::MouseMove(event.clone()));
     }
 
     fn mouse_down(&mut self, event: &MouseEvent) {
-        // println!("mouse_down: {:?}", event);
-        let now = Instant::now();
-        self.state.mouse = Some((event.pos, now));
-        if self.state.mouse_left_down.is_none() && event.button.is_left() {
-            self.state.mouse_left_down = Some((event.clone(), now));
-        }
-        self.invalidate();
+        self.dispatch(Event::MouseDown(event.clone()));
     }
 
     fn mouse_up(&mut self, event: &MouseEvent) {
-        // println!("mouse_up: {:?}", event);
-        self.state.mouse = Some((event.pos, Instant::now()));
-        if event.button.is_left() {
-            self.state.mouse_left_down = None;
-        }
-        self.invalidate();
+        self.subscriptions.dispatch(Event::MouseUp(event.clone()));
     }
 
-    fn mouse_leave(&mut self) {
-        // println!("mouse_leave");
-        self.state.mouse = None;
-        self.invalidate();
-    }
+    fn mouse_leave(&mut self) {}
 }
