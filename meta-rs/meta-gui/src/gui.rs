@@ -8,12 +8,12 @@ use druid_shell::piet::{
 use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
 pub use crate::events::{Event, EventType, WidgetId};
-use crate::events::{Subscription, Subscriptions};
+use crate::events::{EventQueue, Subscription};
 use crate::ops::{Op, Ops, ShapeBox};
 
 pub struct GuiContext<'a, 'b: 'a> {
     piet: &'a mut Piet<'b>,
-    subscriptions: &'a mut Subscriptions,
+    event_queue: &'a mut EventQueue,
 
     ops: Ops<'b>,
 
@@ -22,10 +22,10 @@ pub struct GuiContext<'a, 'b: 'a> {
 }
 
 impl<'a, 'b: 'a> GuiContext<'a, 'b> {
-    fn new(piet: &'a mut Piet<'b>, subscriptions: &'a mut Subscriptions) -> Self {
+    fn new(piet: &'a mut Piet<'b>, event_queue: &'a mut EventQueue) -> Self {
         GuiContext {
             piet,
-            subscriptions,
+            event_queue,
             ops: Ops::new(),
             key_stack: Vec::new(),
             now: Instant::now(),
@@ -144,14 +144,14 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
 
     pub fn events(&mut self) -> Vec<Event> {
         let widget_id = self.get_widget_id();
-        self.subscriptions.widget_events(widget_id)
+        self.event_queue.widget_events(widget_id)
     }
 }
 
 pub struct Gui {
     handle: Option<WindowHandle>,
     ui: Box<dyn FnMut(&mut GuiContext)>,
-    subscriptions: Subscriptions,
+    event_queue: EventQueue,
 }
 
 impl Gui {
@@ -159,7 +159,7 @@ impl Gui {
         let gui = Box::new(Gui {
             handle: None,
             ui: Box::new(ui),
-            subscriptions: Subscriptions::new(),
+            event_queue: EventQueue::new(),
         });
 
         let mut window_builder = WindowBuilder::new(app);
@@ -174,7 +174,7 @@ impl Gui {
     }
 
     fn dispatch(&mut self, event: Event) {
-        if self.subscriptions.dispatch(event) {
+        if self.event_queue.dispatch(event) {
             self.invalidate();
         }
     }
@@ -189,10 +189,11 @@ impl WinHandler for Gui {
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
         // let start = std::time::Instant::now();
 
-        let mut ctx = GuiContext::new(piet, &mut self.subscriptions);
+        let mut ctx = GuiContext::new(piet, &mut self.event_queue);
         (&mut self.ui)(&mut ctx);
-        self.subscriptions = ctx.ops.execute(piet);
+        let subscriptions = ctx.ops.execute(piet);
         // println!("Paint done in {:?}", start.elapsed());
+        self.event_queue.replace_subscriptions(subscriptions);
 
         false
     }
@@ -220,5 +221,7 @@ impl WinHandler for Gui {
         self.dispatch(Event::MouseUp(event.clone()));
     }
 
-    fn mouse_leave(&mut self) {}
+    fn mouse_leave(&mut self) {
+        self.dispatch(Event::MouseLeave);
+    }
 }

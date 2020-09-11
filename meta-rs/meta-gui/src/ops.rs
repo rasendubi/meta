@@ -1,7 +1,7 @@
 use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
-use crate::events::{Subscription, Subscriptions};
+use crate::events::Subscription;
 
 pub struct Ops<'a> {
     ops: Vec<Op<'a>>,
@@ -43,8 +43,8 @@ impl<'a> Ops<'a> {
         self.ops.append(&mut ops.ops);
     }
 
-    pub(crate) fn execute(&self, piet: &mut Piet<'a>) -> Subscriptions {
-        let mut subscriptions = Subscriptions::new();
+    pub(crate) fn execute(&self, piet: &mut Piet<'a>) -> Vec<Subscription> {
+        let mut subscriptions = Vec::new();
 
         let mut state_stack = Vec::new();
 
@@ -78,7 +78,7 @@ impl<'a> Ops<'a> {
                     piet.restore().unwrap();
                 }
                 Op::Subscribe(sub) => {
-                    subscriptions.subscribe(sub.transform(piet.current_transform()));
+                    subscriptions.push(sub.transform(piet.current_transform()));
                 }
             }
         }

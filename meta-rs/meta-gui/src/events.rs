@@ -12,6 +12,9 @@ bitflags! {
         const MOUSE_MOVE = 1 << 0;
         const MOUSE_DOWN = 1 << 1;
         const MOUSE_UP = 1 << 2;
+        const MOUSE_LEAVE = 1 << 3;
+        const WIDGET_ENTER = 1 << 4;
+        const WIDGET_LEAVE = 1 << 5;
     }
 }
 
@@ -20,6 +23,9 @@ pub enum Event {
     MouseMove(MouseEvent),
     MouseDown(MouseEvent),
     MouseUp(MouseEvent),
+    MouseLeave,
+    WidgetEnter,
+    WidgetLeave,
 }
 
 impl Event {
@@ -28,6 +34,9 @@ impl Event {
             Event::MouseMove(..) => EventType::MOUSE_MOVE,
             Event::MouseDown(..) => EventType::MOUSE_DOWN,
             Event::MouseUp(..) => EventType::MOUSE_UP,
+            Event::MouseLeave => EventType::MOUSE_LEAVE,
+            Event::WidgetEnter => EventType::WIDGET_ENTER,
+            Event::WidgetLeave => EventType::WIDGET_LEAVE,
         }
     }
 }
@@ -53,18 +62,20 @@ impl Subscription {
 }
 
 #[derive(Debug)]
-pub(crate) struct Subscriptions {
+pub(crate) struct EventQueue {
     grab: Vec<Subscription>,
     subscriptions: Vec<Subscription>,
     widget_events: HashMap<WidgetId, Vec<Event>>,
+    last_mouse: Option<MouseEvent>,
 }
 
-impl Subscriptions {
+impl EventQueue {
     pub fn new() -> Self {
-        Subscriptions {
+        EventQueue {
             grab: Vec::new(),
             subscriptions: Vec::new(),
             widget_events: HashMap::new(),
+            last_mouse: None,
         }
     }
 
@@ -75,19 +86,80 @@ impl Subscriptions {
         self.subscriptions.push(sub);
     }
 
+    pub fn clear_subscriptions(&mut self) {
+        self.grab.clear();
+        self.subscriptions.clear();
+    }
+
+    pub fn replace_subscriptions(&mut self, subscriptions: Vec<Subscription>) {
+        self.clear_subscriptions();
+        for sub in subscriptions {
+            self.subscribe(sub);
+        }
+    }
+
     /// Dispatch event to the event queue of the subscribed widget.
     ///
     /// Returns `true` if event was delivered to any widget, `false` otherwise.
     pub fn dispatch(&mut self, event: Event) -> bool {
-        if let Some(widget_id) = self.find_subscribed_widget(&event) {
+        let mut dispatched = if let Some(widget_id) = self.find_subscribed_widget(&event) {
             self.widget_events
                 .entry(widget_id)
                 .or_insert_with(Vec::new)
-                .push(event);
+                .push(event.clone());
             true
         } else {
             false
+        };
+
+        match event {
+            Event::MouseMove(mouse_event)
+            | Event::MouseDown(mouse_event)
+            | Event::MouseUp(mouse_event) => {
+                dispatched |= self.dispatch_widget_enter_leave(Some(mouse_event));
+            }
+            Event::MouseLeave => {
+                dispatched |= self.dispatch_widget_enter_leave(None);
+            }
+            Event::WidgetEnter | Event::WidgetLeave => {
+                panic!("dispatch called with WidgetEnter | WidgetLeave");
+            }
         }
+
+        dispatched
+    }
+
+    fn dispatch_widget_enter_leave(&mut self, new: Option<MouseEvent>) -> bool {
+        let prev = self.last_mouse.take();
+        self.last_mouse = new;
+
+        let mut dispatched = false;
+        for sub in self.subscriptions.iter() {
+            let last_in = prev
+                .as_ref()
+                .map_or(false, |mouse| sub.rect.contains(mouse.pos));
+            let new_in = self
+                .last_mouse
+                .as_ref()
+                .map_or(false, |mouse| sub.rect.contains(mouse.pos));
+
+            if last_in != new_in {
+                let event = if new_in {
+                    Event::WidgetEnter
+                } else {
+                    Event::WidgetLeave
+                };
+                if sub.events.contains(event.event_type()) {
+                    self.widget_events
+                        .entry(sub.widget_id)
+                        .or_insert_with(Vec::new)
+                        .push(event);
+                    dispatched = true;
+                }
+            }
+        }
+
+        dispatched
     }
 
     fn find_subscribed_widget(&self, event: &Event) -> Option<WidgetId> {
@@ -106,6 +178,10 @@ impl Subscriptions {
                         return Some(sub.widget_id);
                     }
                 }
+            }
+            Event::MouseLeave => {}
+            Event::WidgetEnter | Event::WidgetLeave => {
+                panic!("find_subscribed_widget called with Enter | Leave");
             }
         }
         None

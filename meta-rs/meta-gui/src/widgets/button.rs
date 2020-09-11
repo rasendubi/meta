@@ -35,7 +35,7 @@ impl<'a> Layout for Button<'a> {
 
         self.clickable.layout(ctx, Constraint::tight(size));
 
-        let is_hovered = self.clickable.is_pressed();
+        let is_hovered = self.clickable.is_hovered();
         let is_active = self.clickable.is_pressed();
         let is_clicked = is_active && is_hovered;
 
