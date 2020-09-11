@@ -1,7 +1,7 @@
 use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
-use crate::subscriptions::{Subscription, Subscriptions};
+use crate::events::{Subscription, Subscriptions};
 
 pub struct Ops<'a> {
     ops: Vec<Op<'a>>,

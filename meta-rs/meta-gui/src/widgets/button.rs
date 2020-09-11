@@ -1,5 +1,6 @@
-use crate::gui::{EventType, GuiContext};
+use crate::gui::GuiContext;
 use crate::layout::{Constraint, Layout};
+use crate::widgets::clickable::Clickable;
 use crate::widgets::inset::Inset;
 use crate::widgets::text::Text;
 
@@ -7,12 +8,13 @@ use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
 use druid_shell::piet::Color;
 
 pub struct Button<'a> {
+    clickable: &'a mut Clickable,
     text: &'a str,
 }
 
 impl<'a> Button<'a> {
-    pub fn new(text: &'a str) -> Self {
-        Button { text }
+    pub fn new(clickable: &'a mut Clickable, text: &'a str) -> Self {
+        Button { clickable, text }
     }
 }
 
@@ -31,14 +33,10 @@ impl<'a> Layout for Button<'a> {
 
         let bb = size.to_rect();
 
-        ctx.subscribe(bb, EventType::MOUSE_DOWN | EventType::MOUSE_UP);
+        self.clickable.layout(ctx, Constraint::tight(size));
 
-        for event in ctx.events() {
-            println!("got event: {:?}", event);
-        }
-
-        let is_hovered = false;
-        let is_active = false;
+        let is_hovered = self.clickable.is_pressed();
+        let is_active = self.clickable.is_pressed();
         let is_clicked = is_active && is_hovered;
 
         // drop shadows

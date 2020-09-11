@@ -22,11 +22,23 @@ pub enum Event {
     MouseUp(MouseEvent),
 }
 
+impl Event {
+    fn event_type(&self) -> EventType {
+        match self {
+            Event::MouseMove(..) => EventType::MOUSE_MOVE,
+            Event::MouseDown(..) => EventType::MOUSE_DOWN,
+            Event::MouseUp(..) => EventType::MOUSE_UP,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Subscription {
     pub widget_id: WidgetId,
     pub rect: Rect,
     pub events: EventType,
+    /// Whether to grab all events. Should be used sparingly.
+    pub grab: bool,
 }
 
 impl Subscription {
@@ -35,12 +47,14 @@ impl Subscription {
             widget_id: self.widget_id,
             rect: affine.transform_rect_bbox(self.rect),
             events: self.events,
+            grab: self.grab,
         }
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct Subscriptions {
+    grab: Vec<Subscription>,
     subscriptions: Vec<Subscription>,
     widget_events: HashMap<WidgetId, Vec<Event>>,
 }
@@ -48,12 +62,16 @@ pub(crate) struct Subscriptions {
 impl Subscriptions {
     pub fn new() -> Self {
         Subscriptions {
+            grab: Vec::new(),
             subscriptions: Vec::new(),
             widget_events: HashMap::new(),
         }
     }
 
     pub fn subscribe(&mut self, sub: Subscription) {
+        if sub.grab {
+            self.grab.push(sub);
+        }
         self.subscriptions.push(sub);
     }
 
@@ -73,10 +91,18 @@ impl Subscriptions {
     }
 
     fn find_subscribed_widget(&self, event: &Event) -> Option<WidgetId> {
+        let event_type = event.event_type();
+
+        for sub in self.grab.iter() {
+            if sub.events.contains(event_type) {
+                return Some(sub.widget_id);
+            }
+        }
+
         match event {
             Event::MouseMove(mouse) | Event::MouseDown(mouse) | Event::MouseUp(mouse) => {
                 for sub in self.subscriptions.iter() {
-                    if sub.rect.contains(mouse.pos) {
+                    if sub.events.contains(event_type) && sub.rect.contains(mouse.pos) {
                         return Some(sub.widget_id);
                     }
                 }

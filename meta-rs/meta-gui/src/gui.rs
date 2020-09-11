@@ -7,9 +7,9 @@ use druid_shell::piet::{
 };
 use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
+pub use crate::events::{Event, EventType, WidgetId};
+use crate::events::{Subscription, Subscriptions};
 use crate::ops::{Op, Ops, ShapeBox};
-pub use crate::subscriptions::{Event, EventType, WidgetId};
-use crate::subscriptions::{Subscription, Subscriptions};
 
 pub struct GuiContext<'a, 'b: 'a> {
     piet: &'a mut Piet<'b>,
@@ -132,12 +132,13 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         self.ops.push_all(ops);
     }
 
-    pub fn subscribe(&mut self, rect: Rect, events: EventType) {
+    pub fn subscribe(&mut self, rect: Rect, events: EventType, grab: bool) {
         let widget_id = self.get_widget_id();
         self.ops.push(Op::Subscribe(Subscription {
             widget_id,
             rect,
             events,
+            grab,
         }));
     }
 
@@ -149,12 +150,12 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
 
 pub struct Gui {
     handle: Option<WindowHandle>,
-    ui: Box<dyn Fn(&mut GuiContext)>,
+    ui: Box<dyn FnMut(&mut GuiContext)>,
     subscriptions: Subscriptions,
 }
 
 impl Gui {
-    pub fn run(app: Application, ui: impl Fn(&mut GuiContext) + 'static) {
+    pub fn run(app: Application, ui: impl FnMut(&mut GuiContext) + 'static) {
         let gui = Box::new(Gui {
             handle: None,
             ui: Box::new(ui),
@@ -189,7 +190,7 @@ impl WinHandler for Gui {
         // let start = std::time::Instant::now();
 
         let mut ctx = GuiContext::new(piet, &mut self.subscriptions);
-        (&self.ui)(&mut ctx);
+        (&mut self.ui)(&mut ctx);
         self.subscriptions = ctx.ops.execute(piet);
         // println!("Paint done in {:?}", start.elapsed());
 
@@ -216,7 +217,7 @@ impl WinHandler for Gui {
     }
 
     fn mouse_up(&mut self, event: &MouseEvent) {
-        self.subscriptions.dispatch(Event::MouseUp(event.clone()));
+        self.dispatch(Event::MouseUp(event.clone()));
     }
 
     fn mouse_leave(&mut self) {}
