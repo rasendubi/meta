@@ -61,7 +61,10 @@ fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
     false
 }
 
-pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>> {
+pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>>
+where
+    T: Clone,
+{
     let mut out = vec![];
 
     let mut cmds = vec![(0, Mode::Break, doc)];

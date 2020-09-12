@@ -27,6 +27,7 @@ pub(crate) enum Op<'a> {
 
 /// A wrapper around common Shapes.
 pub(crate) enum ShapeBox {
+    Rect(Rect),
     RoundedRect(RoundedRect),
 }
 
@@ -60,6 +61,7 @@ impl<'a> Ops<'a> {
                 }
                 Op::Clear(color) => piet.clear(color.clone()),
                 Op::Fill(shape) => match shape {
+                    ShapeBox::Rect(x) => piet.fill(&x, &current_brush),
                     ShapeBox::RoundedRect(x) => piet.fill(&x, &current_brush),
                 },
                 Op::BlurredRect { rect, blur_radius } => {
@@ -97,6 +99,10 @@ impl ShapeBox {
     pub fn from_shape(shape: impl Shape) -> Self {
         if let Some(rounded_rect) = shape.as_rounded_rect() {
             return ShapeBox::RoundedRect(rounded_rect);
+        }
+
+        if let Some(rect) = shape.as_rect() {
+            return ShapeBox::Rect(rect);
         }
 
         todo!("rest of shapes");

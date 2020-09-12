@@ -14,6 +14,7 @@
           pkgs.clippy
           pkgs.rustPlatform.rustcSrc
           pkgs.rustup
+          pkgs.rust-analyzer
 
           pkgs.gtk3
         ];

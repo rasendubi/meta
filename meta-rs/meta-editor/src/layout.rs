@@ -5,7 +5,7 @@ pub type Doc = RichDoc<EditorCellPayload>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EditorCellPayload {
-    text: CellText,
+    pub text: CellText,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

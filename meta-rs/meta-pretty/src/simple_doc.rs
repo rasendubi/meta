@@ -1,19 +1,29 @@
 pub use crate::rich_doc::Cell;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub enum SimpleDoc<'a, T> {
-    Cell(&'a Cell<T>),
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
+pub enum SimpleDoc<T> {
+    Cell(Cell<T>),
     Linebreak { indent_width: usize },
 }
 
-impl<'a, T> SimpleDoc<'a, T> {
+impl<T> SimpleDoc<T> {
     #[inline]
-    pub fn cell(cell: &'a Cell<T>) -> Self {
+    pub fn from_cell(cell: Cell<T>) -> Self {
         SimpleDoc::Cell(cell)
     }
 
     #[inline]
     pub fn linebreak(indent_width: usize) -> Self {
         SimpleDoc::Linebreak { indent_width }
+    }
+}
+
+impl<T> SimpleDoc<T>
+where
+    T: Clone,
+{
+    #[inline]
+    pub fn cell(cell: &Cell<T>) -> Self {
+        SimpleDoc::Cell(cell.clone())
     }
 }

@@ -18,7 +18,10 @@ impl<'a> Text<'a> {
         Text {
             text,
             font_name: "Roboto",
-            font_size: 8.5,
+            // Piet's text layout is awful. Text width reported by TextLayout is always wrong and
+            // the error offset depends on the font size. With this font size the error is bearable
+            // (at least for the short strings).
+            font_size: 10.0,
             color: Color::BLACK,
             width: f64::INFINITY,
         }
@@ -51,6 +54,10 @@ impl Layout for Text<'_> {
         let text_layout = ctx
             .new_text_layout(&font, self.text, Some(self.width))
             .unwrap();
+
+        if text_layout.line_count() == 0 {
+            return Size::ZERO;
+        }
 
         let last_line = text_layout
             .line_metric(text_layout.line_count() - 1)
