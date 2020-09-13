@@ -1,7 +1,7 @@
-use meta_pretty::{RichDoc, SimpleDoc};
+use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::Field;
 
-pub type Doc = RichDoc<EditorCellPayload>;
+pub type Doc = RichDoc<EditorCellPayload, ()>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EditorCellPayload {
@@ -41,19 +41,19 @@ pub fn line() -> Doc {
     ))
 }
 
-pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload>]) -> String {
+pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload, ()>]) -> String {
     let mut out = String::new();
 
     for doc in sdoc {
-        match doc {
-            SimpleDoc::Linebreak { indent_width } => {
+        match &doc.kind {
+            SimpleDocKind::Linebreak { indent_width } => {
                 out.reserve(indent_width + 1);
                 out.push('\r');
                 for _ in 0..*indent_width {
                     out.push(' ');
                 }
             }
-            SimpleDoc::Cell(cell) => {
+            SimpleDocKind::Cell(cell) => {
                 out.push_str(cell.payload.text.as_ref());
             }
         }

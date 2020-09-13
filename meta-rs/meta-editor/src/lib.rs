@@ -9,7 +9,7 @@ use meta_gui::{Constraint, Direction, Gui, GuiContext, Layout, List, Text};
 use crate::core_layout::core_layout_entities;
 use crate::layout::EditorCellPayload;
 use meta_core::MetaCore;
-use meta_pretty::SimpleDoc;
+use meta_pretty::{SimpleDoc, SimpleDocKind};
 use meta_store::MetaStore;
 
 pub fn main(store: MetaStore) {
@@ -27,7 +27,7 @@ pub fn main(store: MetaStore) {
 }
 
 struct Editor {
-    layout: Vec<Vec<SimpleDoc<EditorCellPayload>>>,
+    layout: Vec<Vec<SimpleDoc<EditorCellPayload, ()>>>,
 }
 
 impl Editor {
@@ -41,15 +41,15 @@ impl Editor {
     }
 }
 
-struct CellWidget<'a>(&'a SimpleDoc<EditorCellPayload>);
+struct CellWidget<'a>(&'a SimpleDoc<EditorCellPayload, ()>);
 
 impl<'a> Layout for CellWidget<'a> {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
-        match self.0 {
-            SimpleDoc::Cell(cell) => Text::new(cell.payload.text.as_ref())
+        match &self.0.kind {
+            SimpleDocKind::Cell(cell) => Text::new(cell.payload.text.as_ref())
                 .with_font("Input")
                 .layout(ctx, constraint),
-            SimpleDoc::Linebreak { indent_width } => {
+            SimpleDocKind::Linebreak { indent_width } => {
                 let mut s = String::with_capacity(*indent_width);
                 for _ in 0..*indent_width {
                     s.push(' ');
@@ -60,11 +60,11 @@ impl<'a> Layout for CellWidget<'a> {
     }
 }
 
-fn layout_to_2d<T>(layout: Vec<SimpleDoc<T>>) -> Vec<Vec<SimpleDoc<T>>> {
+fn layout_to_2d<T, M>(layout: Vec<SimpleDoc<T, M>>) -> Vec<Vec<SimpleDoc<T, M>>> {
     let mut result = vec![Vec::new()];
 
     for cell in layout.into_iter() {
-        if let SimpleDoc::Linebreak { .. } = cell {
+        if let SimpleDocKind::Linebreak { .. } = cell.kind {
             result.push(Vec::new());
         }
 

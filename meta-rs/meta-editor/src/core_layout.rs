@@ -9,7 +9,7 @@ use meta_store::Field;
 
 use crate::layout::{field, line, punctuation, EditorCellPayload};
 
-type Doc = RichDoc<EditorCellPayload>;
+type Doc = RichDoc<EditorCellPayload, ()>;
 
 fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
     RichDoc::concat(vec![left, doc, right])
@@ -32,10 +32,7 @@ fn core_layout_value(_core: &MetaCore, _attribute: &Field, value: &Field) -> Doc
     surround(punctuation("\""), punctuation("\""), field(value))
 }
 
-fn core_layout_attribute(
-    core: &MetaCore,
-    attr: (&Field, &HashSet<Field>),
-) -> RichDoc<EditorCellPayload> {
+fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Field>)) -> Doc {
     let (attr, values) = attr;
     RichDoc::concat(vec![
         RichDoc::linebreak(),
