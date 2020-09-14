@@ -1,6 +1,8 @@
 use std::any::Any;
 use std::time::Instant;
 
+use log::trace;
+
 use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
 use druid_shell::piet::{
     Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
@@ -187,14 +189,14 @@ impl WinHandler for Gui {
     }
 
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
-        // let start = std::time::Instant::now();
+        let start = std::time::Instant::now();
 
         let mut ctx = GuiContext::new(piet, &mut self.event_queue);
         (&mut self.ui)(&mut ctx);
         let subscriptions = ctx.ops.execute(piet);
-        // println!("Paint done in {:?}", start.elapsed());
         self.event_queue.replace_subscriptions(subscriptions);
 
+        trace!("Paint done in {:?}", start.elapsed());
         false
     }
 

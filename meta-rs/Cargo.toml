@@ -5,6 +5,8 @@ authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+env_logger = "^0.7.1"
+
 meta-store = { path = "./meta-store" }
 meta-core = { path = "./meta-core" }
 meta-editor = { path = "./meta-editor" }
