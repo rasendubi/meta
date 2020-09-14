@@ -2,7 +2,7 @@ use crate::gui::GuiContext;
 use crate::layout::*;
 
 use druid_shell::kurbo::{Point, Size};
-use druid_shell::piet::{Color, TextLayout};
+use druid_shell::piet::{Color, Piet, RenderContext, Text as PietText, TextLayout};
 
 #[derive(Debug)]
 pub struct Text<'a> {
@@ -41,19 +41,23 @@ impl<'a> Text<'a> {
         self.color = color;
         self
     }
+
+    pub fn text_layout(
+        &self,
+        ctx: &mut GuiContext,
+    ) -> Result<<<Piet as RenderContext>::Text as PietText>::TextLayout, druid_shell::piet::Error>
+    {
+        let font = ctx.new_font_by_name(self.font_name, self.font_size)?;
+
+        ctx.new_text_layout(&font, self.text, Some(self.width))
+    }
 }
 
 impl Layout for Text<'_> {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         self.width = constraint.max.width;
 
-        let font = ctx
-            .new_font_by_name(self.font_name, self.font_size)
-            .unwrap();
-
-        let text_layout = ctx
-            .new_text_layout(&font, self.text, Some(self.width))
-            .unwrap();
+        let text_layout = self.text_layout(ctx).unwrap();
 
         if text_layout.line_count() == 0 {
             return Size::ZERO;

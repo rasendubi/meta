@@ -28,4 +28,18 @@ impl<T, M> SimpleDoc<T, M> {
             kind: SimpleDocKind::Cell(cell),
         }
     }
+
+    pub fn with_meta<M2>(self, meta: M2) -> SimpleDoc<T, M2> {
+        SimpleDoc {
+            meta,
+            kind: self.kind,
+        }
+    }
+
+    pub fn map_meta<F: FnOnce(M) -> M2, M2>(self, f: F) -> SimpleDoc<T, M2> {
+        SimpleDoc {
+            meta: f(self.meta),
+            kind: self.kind,
+        }
+    }
 }
