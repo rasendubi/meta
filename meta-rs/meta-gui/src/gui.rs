@@ -7,7 +7,9 @@ use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
 use druid_shell::piet::{
     Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
 };
-use druid_shell::{Application, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
+use druid_shell::{
+    Application, KeyCode, KeyEvent, MouseEvent, WinHandler, WindowBuilder, WindowHandle,
+};
 
 pub use crate::events::{Event, EventType, WidgetId};
 use crate::events::{EventQueue, Subscription};
@@ -144,6 +146,10 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         }));
     }
 
+    pub fn grab_focus(&mut self) {
+        self.ops.push(Op::GrabFocus(self.get_widget_id()));
+    }
+
     pub fn events(&mut self) -> Vec<Event> {
         let widget_id = self.get_widget_id();
         self.event_queue.widget_events(widget_id)
@@ -175,10 +181,12 @@ impl Gui {
         self.handle.as_mut().unwrap().invalidate();
     }
 
-    fn dispatch(&mut self, event: Event) {
-        if self.event_queue.dispatch(event) {
+    fn dispatch(&mut self, event: Event) -> bool {
+        let dispatched = self.event_queue.dispatch(event);
+        if dispatched {
             self.invalidate();
         }
+        dispatched
     }
 }
 
@@ -186,6 +194,7 @@ impl WinHandler for Gui {
     fn connect(&mut self, handle: &WindowHandle) {
         self.handle = Some(handle.clone());
         handle.show();
+        trace!("scale: {:?}", handle.get_scale());
     }
 
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
@@ -193,23 +202,30 @@ impl WinHandler for Gui {
 
         let mut ctx = GuiContext::new(piet, &mut self.event_queue);
         (&mut self.ui)(&mut ctx);
-        let subscriptions = ctx.ops.execute(piet);
-        self.event_queue.replace_subscriptions(subscriptions);
+        let execution_result = ctx.ops.execute(piet);
+        self.event_queue
+            .replace_subscriptions(execution_result.subscriptions);
+        let invalid = self
+            .event_queue
+            .handle_grab_focus_requests(execution_result.grab_focus_requests);
 
         trace!("Paint done in {:?}", start.elapsed());
-        false
+        invalid
     }
 
     fn as_any(&mut self) -> &mut dyn Any {
         todo!();
     }
 
-    fn size(&mut self, _size: Size) {
+    fn size(&mut self, size: Size) {
+        trace!("size({:?})", size);
         // TODO: handle size
         self.invalidate();
     }
 
-    fn wheel(&mut self, _event: &MouseEvent) {}
+    fn wheel(&mut self, event: &MouseEvent) {
+        self.dispatch(Event::MouseWheel(event.clone()));
+    }
 
     fn mouse_move(&mut self, event: &MouseEvent) {
         self.dispatch(Event::MouseMove(event.clone()));
@@ -225,5 +241,27 @@ impl WinHandler for Gui {
 
     fn mouse_leave(&mut self) {
         self.dispatch(Event::MouseLeave);
+    }
+
+    fn key_down(&mut self, event: KeyEvent) -> bool {
+        self.dispatch(Event::KeyDown(event))
+    }
+
+    fn key_up(&mut self, event: KeyEvent) {
+        self.dispatch(Event::KeyUp(event));
+    }
+
+    fn got_focus(&mut self) {
+        trace!("got_focus()");
+    }
+}
+
+#[allow(dead_code)]
+fn is_modifier(code: &KeyCode) -> bool {
+    use KeyCode::*;
+    match code {
+        LeftControl | RightControl | LeftAlt | RightAlt | LeftShift | RightShift | LeftMeta
+        | RightMeta => true,
+        _ => false,
     }
 }

@@ -1,7 +1,7 @@
 use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
-use crate::events::Subscription;
+use crate::events::{Subscription, WidgetId};
 
 pub struct Ops<'a> {
     ops: Vec<Op<'a>>,
@@ -23,12 +23,19 @@ pub(crate) enum Op<'a> {
     Save,
     Restore,
     Subscribe(Subscription),
+    GrabFocus(WidgetId),
 }
 
 /// A wrapper around common Shapes.
 pub(crate) enum ShapeBox {
     Rect(Rect),
     RoundedRect(RoundedRect),
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct ExecutionResult {
+    pub subscriptions: Vec<Subscription>,
+    pub grab_focus_requests: Vec<WidgetId>,
 }
 
 impl<'a> Ops<'a> {
@@ -44,8 +51,8 @@ impl<'a> Ops<'a> {
         self.ops.append(&mut ops.ops);
     }
 
-    pub(crate) fn execute(&self, piet: &mut Piet<'a>) -> Vec<Subscription> {
-        let mut subscriptions = Vec::new();
+    pub(crate) fn execute(&self, piet: &mut Piet<'a>) -> ExecutionResult {
+        let mut result = ExecutionResult::default();
 
         let mut state_stack = Vec::new();
 
@@ -80,12 +87,17 @@ impl<'a> Ops<'a> {
                     piet.restore().unwrap();
                 }
                 Op::Subscribe(sub) => {
-                    subscriptions.push(sub.transform(piet.current_transform()));
+                    result
+                        .subscriptions
+                        .push(sub.transform(piet.current_transform()));
+                }
+                Op::GrabFocus(widget_id) => {
+                    result.grab_focus_requests.push(*widget_id);
                 }
             }
         }
 
-        subscriptions
+        result
     }
 }
 

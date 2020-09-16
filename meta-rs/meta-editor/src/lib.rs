@@ -1,10 +1,12 @@
 pub mod core_layout;
 pub mod layout;
 
+use log::debug;
+
 use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::piet::{Color, TextLayout};
 use druid_shell::Application;
-use meta_gui::{Constraint, Direction, Gui, GuiContext, Inset, Layout, List, Text};
+use meta_gui::{Constraint, Direction, EventType, Gui, GuiContext, Inset, Layout, List, Text};
 
 use crate::core_layout::core_layout_entities;
 use crate::layout::EditorCellPayload;
@@ -69,6 +71,13 @@ impl Editor {
             Insets::uniform(10.0),
         )
         .layout(ctx, Constraint::unbound());
+
+        ctx.grab_focus();
+        ctx.subscribe(Rect::ZERO, EventType::FOCUS | EventType::KEY_UP, false);
+
+        for x in ctx.events() {
+            debug!("Editor got event: {:?}", x);
+        }
     }
 }
 

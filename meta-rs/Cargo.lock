@@ -694,6 +694,7 @@ version = "0.1.0"
 dependencies = [
  "druid-shell",
  "itertools",
+ "log",
  "maplit",
  "meta-core",
  "meta-gui",
