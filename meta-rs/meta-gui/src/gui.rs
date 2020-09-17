@@ -259,9 +259,15 @@ impl WinHandler for Gui {
 #[allow(dead_code)]
 fn is_modifier(code: &KeyCode) -> bool {
     use KeyCode::*;
-    match code {
-        LeftControl | RightControl | LeftAlt | RightAlt | LeftShift | RightShift | LeftMeta
-        | RightMeta => true,
-        _ => false,
-    }
+    matches!(
+        code,
+        LeftControl
+            | RightControl
+            | LeftAlt
+            | RightAlt
+            | LeftShift
+            | RightShift
+            | LeftMeta
+            | RightMeta
+    )
 }
