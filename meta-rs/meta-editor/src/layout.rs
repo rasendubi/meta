@@ -1,4 +1,4 @@
-use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
+use meta_pretty::RichDoc;
 use meta_store::Field;
 
 pub type Doc = RichDoc<EditorCellPayload, ()>;
@@ -39,27 +39,6 @@ pub fn line() -> Doc {
             text: CellText::Literal(" "),
         },
     ))
-}
-
-pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload, ()>]) -> String {
-    let mut out = String::new();
-
-    for doc in sdoc {
-        match &doc.kind {
-            SimpleDocKind::Linebreak { indent_width } => {
-                out.reserve(indent_width + 1);
-                out.push('\r');
-                for _ in 0..*indent_width {
-                    out.push(' ');
-                }
-            }
-            SimpleDocKind::Cell(cell) => {
-                out.push_str(cell.payload.text.as_ref());
-            }
-        }
-    }
-
-    out
 }
 
 impl AsRef<str> for CellText {
