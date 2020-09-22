@@ -24,6 +24,7 @@ pub(crate) enum Op<'a> {
     Restore,
     Subscribe(Subscription),
     GrabFocus(WidgetId),
+    Invalidate,
 }
 
 /// A wrapper around common Shapes.
@@ -36,6 +37,7 @@ pub(crate) enum ShapeBox {
 pub(crate) struct ExecutionResult {
     pub subscriptions: Vec<Subscription>,
     pub grab_focus_requests: Vec<WidgetId>,
+    pub invalidated: bool,
 }
 
 impl<'a> Ops<'a> {
@@ -93,6 +95,9 @@ impl<'a> Ops<'a> {
                 }
                 Op::GrabFocus(widget_id) => {
                     result.grab_focus_requests.push(*widget_id);
+                }
+                Op::Invalidate => {
+                    result.invalidated = true;
                 }
             }
         }

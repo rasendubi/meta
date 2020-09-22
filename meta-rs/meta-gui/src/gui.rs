@@ -154,12 +154,17 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         let widget_id = self.get_widget_id();
         self.event_queue.widget_events(widget_id)
     }
+
+    pub fn invalidate(&mut self) {
+        self.ops.push(Op::Invalidate);
+    }
 }
 
 pub struct Gui {
     handle: Option<WindowHandle>,
     ui: Box<dyn FnMut(&mut GuiContext)>,
     event_queue: EventQueue,
+    interaction: Option<Instant>,
 }
 
 impl Gui {
@@ -168,6 +173,7 @@ impl Gui {
             handle: None,
             ui: Box::new(ui),
             event_queue: EventQueue::new(),
+            interaction: None,
         });
 
         let mut window_builder = WindowBuilder::new(app);
@@ -182,8 +188,10 @@ impl Gui {
     }
 
     fn dispatch(&mut self, event: Event) -> bool {
+        let now = Instant::now();
         let dispatched = self.event_queue.dispatch(event);
         if dispatched {
+            self.interaction = Some(now);
             self.invalidate();
         }
         dispatched
@@ -207,9 +215,21 @@ impl WinHandler for Gui {
             .replace_subscriptions(execution_result.subscriptions);
         let invalid = self
             .event_queue
-            .handle_grab_focus_requests(execution_result.grab_focus_requests);
+            .handle_grab_focus_requests(execution_result.grab_focus_requests)
+            || execution_result.invalidated;
 
-        trace!("Paint done in {:?}", start.elapsed());
+        trace!(target: "performance", "Paint done in {:?}", start.elapsed());
+
+        if invalid {
+            if let Some(interaction) = self.interaction {
+                trace!(target: "performance", "Draw after interaction {:?}", interaction.elapsed());
+            }
+        } else {
+            if let Some(interaction) = self.interaction.take() {
+                trace!(target: "performance", "Draw after interaction {:?} (last)", interaction.elapsed());
+            }
+        }
+
         invalid
     }
 

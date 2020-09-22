@@ -29,6 +29,13 @@ impl<T, M> SimpleDoc<T, M> {
         }
     }
 
+    pub fn width(&self) -> usize {
+        match &self.kind {
+            SimpleDocKind::Cell(cell) => cell.width,
+            SimpleDocKind::Linebreak { indent_width } => *indent_width,
+        }
+    }
+
     pub fn with_meta<M2>(self, meta: M2) -> SimpleDoc<T, M2> {
         SimpleDoc {
             meta,

@@ -2,8 +2,8 @@ use log::Level::Trace;
 use log::{debug, log_enabled, trace};
 
 use druid_shell::kurbo::{Insets, Rect, Size};
-use druid_shell::piet::Color;
-use meta_gui::{Constraint, Direction, EventType, GuiContext, Inset, Layout, List};
+use druid_shell::{piet::Color, KeyCode};
+use meta_gui::{Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List};
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_entities;
@@ -14,9 +14,29 @@ use meta_store::MetaStore;
 
 pub type LayoutMeta = WithEnumerate<WithPath<()>>;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum CursorPosition<M> {
+    Inside {
+        cell: SimpleDoc<EditorCellPayload, M>,
+        offset: usize,
+    },
+    #[allow(dead_code)]
+    Between(
+        SimpleDoc<EditorCellPayload, M>,
+        SimpleDoc<EditorCellPayload, M>,
+    ),
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct CellPosition {
+    row: usize,
+    col: usize,
+}
+
 pub struct Editor {
     layout: Vec<Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>>,
     cursor: Option<CursorPosition<LayoutMeta>>,
+    pos: CellPosition,
 }
 
 impl Editor {
@@ -30,16 +50,43 @@ impl Editor {
         }
 
         let layout = enumerate(layout_to_2d(sdoc));
+        let pos = CellPosition { row: 0, col: 0 };
+        let cursor = Editor::cell_position_to_cursor(&layout, &pos);
 
-        let cursor = layout
-            .first()
-            .and_then(|x| x.first())
+        Editor {
+            layout,
+            pos,
+            cursor,
+        }
+    }
+
+    fn move_cursor(&mut self, drow: isize, dcol: isize) {
+        let pos = CellPosition {
+            row: (self.pos.row as isize + drow) as usize,
+            col: (self.pos.col as isize + dcol) as usize,
+        };
+        let cursor = Self::cell_position_to_cursor(&self.layout, &pos);
+
+        self.pos = pos;
+        self.cursor = cursor;
+    }
+
+    fn cell_position_to_cursor(
+        layout: &[Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>],
+        pos: &CellPosition,
+    ) -> Option<CursorPosition<LayoutMeta>> {
+        let CellPosition { row, col } = pos;
+        layout
+            .get(*row)
+            .and_then(|r| {
+                r.iter()
+                    .find(|cell| cell.meta.pos.col + cell.width() >= *col)
+                    .or_else(|| r.last())
+            })
             .map(|cell| CursorPosition::Inside {
                 cell: cell.clone(),
-                offset: 0,
-            });
-
-        Editor { layout, cursor }
+                offset: std::cmp::min(col - cell.meta.pos.col, cell.width()),
+            })
     }
 }
 
@@ -59,10 +106,22 @@ impl Layout for Editor {
         .layout(ctx, Constraint::unbound());
 
         ctx.grab_focus();
-        ctx.subscribe(Rect::ZERO, EventType::FOCUS | EventType::KEY_UP, false);
+        ctx.subscribe(Rect::ZERO, EventType::FOCUS | EventType::KEY_DOWN, false);
 
         for x in ctx.events() {
             debug!("Editor got event: {:?}", x);
+            #[allow(clippy::single_match)]
+            match x {
+                Event::KeyDown(key) => match key.key_code {
+                    KeyCode::ArrowLeft => self.move_cursor(0, -1),
+                    KeyCode::ArrowUp => self.move_cursor(-1, 0),
+                    KeyCode::ArrowDown => self.move_cursor(1, 0),
+                    KeyCode::ArrowRight => self.move_cursor(0, 1),
+                    _ => {}
+                },
+                _ => {}
+            }
+            ctx.invalidate();
         }
 
         constraint.max
@@ -80,36 +139,22 @@ fn enumerate<T, M>(layout: Vec<Vec<SimpleDoc<T, M>>>) -> Vec<Vec<SimpleDoc<T, Wi
         .into_iter()
         .enumerate()
         .map(|(row_id, row)| {
+            let mut column = 0;
             row.into_iter()
-                .enumerate()
-                .map(|(index, cell)| {
-                    cell.map_meta(|meta| WithEnumerate {
+                .map(|cell| {
+                    let cell = cell.map_meta(|meta| WithEnumerate {
                         meta,
-                        pos: CellPosition { row: row_id, index },
-                    })
+                        pos: CellPosition {
+                            row: row_id,
+                            col: column,
+                        },
+                    });
+                    column += cell.width();
+                    cell
                 })
                 .collect()
         })
         .collect()
-}
-
-pub enum CursorPosition<M> {
-    Inside {
-        cell: SimpleDoc<EditorCellPayload, M>,
-        offset: usize,
-    },
-    #[allow(dead_code)]
-    Between(
-        SimpleDoc<EditorCellPayload, M>,
-        SimpleDoc<EditorCellPayload, M>,
-    ),
-}
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct CellPosition {
-    row: usize,
-    /// Index within the row.
-    index: usize,
 }
 
 fn layout_to_2d<T, M>(layout: Vec<SimpleDoc<T, M>>) -> Vec<Vec<SimpleDoc<T, M>>> {
