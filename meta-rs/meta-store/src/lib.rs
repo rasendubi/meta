@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use im::{HashMap, HashSet};
 
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
@@ -233,7 +233,7 @@ impl From<serde_json::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use maplit::{hashmap, hashset};
+    use im::{hashmap, hashset};
     use serde_json;
     use std::str::FromStr;
 

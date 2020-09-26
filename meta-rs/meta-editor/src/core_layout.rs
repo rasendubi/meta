@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use im::HashSet;
 
 use itertools::Itertools;
 use maplit::hashset;
