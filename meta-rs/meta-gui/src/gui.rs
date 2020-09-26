@@ -224,10 +224,8 @@ impl WinHandler for Gui {
             if let Some(interaction) = self.interaction {
                 trace!(target: "performance", "Draw after interaction {:?}", interaction.elapsed());
             }
-        } else {
-            if let Some(interaction) = self.interaction.take() {
-                trace!(target: "performance", "Draw after interaction {:?} (last)", interaction.elapsed());
-            }
+        } else if let Some(interaction) = self.interaction.take() {
+            trace!(target: "performance", "Draw after interaction {:?} (last)", interaction.elapsed());
         }
 
         invalid
