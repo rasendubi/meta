@@ -6,7 +6,7 @@ use meta_gui::{Constraint, GuiContext, Layout, Text};
 use meta_pretty::{SimpleDoc, SimpleDocKind};
 
 use crate::editor::CursorPosition;
-use crate::layout::EditorCellPayload;
+use crate::layout::{CellClass, EditorCellPayload};
 
 pub(crate) struct CellWidget<'a, M>(
     pub &'a SimpleDoc<EditorCellPayload, M>,
@@ -18,18 +18,38 @@ where
     M: PartialEq,
 {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
-        let string = match &self.0.kind {
-            SimpleDocKind::Cell(cell) => cell.payload.text.as_ref().to_string(),
-            SimpleDocKind::Linebreak { indent_width } => {
-                let mut s = String::with_capacity(*indent_width);
-                for _ in 0..*indent_width {
-                    s.push(' ');
-                }
-                s
+        let (string, class) = match &self.0.kind {
+            SimpleDocKind::Cell(cell) => {
+                (cell.payload.text.as_ref().to_string(), cell.payload.class)
             }
+            SimpleDocKind::Linebreak { indent_width } => (
+                {
+                    let mut s = String::with_capacity(*indent_width);
+                    for _ in 0..*indent_width {
+                        s.push(' ');
+                    }
+                    s
+                },
+                CellClass::Whitespace,
+            ),
         };
-        let mut text = Text::new(&string).with_font("Input");
-        let (size, text_ops) = ctx.capture(|ctx| text.layout(ctx, constraint));
+
+        let text_color = match class {
+            CellClass::Editable => Color::rgb8(0, 0x30, 0xa6),
+            CellClass::Punctuation => Color::rgb8(0x50, 0x50, 0x50),
+            _ => Color::BLACK,
+        };
+        let mut text = Text::new(&string).with_font("Input").with_color(text_color);
+        let (text_size, text_ops) = ctx.capture(|ctx| text.layout(ctx, constraint));
+
+        // Empty strings layout as 0x0 size, which makes empty rows collapse. We still want to show
+        // empty rows of proper size, we draw a placeholder whitespace to calculate the height of
+        // the line.
+        let min_height = Text::new(&" ")
+            .with_font("Input")
+            .layout(ctx, constraint)
+            .height;
+        let size = Size::new(text_size.width, text_size.height.max(min_height));
 
         match &self.1 {
             Some(CursorPosition::Inside { cell, offset }) if cell.meta == self.0.meta => {
@@ -39,16 +59,14 @@ where
                 ctx.replay(text_ops);
                 let text_layout = text.text_layout(ctx).unwrap();
                 let x = text_layout.hit_test_text_position(*offset).unwrap().point.x;
-                let brush = ctx.solid_brush(Color::BLACK);
-                ctx.fill(Rect::new(x - 0.5, 0.0, x + 0.5, size.height), &brush);
+                Cursor(x, size.height).layout(ctx, constraint);
             }
             Some(CursorPosition::Between(_after, before)) if before.meta == self.0.meta => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
 
                 ctx.replay(text_ops);
-                let brush = ctx.solid_brush(Color::BLACK);
-                ctx.fill(Rect::new(-0.5, 0.0, 0.5, size.height), &brush);
+                Cursor(0.0, size.height).layout(ctx, constraint);
             }
             _ => {
                 ctx.replay(text_ops);
@@ -56,5 +74,17 @@ where
         }
 
         size
+    }
+}
+
+struct Cursor(f64, f64);
+
+impl Layout for Cursor {
+    fn layout(&mut self, ctx: &mut GuiContext, _constraint: Constraint) -> Size {
+        let Cursor(x, height) = *self;
+        let brush = ctx.solid_brush(Color::BLACK);
+        ctx.fill(Rect::new(x - 0.5, 0.0, x + 0.5, height), &brush);
+
+        Size::new(x + 0.5, height)
     }
 }

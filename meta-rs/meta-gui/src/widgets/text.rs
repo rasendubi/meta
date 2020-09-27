@@ -20,7 +20,7 @@ impl<'a> Text<'a> {
             font_name: "Roboto",
             // Piet's text layout is awful. Text width reported by TextLayout is always wrong and
             // the error offset depends on the font size. With this font size the error is bearable
-            // (at least for the short strings).
+            // (at least for short strings).
             font_size: 10.0,
             color: Color::BLACK,
             width: f64::INFINITY,
