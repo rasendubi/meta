@@ -7,7 +7,7 @@ use meta_core::MetaCore;
 use meta_pretty::RichDoc;
 use meta_store::Field;
 
-use crate::layout::{field, line, punctuation, EditorCellPayload};
+use crate::layout::{field, line, punctuation, whitespace, EditorCellPayload};
 
 type Doc = RichDoc<EditorCellPayload, ()>;
 
@@ -40,7 +40,7 @@ fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Field>)) -> Do
             2,
             RichDoc::concat(vec![
                 annotate(core, attr),
-                punctuation(" "),
+                whitespace(" "),
                 punctuation("="),
                 line(),
                 RichDoc::concat(
@@ -72,11 +72,11 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
 
     RichDoc::concat(vec![
         annotate(core, entity),
-        punctuation(" "),
+        whitespace(" "),
         punctuation(":"),
-        punctuation(" "),
+        whitespace(" "),
         type_.map_or_else(RichDoc::empty, |x| annotate(core, x)),
-        punctuation(" "),
+        whitespace(" "),
         punctuation("{"),
         RichDoc::nest(
             2,

@@ -2,8 +2,8 @@ pub use crate::rich_doc::Cell;
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub struct SimpleDoc<T, M> {
-    pub meta: M,
     pub kind: SimpleDocKind<T>,
+    pub meta: M,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]

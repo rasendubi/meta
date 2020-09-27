@@ -7,10 +7,11 @@ use meta_gui::{Constraint, Direction, Event, EventType, GuiContext, Inset, Layou
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_entities;
-use crate::layout::EditorCellPayload;
+use crate::layout::{cmp_priority, EditorCellPayload};
 use meta_core::MetaCore;
 use meta_pretty::{SimpleDoc, SimpleDocKind, WithPath};
 use meta_store::MetaStore;
+use std::cmp::Ordering;
 
 pub type LayoutMeta = WithEnumerate<WithPath<()>>;
 
@@ -20,7 +21,6 @@ pub enum CursorPosition<M> {
         cell: SimpleDoc<EditorCellPayload, M>,
         offset: usize,
     },
-    #[allow(dead_code)]
     Between(
         SimpleDoc<EditorCellPayload, M>,
         SimpleDoc<EditorCellPayload, M>,
@@ -79,14 +79,54 @@ impl Editor {
         layout
             .get(*row)
             .and_then(|r| {
-                r.iter()
-                    .find(|cell| cell.meta.pos.col + cell.width() >= *col)
-                    .or_else(|| r.last())
+                let m = r
+                    .iter()
+                    .try_fold(None, |acc: Option<&SimpleDoc<_, _>>, cell| {
+                        let left = cell.meta.pos.col;
+                        let right = left + cell.width();
+                        if *col < left || right <= *col {
+                            Ok(Some(cell))
+                        } else if left == *col {
+                            Err(match acc {
+                                None => CursorPosition::Inside {
+                                    cell: cell.clone(),
+                                    offset: col - left,
+                                },
+                                Some(prev) => CursorPosition::Between(prev.clone(), cell.clone()),
+                            })
+                        } else {
+                            // strictly inside cell
+                            Err(CursorPosition::Inside {
+                                cell: cell.clone(),
+                                offset: col - left,
+                            })
+                        }
+                    });
+                match m {
+                    Err(position) => Some(position),
+                    Ok(mcell) => mcell.map(|cell| CursorPosition::Inside {
+                        cell: cell.clone(),
+                        offset: cell.width(),
+                    }),
+                }
             })
-            .map(|cell| CursorPosition::Inside {
-                cell: cell.clone(),
-                offset: std::cmp::min(col - cell.meta.pos.col, cell.width()),
-            })
+            .map(Self::resolve_cursor_priority)
+    }
+
+    fn resolve_cursor_priority<T>(cursor: CursorPosition<T>) -> CursorPosition<T> {
+        match cursor {
+            CursorPosition::Inside { .. } => cursor,
+            CursorPosition::Between(left, right) => match cmp_priority(&left, &right) {
+                Ordering::Less | Ordering::Equal => CursorPosition::Inside {
+                    cell: right,
+                    offset: 0,
+                },
+                Ordering::Greater => CursorPosition::Inside {
+                    offset: left.width(),
+                    cell: left,
+                },
+            },
+        }
     }
 }
 
