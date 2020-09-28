@@ -32,17 +32,17 @@ impl<'a> From<&'a str> for Field {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Datom {
     entity: Field,
     attribute: Field,
     value: Field,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct Index(HashMap<Field, HashMap<Field, HashSet<Field>>>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct MetaStore {
     eav: Index,
     aev: Index,
@@ -93,6 +93,20 @@ impl MetaStore {
             .add(attribute.clone(), entity.clone(), value.clone());
         self.ave
             .add(attribute.clone(), value.clone(), entity.clone());
+    }
+
+    pub fn remove_datom(&mut self, datom: &Datom) {
+        let Datom {
+            entity,
+            attribute,
+            value,
+        } = datom;
+        self.eav
+            .remove(entity.clone(), attribute.clone(), value.clone());
+        self.aev
+            .remove(attribute.clone(), entity.clone(), value.clone());
+        self.ave
+            .remove(attribute.clone(), value.clone(), entity.clone());
     }
 
     #[inline]
@@ -148,6 +162,31 @@ impl Index {
         let yzs = self.0.entry(x).or_insert_with(HashMap::new);
         let zs = yzs.entry(y).or_insert_with(HashSet::new);
         zs.insert(z);
+    }
+
+    pub fn remove(&mut self, x: Field, y: Field, z: Field) {
+        fn non_empty_map<K, V>(m: HashMap<K, V>) -> Option<HashMap<K, V>> {
+            if m.is_empty() {
+                None
+            } else {
+                Some(m)
+            }
+        }
+        fn non_empty_set<V>(s: HashSet<V>) -> Option<HashSet<V>> {
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
+        }
+
+        let update_zs =
+            |mzs: Option<HashSet<Field>>| mzs.map(|zs| zs.without(&z)).and_then(non_empty_set);
+        let update_yzs = |myzs: Option<HashMap<Field, HashSet<Field>>>| {
+            myzs.map(|yzs| yzs.alter(update_zs, y))
+                .and_then(non_empty_map)
+        };
+        self.0 = self.0.alter(update_yzs, x);
     }
 
     #[inline]
@@ -301,6 +340,24 @@ mod tests {
                 Field::from("1") => hashset!{Field::from("2")},
                 Field::from("4") => hashset!{Field::from("Unique identifier of element"),
                                              Field::from("Additional comment")},
+            }),
+            store.eav1(&Field::from("0"))
+        );
+    }
+
+    #[test]
+    fn remove_datom() {
+        let mut store = MetaStore::from_str(TEST).unwrap();
+        store.remove_datom(&Datom::new("0".into(), "1".into(), "2".into()));
+        store.remove_datom(&Datom::new(
+            "0".into(),
+            "4".into(),
+            "Additional comment".into(),
+        ));
+        assert_eq!(
+            Some(&hashmap! {
+                Field::from("0") => hashset!{Field::from("identifier")},
+                Field::from("4") => hashset!{Field::from("Unique identifier of element")},
             }),
             store.eav1(&Field::from("0"))
         );
