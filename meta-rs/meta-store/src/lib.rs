@@ -32,11 +32,17 @@ impl<'a> From<&'a str> for Field {
     }
 }
 
+impl ToString for Field {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Datom {
-    entity: Field,
-    attribute: Field,
-    value: Field,
+    pub entity: Field,
+    pub attribute: Field,
+    pub value: Field,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

@@ -5,9 +5,9 @@ use maplit::hashset;
 
 use meta_core::MetaCore;
 use meta_pretty::RichDoc;
-use meta_store::Field;
+use meta_store::{Datom, Field};
 
-use crate::layout::{field, line, punctuation, whitespace, EditorCellPayload};
+use crate::layout::{datom, field, line, punctuation, whitespace, EditorCellPayload};
 
 type Doc = RichDoc<EditorCellPayload, ()>;
 
@@ -16,9 +16,9 @@ fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
 }
 
 fn annotate(core: &MetaCore, entity: &Field) -> Doc {
-    let identifier = core
-        .identifier(entity)
-        .map_or(RichDoc::empty(), |x| field(x));
+    let identifier = core.identifier(entity).map_or(RichDoc::empty(), |x| {
+        datom(Datom::new(entity.clone(), "0".into(), x.clone()))
+    });
 
     RichDoc::concat(vec![
         identifier,
@@ -28,11 +28,15 @@ fn annotate(core: &MetaCore, entity: &Field) -> Doc {
     ])
 }
 
-fn core_layout_value(_core: &MetaCore, _attribute: &Field, value: &Field) -> Doc {
-    surround(punctuation("\""), punctuation("\""), field(value))
+fn core_layout_value(_core: &MetaCore, entity: &Field, attribute: &Field, value: &Field) -> Doc {
+    surround(
+        punctuation("\""),
+        punctuation("\""),
+        datom(Datom::new(entity.clone(), attribute.clone(), value.clone())),
+    )
 }
 
-fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Field>)) -> Doc {
+fn core_layout_attribute(core: &MetaCore, entity: &Field, attr: (&Field, &HashSet<Field>)) -> Doc {
     let (attr, values) = attr;
     RichDoc::concat(vec![
         RichDoc::linebreak(),
@@ -46,7 +50,7 @@ fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Field>)) -> Do
                 RichDoc::concat(
                     values
                         .iter()
-                        .map(|x| core_layout_value(core, attr, x))
+                        .map(|x| core_layout_value(core, entity, attr, x))
                         .intersperse(RichDoc::concat(vec![punctuation(","), line()]))
                         .collect(),
                 ),
@@ -85,7 +89,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
                     .iter()
                     .filter(|x| !hide_attributes.contains(x.0))
                     .sorted_by_key(|attr| attr.0)
-                    .map(|attr| core_layout_attribute(&core, attr))
+                    .map(|attr| core_layout_attribute(&core, entity, attr))
                     .collect(),
             ),
         ),

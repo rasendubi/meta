@@ -1,5 +1,5 @@
 use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
-use meta_store::Field;
+use meta_store::{Datom, Field};
 
 pub type Doc = RichDoc<EditorCellPayload, ()>;
 
@@ -8,6 +8,7 @@ pub enum CellClass {
     // order determines priority when selecting active cell
     Whitespace,
     Punctuation,
+    NonEditable,
     Editable,
 }
 
@@ -15,6 +16,7 @@ pub enum CellClass {
 pub struct EditorCellPayload {
     pub text: CellText,
     pub class: CellClass,
+    pub datom: Option<Datom>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -28,7 +30,20 @@ pub fn field(field: &Field) -> Doc {
         field.as_ref().len(),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
+            class: CellClass::NonEditable,
+            datom: None,
+        },
+    )
+}
+
+pub fn datom(datom: Datom) -> Doc {
+    let field = &datom.value;
+    RichDoc::cell(
+        field.as_ref().len(),
+        EditorCellPayload {
+            text: CellText::Field(field.clone()),
             class: CellClass::Editable,
+            datom: Some(datom),
         },
     )
 }
@@ -39,6 +54,7 @@ pub fn punctuation(s: &'static str) -> Doc {
         EditorCellPayload {
             text: CellText::Literal(s),
             class: CellClass::Punctuation,
+            datom: None,
         },
     )
 }
@@ -49,6 +65,7 @@ pub fn whitespace(s: &'static str) -> Doc {
         EditorCellPayload {
             text: CellText::Literal(s),
             class: CellClass::Whitespace,
+            datom: None,
         },
     )
 }
@@ -59,6 +76,7 @@ pub fn line() -> Doc {
         EditorCellPayload {
             text: CellText::Literal(" "),
             class: CellClass::Whitespace,
+            datom: None,
         },
     ))
 }

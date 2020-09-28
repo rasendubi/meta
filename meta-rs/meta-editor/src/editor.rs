@@ -2,7 +2,7 @@ use log::Level::Trace;
 use log::{debug, log_enabled, trace};
 
 use druid_shell::kurbo::{Insets, Rect, Size};
-use druid_shell::{piet::Color, KeyCode};
+use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
 use meta_gui::{Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List};
 
 use crate::cell_widget::CellWidget;
@@ -10,7 +10,7 @@ use crate::core_layout::core_layout_entities;
 use crate::layout::{cmp_priority, EditorCellPayload};
 use meta_core::MetaCore;
 use meta_pretty::{SimpleDoc, SimpleDocKind, WithPath};
-use meta_store::MetaStore;
+use meta_store::{Datom, MetaStore};
 use std::cmp::Ordering;
 
 pub type LayoutMeta = WithEnumerate<WithPath<()>>;
@@ -34,6 +34,7 @@ pub struct CellPosition {
 }
 
 pub struct Editor {
+    store: MetaStore,
     layout: Vec<Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>>,
     cursor: Option<CursorPosition<LayoutMeta>>,
     pos: CellPosition,
@@ -54,10 +55,28 @@ impl Editor {
         let cursor = Editor::cell_position_to_cursor(&layout, &pos);
 
         Editor {
+            store,
             layout,
             pos,
             cursor,
         }
+    }
+
+    pub fn on_store_updated(&mut self) {
+        let core = MetaCore::new(&self.store);
+        let rich_doc = core_layout_entities(&core).with_path();
+        let sdoc = meta_pretty::layout(&rich_doc, 80);
+
+        if log_enabled!(Trace) {
+            trace!("layout:\n{}", simple_doc_to_string(&sdoc));
+        }
+
+        let layout = enumerate(layout_to_2d(sdoc));
+        // TODO: adjust pos (in case it is re-layouted)
+        let cursor = Editor::cell_position_to_cursor(&layout, &self.pos);
+
+        self.layout = layout;
+        self.cursor = cursor;
     }
 
     fn move_cursor(&mut self, drow: isize, dcol: isize) {
@@ -128,6 +147,101 @@ impl Editor {
             },
         }
     }
+
+    fn handle_key(&mut self, key: KeyEvent) {
+        match key.key_code {
+            KeyCode::ArrowLeft => self.move_cursor(0, -1),
+            KeyCode::ArrowUp => self.move_cursor(-1, 0),
+            KeyCode::ArrowDown => self.move_cursor(1, 0),
+            KeyCode::ArrowRight => self.move_cursor(0, 1),
+            _ => {
+                if let Some(text) = key.text() {
+                    if !key.mods.alt
+                        && !key.mods.ctrl
+                        && !key.mods.meta
+                        && text.chars().all(|c| !c.is_control())
+                    {
+                        self.self_insert(text);
+                        return;
+                    }
+                }
+                if HotKey::new(None, KeyCode::Backspace).matches(key) {
+                    self.backspace();
+                    return;
+                }
+                if HotKey::new(None, KeyCode::Delete).matches(key) {
+                    self.delete();
+                    return;
+                }
+            }
+        }
+    }
+
+    fn self_insert(&mut self, text: &str) {
+        let edited = self.edit_datom(|datom, offset| {
+            let mut new_value = datom.value.to_string();
+            new_value.insert_str(offset, text);
+
+            let mut new_datom = datom.clone();
+            new_datom.value = new_value.into();
+
+            Some(new_datom)
+        });
+        if edited {
+            self.move_cursor(0, 1);
+        }
+    }
+
+    fn backspace(&mut self) {
+        let edited = self.edit_datom(|datom, offset| {
+            let mut new_value = datom.value.to_string();
+            if offset == 0 {
+                return None;
+            }
+
+            new_value.remove(offset - 1);
+
+            let mut new_datom = datom.clone();
+            new_datom.value = new_value.into();
+
+            Some(new_datom)
+        });
+        if edited {
+            self.move_cursor(0, -1);
+        }
+    }
+
+    fn delete(&mut self) {
+        self.edit_datom(|datom, offset| {
+            let mut new_value = datom.value.to_string();
+            new_value.remove(offset);
+
+            let mut new_datom = datom.clone();
+            new_datom.value = new_value.into();
+
+            Some(new_datom)
+        });
+    }
+
+    /// Returns `true` if edit happened
+    fn edit_datom<F: FnOnce(&Datom, usize) -> Option<Datom>>(&mut self, f: F) -> bool {
+        if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
+            if let SimpleDocKind::Cell(cell) = &cell.kind {
+                if let Some(datom) = &cell.payload.datom {
+                    if let Some(new_datom) = f(datom, *offset) {
+                        debug!("replacing {:?} with {:?}", datom, new_datom);
+
+                        self.store.remove_datom(datom);
+                        self.store.add_datom(&new_datom);
+                        self.on_store_updated();
+
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
 impl Layout for Editor {
@@ -135,7 +249,6 @@ impl Layout for Editor {
         ctx.clear(Color::WHITE);
 
         let cursor = &self.cursor;
-
         Inset::new(
             &mut List::new(self.layout.iter().map(|line| {
                 List::new(line.iter().map(|x| CellWidget(x, &cursor)))
@@ -152,13 +265,7 @@ impl Layout for Editor {
             debug!("Editor got event: {:?}", x);
             #[allow(clippy::single_match)]
             match x {
-                Event::KeyDown(key) => match key.key_code {
-                    KeyCode::ArrowLeft => self.move_cursor(0, -1),
-                    KeyCode::ArrowUp => self.move_cursor(-1, 0),
-                    KeyCode::ArrowDown => self.move_cursor(1, 0),
-                    KeyCode::ArrowRight => self.move_cursor(0, 1),
-                    _ => {}
-                },
+                Event::KeyDown(key) => self.handle_key(key),
                 _ => {}
             }
             ctx.invalidate();
