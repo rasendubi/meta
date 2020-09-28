@@ -69,10 +69,20 @@ impl Layout for Text<'_> {
         let text_size = Size::new(text_layout.width(), last_line.cumulative_height);
         let text_baseline = last_line.baseline;
 
-        let point = Point::new(0.0, text_baseline);
-
+        // Piet's text drawing is very bad and it can't even properly draw monospaced fonts. Draw
+        // each char separately, so it looks normal.
+        let font = ctx
+            .new_font_by_name(self.font_name, self.font_size)
+            .unwrap();
         let text_brush = ctx.solid_brush(self.color.clone());
-        ctx.draw_text(&text_layout, point, &text_brush);
+        let mut x_offset = 0.0;
+        for c in self.text.chars() {
+            let layout = ctx.new_text_layout(&font, &c.to_string(), None).unwrap();
+            let point = Point::new(x_offset, text_baseline);
+            ctx.draw_text(&layout, point, &text_brush);
+
+            x_offset += layout.width();
+        }
 
         text_size
     }
