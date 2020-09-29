@@ -1,7 +1,7 @@
 use std::any::Any;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use log::trace;
+use log::{trace, warn};
 
 use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
 use druid_shell::piet::{
@@ -155,6 +155,11 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         self.event_queue.widget_events(widget_id)
     }
 
+    /// Invalidate the current frame. This leads to the current draw to not be flashed and
+    /// immediately recomputed.
+    ///
+    /// Useful for situations when other widgets might react to the recent changes introduced by the
+    /// widget.
     pub fn invalidate(&mut self) {
         self.ops.push(Op::Invalidate);
     }
@@ -206,29 +211,46 @@ impl WinHandler for Gui {
     }
 
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
-        let start = std::time::Instant::now();
+        let start = Instant::now();
 
-        let mut ctx = GuiContext::new(piet, &mut self.event_queue);
-        (&mut self.ui)(&mut ctx);
-        let execution_result = ctx.ops.execute(piet);
-        self.event_queue
-            .replace_subscriptions(execution_result.subscriptions);
-        let invalid = self
-            .event_queue
-            .handle_grab_focus_requests(execution_result.grab_focus_requests)
-            || execution_result.invalidated;
+        let mut invalid = true;
+        while invalid {
+            let iteration_start = Instant::now();
 
-        trace!(target: "performance", "Paint done in {:?}", start.elapsed());
+            let mut ctx = GuiContext::new(piet, &mut self.event_queue);
+            (&mut self.ui)(&mut ctx);
 
-        if invalid {
-            if let Some(interaction) = self.interaction {
-                trace!(target: "performance", "Draw after interaction {:?}", interaction.elapsed());
-            }
-        } else if let Some(interaction) = self.interaction.take() {
-            trace!(target: "performance", "Draw after interaction {:?} (last)", interaction.elapsed());
+            let execution_start = Instant::now();
+            let execution_result = ctx.ops.execute(piet);
+            self.event_queue
+                .replace_subscriptions(execution_result.subscriptions);
+
+            invalid = self
+                .event_queue
+                .handle_grab_focus_requests(execution_result.grab_focus_requests)
+                || execution_result.invalidated;
+
+            trace!(
+                target: "performance",
+                "Paint iteration:{:>3}ms (ui:{:>3}ms,  ops:{:>3}ms)",
+                iteration_start.elapsed().as_millis(),
+                (execution_start - iteration_start).as_millis(),
+                execution_start.elapsed().as_millis()
+            );
         }
 
-        invalid
+        trace!(target: "performance", "Paint: {:?}", start.elapsed());
+
+        if let Some(interaction) = self.interaction.take() {
+            let elapsed = interaction.elapsed();
+            trace!(target: "performance", "Paint after interaction {:?}", elapsed);
+
+            if elapsed > Duration::from_millis(100) {
+                warn!("Paint after interation took {:?}", elapsed);
+            }
+        }
+
+        false
     }
 
     fn as_any(&mut self) -> &mut dyn Any {
