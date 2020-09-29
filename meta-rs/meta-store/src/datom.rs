@@ -90,22 +90,22 @@ impl<'de> Deserialize<'de> for Datom {
     where
         D: Deserializer<'de>,
     {
-        let v: Vec<&str> = Deserialize::deserialize(deserializer)?;
+        let v: Vec<String> = Deserialize::deserialize(deserializer)?;
 
         match v.len() {
             3 => unsafe {
                 Ok(Datom::eav(
-                    (*v.get_unchecked(0)).into(),
-                    (*v.get_unchecked(1)).into(),
-                    (*v.get_unchecked(2)).into(),
+                    v.get_unchecked(0).as_str().into(),
+                    v.get_unchecked(1).as_str().into(),
+                    v.get_unchecked(2).as_str().into(),
                 ))
             },
             4 => unsafe {
                 Ok(Datom::new(
-                    (*v.get_unchecked(0)).into(),
-                    (*v.get_unchecked(1)).into(),
-                    (*v.get_unchecked(2)).into(),
-                    (*v.get_unchecked(3)).into(),
+                    v.get_unchecked(0).as_str().into(),
+                    v.get_unchecked(1).as_str().into(),
+                    v.get_unchecked(2).as_str().into(),
+                    v.get_unchecked(3).as_str().into(),
                 ))
             },
             _ => Err(serde::de::Error::invalid_length(v.len(), &"3 or 4")),
@@ -141,6 +141,14 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Datom>(&serde_json::to_string(&x).unwrap()).unwrap(),
             x
+        );
+    }
+
+    #[test]
+    fn datom_deserialize_escape() {
+        assert_eq!(
+            serde_json::from_str::<Datom>(r#"["0", "1", "2", "\"hello\""]"#).unwrap(),
+            ("0", "1", "2", "\"hello\"").into()
         );
     }
 }
