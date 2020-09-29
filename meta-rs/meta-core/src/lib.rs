@@ -1,5 +1,5 @@
 //! Some helpers for the meta.core language.
-use meta_store::{Field, MetaStore};
+use meta_store::{Datom, Field, MetaStore};
 
 pub struct MetaCore<'a> {
     pub store: &'a MetaStore,
@@ -11,17 +11,17 @@ impl<'a> MetaCore<'a> {
         MetaCore { store }
     }
 
-    pub fn identifier(&self, entity: &Field) -> Option<&Field> {
+    pub fn identifier(&self, entity: &Field) -> Option<&Datom> {
         let identifier = Field::from("0");
         self.store.value(entity, &identifier)
     }
 
-    pub fn meta_type(&self, entity: &Field) -> Option<&Field> {
+    pub fn meta_type(&self, entity: &Field) -> Option<&Datom> {
         let type_ = Field::from("5");
         self.store.value(entity, &type_)
     }
 
-    pub fn meta_attribute_type(&self, entity: &Field) -> Option<&Field> {
+    pub fn meta_attribute_type(&self, entity: &Field) -> Option<&Datom> {
         let attribute_type = Field::from("1");
         self.store.value(entity, &attribute_type)
     }
@@ -42,7 +42,7 @@ mod tests {
 
         assert_eq!(
             Some(&Field::from("identifier")),
-            core.identifier(&Field::from("0"))
+            core.identifier(&Field::from("0")).map(|x| &x.value)
         );
     }
 
@@ -52,7 +52,10 @@ mod tests {
         let core = MetaCore::new(&store);
 
         let attribute = Field::from("7");
-        assert_eq!(Some(&attribute), core.meta_type(&Field::from("0")));
+        assert_eq!(
+            Some(&attribute),
+            core.meta_type(&Field::from("0")).map(|x| &x.value)
+        );
     }
 
     #[test]
@@ -61,6 +64,10 @@ mod tests {
         let core = MetaCore::new(&store);
 
         let string = Field::from("2");
-        assert_eq!(Some(&string), core.meta_attribute_type(&Field::from("0")));
+        assert_eq!(
+            Some(&string),
+            core.meta_attribute_type(&Field::from("0"))
+                .map(|x| &x.value)
+        );
     }
 }

@@ -1,55 +1,17 @@
+mod datom;
+
 use im::{HashMap, HashSet};
 
-use serde::de::{Deserialize, Deserializer};
-use serde::ser::{Serialize, SerializeSeq, Serializer};
-
-use string_cache::{Atom, DefaultAtom};
+pub use datom::*;
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub struct Field(DefaultAtom);
-
-impl AsRef<str> for Field {
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
-impl From<String> for Field {
-    #[inline]
-    fn from(s: String) -> Self {
-        Field(Atom::from(s))
-    }
-}
-
-impl<'a> From<&'a str> for Field {
-    #[inline]
-    fn from(s: &'a str) -> Self {
-        Field(Atom::from(s))
-    }
-}
-
-impl ToString for Field {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Datom {
-    pub entity: Field,
-    pub attribute: Field,
-    pub value: Field,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-struct Index(HashMap<Field, HashMap<Field, HashSet<Field>>>);
+struct Index(HashMap<Field, HashMap<Field, HashSet<Datom>>>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct MetaStore {
+    atoms: HashMap<Field, Datom>,
     eav: Index,
     aev: Index,
     ave: Index,
@@ -64,6 +26,7 @@ impl Default for MetaStore {
 impl MetaStore {
     pub fn new() -> MetaStore {
         MetaStore {
+            atoms: HashMap::new(),
             eav: Index::new(),
             aev: Index::new(),
             ave: Index::new(),
@@ -89,59 +52,58 @@ impl MetaStore {
 
     pub fn add_datom(&mut self, datom: &Datom) {
         let Datom {
+            id: _,
             entity,
             attribute,
             value,
         } = datom;
         self.eav
-            .add(entity.clone(), attribute.clone(), value.clone());
+            .add(entity.clone(), attribute.clone(), datom.clone());
         self.aev
-            .add(attribute.clone(), entity.clone(), value.clone());
+            .add(attribute.clone(), entity.clone(), datom.clone());
         self.ave
-            .add(attribute.clone(), value.clone(), entity.clone());
+            .add(attribute.clone(), value.clone(), datom.clone());
     }
 
     pub fn remove_datom(&mut self, datom: &Datom) {
         let Datom {
+            id: _,
             entity,
             attribute,
             value,
         } = datom;
-        self.eav
-            .remove(entity.clone(), attribute.clone(), value.clone());
-        self.aev
-            .remove(attribute.clone(), entity.clone(), value.clone());
-        self.ave
-            .remove(attribute.clone(), value.clone(), entity.clone());
+        self.eav.remove(entity.clone(), attribute.clone(), &datom);
+        self.aev.remove(attribute.clone(), entity.clone(), &datom);
+        self.ave.remove(attribute.clone(), value.clone(), &datom);
     }
 
     #[inline]
-    pub fn eav1(&self, e: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
+    pub fn eav1(&self, e: &Field) -> Option<&HashMap<Field, HashSet<Datom>>> {
         self.eav.get(e)
     }
 
     #[inline]
-    pub fn eav2(&self, e: &Field, a: &Field) -> Option<&HashSet<Field>> {
+    pub fn eav2(&self, e: &Field, a: &Field) -> Option<&HashSet<Datom>> {
         self.eav.get(e)?.get(a)
     }
 
     #[inline]
-    pub fn aev1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
+    pub fn aev1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Datom>>> {
         self.aev.get(a)
     }
 
     #[inline]
-    pub fn aev2(&self, a: &Field, e: &Field) -> Option<&HashSet<Field>> {
+    pub fn aev2(&self, a: &Field, e: &Field) -> Option<&HashSet<Datom>> {
         self.aev.get(a)?.get(e)
     }
 
     #[inline]
-    pub fn ave1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
+    pub fn ave1(&self, a: &Field) -> Option<&HashMap<Field, HashSet<Datom>>> {
         self.ave.get(a)
     }
 
     #[inline]
-    pub fn ave2(&self, a: &Field, v: &Field) -> Option<&HashSet<Field>> {
+    pub fn ave2(&self, a: &Field, v: &Field) -> Option<&HashSet<Datom>> {
         self.ave.get(a)?.get(v)
     }
 
@@ -150,11 +112,11 @@ impl MetaStore {
     }
 
     #[inline]
-    pub fn values(&self, e: &Field, a: &Field) -> Option<&HashSet<Field>> {
+    pub fn values(&self, e: &Field, a: &Field) -> Option<&HashSet<Datom>> {
         self.eav2(e, a)
     }
 
-    pub fn value(&self, e: &Field, a: &Field) -> Option<&Field> {
+    pub fn value(&self, e: &Field, a: &Field) -> Option<&Datom> {
         self.values(e, a)?.iter().next()
     }
 }
@@ -164,13 +126,13 @@ impl Index {
         Index(HashMap::new())
     }
 
-    pub fn add(&mut self, x: Field, y: Field, z: Field) {
+    pub fn add(&mut self, x: Field, y: Field, datom: Datom) {
         let yzs = self.0.entry(x).or_insert_with(HashMap::new);
         let zs = yzs.entry(y).or_insert_with(HashSet::new);
-        zs.insert(z);
+        zs.insert(datom);
     }
 
-    pub fn remove(&mut self, x: Field, y: Field, z: Field) {
+    pub fn remove(&mut self, x: Field, y: Field, datom: &Datom) {
         fn non_empty_map<K, V>(m: HashMap<K, V>) -> Option<HashMap<K, V>> {
             if m.is_empty() {
                 None
@@ -187,8 +149,8 @@ impl Index {
         }
 
         let update_zs =
-            |mzs: Option<HashSet<Field>>| mzs.map(|zs| zs.without(&z)).and_then(non_empty_set);
-        let update_yzs = |myzs: Option<HashMap<Field, HashSet<Field>>>| {
+            |mzs: Option<HashSet<Datom>>| mzs.map(|zs| zs.without(&datom)).and_then(non_empty_set);
+        let update_yzs = |myzs: Option<HashMap<Field, HashSet<Datom>>>| {
             myzs.map(|yzs| yzs.alter(update_zs, y))
                 .and_then(non_empty_map)
         };
@@ -196,7 +158,7 @@ impl Index {
     }
 
     #[inline]
-    pub fn get(&self, x: &Field) -> Option<&HashMap<Field, HashSet<Field>>> {
+    pub fn get(&self, x: &Field) -> Option<&HashMap<Field, HashSet<Datom>>> {
         self.0.get(x)
     }
 }
@@ -206,45 +168,6 @@ impl std::str::FromStr for MetaStore {
 
     fn from_str(s: &str) -> Result<MetaStore> {
         MetaStore::from_reader(std::io::Cursor::new(s))
-    }
-}
-
-impl Datom {
-    #[inline]
-    pub fn new(entity: Field, attribute: Field, value: Field) -> Datom {
-        Datom {
-            entity,
-            attribute,
-            value,
-        }
-    }
-}
-
-impl Serialize for Datom {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(3))?;
-        seq.serialize_element(&self.entity)?;
-        seq.serialize_element(&self.attribute)?;
-        seq.serialize_element(&self.value)?;
-        seq.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Datom {
-    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Datom, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (entity, attribute, value): (String, String, String) =
-            Deserialize::deserialize(deserializer)?;
-        Ok(Datom::new(
-            Field::from(entity),
-            Field::from(attribute),
-            Field::from(value),
-        ))
     }
 }
 
@@ -279,38 +202,19 @@ impl From<serde_json::Error> for Error {
 mod tests {
     use super::*;
     use im::{hashmap, hashset};
-    use serde_json;
     use std::str::FromStr;
 
     static TEST: &str = r#"
-        ["0", "0", "identifier"]
-        ["0", "1", "2"]
-        ["1", "1", "3"]
-        ["1", "0", "Attribute.value-type"]
-        ["2", "0", "String"]
-        ["3", "0", "Reference"]
-        ["4", "0", "comment"]
-        ["0", "4", "Unique identifier of element"]
-        ["0", "4", "Additional comment"]
+        ["-1", "0", "0", "identifier"]
+        ["-2", "0", "1", "2"]
+        ["-3", "1", "1", "3"]
+        ["-4", "1", "0", "Attribute.value-type"]
+        ["-5", "2", "0", "String"]
+        ["-6", "3", "0", "Reference"]
+        ["-7", "4", "0", "comment"]
+        ["-8", "0", "4", "Unique identifier of element"]
+        ["-9", "0", "4", "Additional comment"]
     "#;
-
-    #[test]
-    fn datom_deserialize_array() {
-        let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
-        assert_eq!(
-            serde_json::from_str::<Datom>(r#"["1", "2", "3"]"#).unwrap(),
-            x
-        );
-    }
-
-    #[test]
-    fn datom_serialize_deserialize() {
-        let x = Datom::new(Field::from("1"), Field::from("2"), Field::from("3"));
-        assert_eq!(
-            serde_json::from_str::<Datom>(&serde_json::to_string(&x).unwrap()).unwrap(),
-            x
-        );
-    }
 
     #[test]
     fn store_from_buf() {
@@ -319,9 +223,10 @@ mod tests {
 
     #[test]
     fn store_parse_trailing_comment() {
-        let store = MetaStore::from_str(r#"["0", "0", "identifier"] ;; trailing comment"#).unwrap();
+        let store =
+            MetaStore::from_str(r#"["2", "0", "0", "identifier"] ;; trailing comment"#).unwrap();
         assert_eq!(
-            Some(&hashset! {Field::from("identifier")}),
+            Some(&hashset! {("2", "0", "0", "identifier").into()}),
             store.eav2(&Field::from("0"), &Field::from("0"))
         );
     }
@@ -331,7 +236,7 @@ mod tests {
         let store = MetaStore::from_str(TEST).unwrap();
 
         assert_eq!(
-            Some(&hashset! {Field::from("identifier")}),
+            Some(&hashset! {("-1", "0", "0", "identifier").into()}),
             store.eav2(&Field::from("0"), &Field::from("0"))
         );
     }
@@ -342,10 +247,10 @@ mod tests {
 
         assert_eq!(
             Some(&hashmap! {
-                Field::from("0") => hashset!{Field::from("identifier")},
-                Field::from("1") => hashset!{Field::from("2")},
-                Field::from("4") => hashset!{Field::from("Unique identifier of element"),
-                                             Field::from("Additional comment")},
+                Field::from("0") => hashset!{("-1", "0", "0", "identifier").into()},
+                Field::from("1") => hashset!{("-2", "0", "1", "2").into()},
+                Field::from("4") => hashset!{("-8", "0", "4", "Unique identifier of element").into(),
+                                             ("-9", "0", "4", "Additional comment").into()},
             }),
             store.eav1(&Field::from("0"))
         );
@@ -354,16 +259,12 @@ mod tests {
     #[test]
     fn remove_datom() {
         let mut store = MetaStore::from_str(TEST).unwrap();
-        store.remove_datom(&Datom::new("0".into(), "1".into(), "2".into()));
-        store.remove_datom(&Datom::new(
-            "0".into(),
-            "4".into(),
-            "Additional comment".into(),
-        ));
+        store.remove_datom(&("-2", "0", "1", "2").into());
+        store.remove_datom(&("-9", "0", "4", "Additional comment").into());
         assert_eq!(
             Some(&hashmap! {
-                Field::from("0") => hashset!{Field::from("identifier")},
-                Field::from("4") => hashset!{Field::from("Unique identifier of element")},
+                Field::from("0") => hashset!{("-1", "0", "0", "identifier").into()},
+                Field::from("4") => hashset!{("-8", "0", "4", "Unique identifier of element").into()},
             }),
             store.eav1(&Field::from("0"))
         );

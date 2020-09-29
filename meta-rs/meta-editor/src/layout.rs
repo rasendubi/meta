@@ -36,14 +36,14 @@ pub fn field(field: &Field) -> Doc {
     )
 }
 
-pub fn datom(datom: Datom) -> Doc {
+pub fn datom_value(datom: &Datom) -> Doc {
     let field = &datom.value;
     RichDoc::cell(
         field.as_ref().len(),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::Editable,
-            datom: Some(datom),
+            datom: Some(datom.clone()),
         },
     )
 }
