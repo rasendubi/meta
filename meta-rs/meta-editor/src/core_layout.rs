@@ -28,8 +28,14 @@ fn annotate(core: &MetaCore, entity: &Field) -> Doc {
     ])
 }
 
-fn core_layout_value(_core: &MetaCore, datom: &Datom) -> Doc {
-    surround(punctuation("\""), punctuation("\""), datom_value(datom))
+fn core_layout_value(core: &MetaCore, datom: &Datom) -> Doc {
+    let attribute_type = core.meta_attribute_type(&datom.attribute).map(|d| &d.value);
+    let reference_type = "3".into();
+    if attribute_type == Some(&reference_type) {
+        annotate(core, &datom.value)
+    } else {
+        surround(punctuation("\""), punctuation("\""), datom_value(datom))
+    }
 }
 
 fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Datom>)) -> Doc {
