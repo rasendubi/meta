@@ -59,13 +59,14 @@ impl Layout for Text<'_> {
 
         let text_layout = self.text_layout(ctx).unwrap();
 
-        if text_layout.line_count() == 0 {
+        let line_count = text_layout.line_count();
+        // TODO: in piet-cairo-0.2.0, line_metric always works for line 0 and returns default line
+        // height. Remove this early-return and placeholder workaround in Cell widget.
+        if line_count == 0 {
             return Size::ZERO;
         }
 
-        let last_line = text_layout
-            .line_metric(text_layout.line_count() - 1)
-            .unwrap();
+        let last_line = text_layout.line_metric(line_count - 1).unwrap();
         let text_size = Size::new(text_layout.width(), last_line.cumulative_height);
         let text_baseline = last_line.baseline;
 
