@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bitflags::bitflags;
 use druid_shell::kurbo::{Affine, Rect};
 use druid_shell::{KeyEvent, MouseEvent};
+use log::trace;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct WidgetId(pub(crate) u64);
@@ -172,6 +173,12 @@ impl EventQueue {
         };
 
         dispatched |= self.fire_synthetic_events(&event);
+
+        if dispatched {
+            trace!("dispatching: {:?}", event);
+        } else {
+            trace!("not dispatched: {:?}", event);
+        }
 
         dispatched
     }

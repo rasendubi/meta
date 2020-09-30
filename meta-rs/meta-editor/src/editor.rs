@@ -3,7 +3,9 @@ use log::{debug, log_enabled, trace};
 
 use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
-use meta_gui::{Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List};
+use meta_gui::{
+    Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
+};
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_entities;
@@ -38,6 +40,7 @@ pub struct Editor {
     layout: Vec<Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>>,
     cursor: Option<CursorPosition<LayoutMeta>>,
     pos: CellPosition,
+    scroll: Scrollable,
 }
 
 impl Editor {
@@ -59,6 +62,7 @@ impl Editor {
             layout,
             pos,
             cursor,
+            scroll: Scrollable::new(),
         }
     }
 
@@ -248,15 +252,25 @@ impl Layout for Editor {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         ctx.clear(Color::WHITE);
 
-        let cursor = &self.cursor;
-        Inset::new(
-            &mut List::new(self.layout.iter().map(|line| {
-                List::new(line.iter().map(|x| CellWidget(x, &cursor)))
-                    .with_direction(Direction::Horizontal)
-            })),
-            Insets::uniform(10.0),
-        )
-        .layout(ctx, Constraint::unbound());
+        {
+            let cursor = &self.cursor;
+            let scroll = &mut self.scroll;
+            let layout = &self.layout;
+
+            ctx.with_key(&"editor", move |ctx| {
+                Inset::new(
+                    &mut Scrolled::new(
+                        scroll,
+                        &mut List::new(layout.iter().map(|line| {
+                            List::new(line.iter().map(|x| CellWidget(x, &cursor)))
+                                .with_direction(Direction::Horizontal)
+                        })),
+                    ),
+                    Insets::uniform(10.0),
+                )
+                .layout(ctx, Constraint::unbound());
+            });
+        }
 
         ctx.grab_focus();
         ctx.subscribe(Rect::ZERO, EventType::FOCUS | EventType::KEY_DOWN, false);
