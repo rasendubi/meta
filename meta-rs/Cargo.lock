@@ -763,6 +763,7 @@ dependencies = [
  "meta-gui",
  "meta-pretty",
  "meta-store",
+ "unicode-segmentation",
 ]
 
 [[package]]

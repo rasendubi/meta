@@ -7,6 +7,7 @@ use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
     SubscriptionId,
 };
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_entities;
@@ -186,8 +187,15 @@ impl Editor {
 
     fn self_insert(&mut self, text: &str) {
         let edited = self.edit_datom(|datom, offset| {
+            let grapheme_offset = datom
+                .value
+                .as_ref()
+                .grapheme_indices(true)
+                .nth(offset)
+                .map_or(datom.value.as_ref().len(), |x| x.0);
+
             let mut new_value = datom.value.to_string();
-            new_value.insert_str(offset, text);
+            new_value.insert_str(grapheme_offset, text);
 
             let mut new_datom = datom.clone();
             new_datom.value = new_value.into();
@@ -206,7 +214,15 @@ impl Editor {
                 return None;
             }
 
-            new_value.remove(offset - 1);
+            let grapheme_offset = datom
+                .value
+                .as_ref()
+                .grapheme_indices(true)
+                .nth(offset - 1)
+                .map(|x| x.0)
+                .unwrap();
+
+            new_value.remove(grapheme_offset);
 
             let mut new_datom = datom.clone();
             new_datom.value = new_value.into();
@@ -220,12 +236,18 @@ impl Editor {
 
     fn delete(&mut self) {
         self.edit_datom(|datom, offset| {
-            if offset >= datom.value.as_ref().len() {
+            let grapheme_offset = datom
+                .value
+                .as_ref()
+                .grapheme_indices(true)
+                .nth(offset)
+                .map_or(datom.value.as_ref().len(), |x| x.0);
+            if grapheme_offset >= datom.value.as_ref().len() {
                 return None;
             }
 
             let mut new_value = datom.value.to_string();
-            new_value.remove(offset);
+            new_value.remove(grapheme_offset);
 
             let mut new_datom = datom.clone();
             new_datom.value = new_value.into();

@@ -1,6 +1,8 @@
 use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 pub type Doc = RichDoc<EditorCellPayload, ()>;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
@@ -27,7 +29,7 @@ pub enum CellText {
 
 pub fn field(field: &Field) -> Doc {
     RichDoc::cell(
-        field.as_ref().len(),
+        str_length(field.as_ref()),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::NonEditable,
@@ -39,7 +41,7 @@ pub fn field(field: &Field) -> Doc {
 pub fn datom_value(datom: &Datom) -> Doc {
     let field = &datom.value;
     RichDoc::cell(
-        field.as_ref().len(),
+        str_length(field.as_ref()),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::Editable,
@@ -49,27 +51,12 @@ pub fn datom_value(datom: &Datom) -> Doc {
 }
 
 pub fn punctuation(s: &'static str) -> Doc {
-    RichDoc::cell(
-        s.len(),
-        EditorCellPayload {
-            text: CellText::Literal(s),
-            class: CellClass::Punctuation,
-            datom: None,
-        },
-    )
+    literal(CellClass::Punctuation, s)
 }
 
 pub fn whitespace(s: &'static str) -> Doc {
-    RichDoc::cell(
-        s.len(),
-        EditorCellPayload {
-            text: CellText::Literal(s),
-            class: CellClass::Whitespace,
-            datom: None,
-        },
-    )
+    literal(CellClass::Whitespace, s)
 }
-
 pub fn line() -> Doc {
     RichDoc::line(meta_pretty::cell(
         1,
@@ -79,6 +66,17 @@ pub fn line() -> Doc {
             datom: None,
         },
     ))
+}
+
+fn literal(class: CellClass, s: &'static str) -> Doc {
+    RichDoc::cell(
+        str_length(s),
+        EditorCellPayload {
+            text: CellText::Literal(s),
+            class,
+            datom: None,
+        },
+    )
 }
 
 impl AsRef<str> for CellText {
@@ -101,5 +99,19 @@ pub fn cmp_priority<M>(
         (Linebreak { .. }, Cell(..)) => Ordering::Less,
         (Cell(..), Linebreak { .. }) => Ordering::Greater,
         (Cell(left), Cell(right)) => left.payload.class.cmp(&right.payload.class),
+    }
+}
+
+fn str_length(s: &str) -> usize {
+    s.graphemes(true).count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_str_length_unicode() {
+        assert_eq!(6, str_length(&"привет"));
     }
 }

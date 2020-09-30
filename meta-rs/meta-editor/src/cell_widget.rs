@@ -4,6 +4,7 @@ use druid_shell::{
 };
 use meta_gui::{Constraint, GuiContext, Layout, Text};
 use meta_pretty::{SimpleDoc, SimpleDocKind};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::editor::CursorPosition;
 use crate::layout::{CellClass, EditorCellPayload};
@@ -58,7 +59,15 @@ where
 
                 ctx.replay(text_ops);
                 let text_layout = text.text_layout(ctx).unwrap();
-                let x = text_layout.hit_test_text_position(*offset).unwrap().point.x;
+                let grapheme_offset = string
+                    .grapheme_indices(true)
+                    .nth(*offset)
+                    .map_or(string.len(), |x| x.0);
+                let x = text_layout
+                    .hit_test_text_position(grapheme_offset)
+                    .unwrap()
+                    .point
+                    .x;
                 Cursor(x, size.height).layout(ctx, constraint);
             }
             Some(CursorPosition::Between(_after, before)) if before.meta == self.0.meta => {
