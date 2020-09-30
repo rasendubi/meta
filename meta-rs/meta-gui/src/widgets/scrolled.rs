@@ -21,7 +21,10 @@ impl<'a> Layout for Scrolled<'a> {
         let size = ctx.with_save(|ctx| {
             ctx.clip(constraint.max.to_rect());
             ctx.transform(Affine::translate(-self.scrollable.offset()));
-            self.child.layout(ctx, Constraint::new(constraint.min, Size::new(f64::INFINITY, f64::INFINITY)))
+            self.child.layout(
+                ctx,
+                Constraint::new(constraint.min, Size::new(f64::INFINITY, f64::INFINITY)),
+            )
         });
 
         let widget_size = constraint.clamp(size);
