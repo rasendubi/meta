@@ -23,6 +23,10 @@ impl Scrollable {
     pub fn offset(&self) -> Vec2 {
         self.offset
     }
+
+    pub fn set_offset(&mut self, offset: Vec2) {
+        self.offset = offset;
+    }
 }
 
 impl Layout for Scrollable {
@@ -32,7 +36,7 @@ impl Layout for Scrollable {
         for event in ctx.events(self.id) {
             if let Event::MouseWheel(mouse) = event {
                 let delta = mouse.wheel_delta;
-                self.offset -= delta / 3.0;
+                self.offset += delta / 3.0;
 
                 ctx.invalidate();
             }
