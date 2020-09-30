@@ -220,6 +220,10 @@ impl Editor {
 
     fn delete(&mut self) {
         self.edit_datom(|datom, offset| {
+            if offset >= datom.value.as_ref().len() {
+                return None;
+            }
+
             let mut new_value = datom.value.to_string();
             new_value.remove(offset);
 
