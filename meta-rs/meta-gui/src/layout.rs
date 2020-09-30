@@ -14,16 +14,17 @@ impl Constraint {
         Constraint { min, max }
     }
 
+    pub const UNBOUND: Constraint = Constraint {
+        min: Size::ZERO,
+        max: Size::new(f64::INFINITY, f64::INFINITY),
+    };
+
     pub fn loose(max: Size) -> Self {
         Constraint::new(Size::ZERO, max)
     }
 
     pub fn tight(size: Size) -> Self {
         Constraint::new(size, size)
-    }
-
-    pub fn unbound() -> Self {
-        Constraint::new(Size::ZERO, Size::new(f64::INFINITY, f64::INFINITY))
     }
 
     pub fn to_loose(self) -> Self {
@@ -36,6 +37,14 @@ impl Constraint {
             && self.max.width >= size.width
             && self.min.height <= size.height
             && self.max.height >= size.height
+    }
+
+    /// Adjust `size` to satisfy the constraint.
+    ///
+    /// If length of any side is shorter than minimum allowed constraint, the minimum is
+    /// returned. If the length is longer than maximum, the maximum is returned.
+    pub fn clamp(&self, size: Size) -> Size {
+        size.clamp(self.min, self.max)
     }
 }
 

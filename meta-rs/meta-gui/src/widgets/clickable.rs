@@ -9,6 +9,9 @@ use druid_shell::kurbo::Size;
 
 pub struct Click();
 
+/// Stateful widget that implements clickable behavior.
+///
+/// Takes as little space as possible.
 pub struct Clickable {
     id: SubscriptionId,
     pressed: bool,

@@ -13,7 +13,7 @@ pub fn main(store: MetaStore) {
     let app = Application::new().unwrap();
     let mut editor = Editor::new(SubscriptionId::new(), store);
     Gui::run(app.clone(), move |ctx| {
-        editor.layout(ctx, Constraint::unbound());
+        editor.layout(ctx, Constraint::UNBOUND);
     });
     app.run(None);
 }

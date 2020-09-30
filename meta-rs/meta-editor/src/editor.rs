@@ -259,17 +259,17 @@ impl Layout for Editor {
         let scroll = &mut self.scroll;
         let layout = &self.layout;
 
-        Inset::new(
-            &mut Scrolled::new(
-                scroll,
+        Scrolled::new(
+            scroll,
+            &mut Inset::new(
                 &mut List::new(layout.iter().map(|line| {
                     List::new(line.iter().map(|x| CellWidget(x, &cursor)))
                         .with_direction(Direction::Horizontal)
                 })),
+                Insets::uniform(10.0),
             ),
-            Insets::uniform(10.0),
         )
-        .layout(ctx, Constraint::unbound());
+        .layout(ctx, Constraint::loose(ctx.window_size()));
 
         ctx.grab_focus(self.id);
         ctx.subscribe(

@@ -18,6 +18,7 @@ use crate::ops::{Op, Ops, ShapeBox};
 pub struct GuiContext<'a, 'b: 'a> {
     piet: &'a mut Piet<'b>,
     event_queue: &'a mut EventQueue,
+    window_size: Size,
 
     ops: Ops<'b>,
 
@@ -25,10 +26,11 @@ pub struct GuiContext<'a, 'b: 'a> {
 }
 
 impl<'a, 'b: 'a> GuiContext<'a, 'b> {
-    fn new(piet: &'a mut Piet<'b>, event_queue: &'a mut EventQueue) -> Self {
+    fn new(piet: &'a mut Piet<'b>, event_queue: &'a mut EventQueue, window_size: Size) -> Self {
         GuiContext {
             piet,
             event_queue,
+            window_size,
             ops: Ops::new(),
             now: Instant::now(),
         }
@@ -36,6 +38,10 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
 
     pub fn now(&self) -> Instant {
         self.now
+    }
+
+    pub fn window_size(&self) -> Size {
+        self.window_size
     }
 
     pub fn solid_brush(&mut self, color: Color) -> <Piet as RenderContext>::Brush {
@@ -92,6 +98,10 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         self.ops.push(Op::Fill(ShapeBox::from_shape(shape)));
     }
 
+    pub fn clip(&mut self, shape: impl Shape) {
+        self.ops.push(Op::Clip(ShapeBox::from_shape(shape)));
+    }
+
     pub fn transform(&mut self, transform: Affine) {
         self.ops.push(Op::Transform(transform));
     }
@@ -146,6 +156,7 @@ pub struct Gui {
     handle: Option<WindowHandle>,
     ui: Box<dyn FnMut(&mut GuiContext)>,
     event_queue: EventQueue,
+    window_size: Size,
     interaction: Option<Instant>,
 }
 
@@ -155,6 +166,7 @@ impl Gui {
             handle: None,
             ui: Box::new(ui),
             event_queue: EventQueue::new(),
+            window_size: Size::ZERO,
             interaction: None,
         });
 
@@ -194,7 +206,7 @@ impl WinHandler for Gui {
         while invalid {
             let iteration_start = Instant::now();
 
-            let mut ctx = GuiContext::new(piet, &mut self.event_queue);
+            let mut ctx = GuiContext::new(piet, &mut self.event_queue, self.window_size);
             (&mut self.ui)(&mut ctx);
 
             let execution_start = Instant::now();
@@ -236,7 +248,7 @@ impl WinHandler for Gui {
 
     fn size(&mut self, size: Size) {
         trace!("size({:?})", size);
-        // TODO: handle size
+        self.window_size = size;
         self.invalidate();
     }
 

@@ -15,6 +15,7 @@ pub(crate) enum Op<'a> {
     },
     Clear(Color),
     Fill(ShapeBox),
+    Clip(ShapeBox),
     BlurredRect {
         rect: Rect,
         blur_radius: f64,
@@ -72,6 +73,10 @@ impl<'a> Ops<'a> {
                 Op::Fill(shape) => match shape {
                     ShapeBox::Rect(x) => piet.fill(&x, &current_brush),
                     ShapeBox::RoundedRect(x) => piet.fill(&x, &current_brush),
+                },
+                Op::Clip(shape) => match shape {
+                    ShapeBox::Rect(x) => piet.clip(&x),
+                    ShapeBox::RoundedRect(x) => piet.clip(&x),
                 },
                 Op::BlurredRect { rect, blur_radius } => {
                     piet.blurred_rect(*rect, *blur_radius, &current_brush)

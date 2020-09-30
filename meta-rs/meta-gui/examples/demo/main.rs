@@ -46,7 +46,7 @@ impl Ui {
                 &mut Button::new(&mut self.click2, "button2"),
                 Insets::uniform_xy(2.0, 4.0),
             ))
-            .layout(ctx, Constraint::unbound());
+            .layout(ctx, Constraint::loose(ctx.window_size()));
 
         for _ in self.click1.clicks() {
             println!("Click1");

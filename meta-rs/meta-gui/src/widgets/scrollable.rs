@@ -5,6 +5,8 @@ use druid_shell::kurbo::{Size, Vec2};
 ///
 /// It does not draw the child widget itself but should be used with a companion widget that knows
 /// to scroll its child and add decorations, etc.
+///
+/// Takes as little space as possible.
 pub struct Scrollable {
     id: SubscriptionId,
     offset: Vec2,
@@ -25,8 +27,7 @@ impl Scrollable {
 
 impl Layout for Scrollable {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
-        let size = constraint.max;
-        let rect = size.to_rect();
+        let size = constraint.min;
 
         for event in ctx.events(self.id) {
             if let Event::MouseWheel(mouse) = event {
@@ -37,7 +38,7 @@ impl Layout for Scrollable {
             }
         }
 
-        ctx.subscribe(self.id, rect, EventType::MOUSE_WHEEL, false);
+        ctx.subscribe(self.id, size.to_rect(), EventType::MOUSE_WHEEL, false);
 
         size
     }
