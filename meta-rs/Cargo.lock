@@ -772,6 +772,7 @@ dependencies = [
  "bitflags",
  "druid-shell",
  "log",
+ "rand 0.7.3",
 ]
 
 [[package]]

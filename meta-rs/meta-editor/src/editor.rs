@@ -5,6 +5,7 @@ use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
 use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
+    SubscriptionId,
 };
 
 use crate::cell_widget::CellWidget;
@@ -36,6 +37,7 @@ pub struct CellPosition {
 }
 
 pub struct Editor {
+    id: SubscriptionId,
     store: MetaStore,
     layout: Vec<Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>>,
     cursor: Option<CursorPosition<LayoutMeta>>,
@@ -44,7 +46,7 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(store: MetaStore) -> Self {
+    pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
         let core = MetaCore::new(&store);
         let rich_doc = core_layout_entities(&core).with_path();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
@@ -58,11 +60,12 @@ impl Editor {
         let cursor = Editor::cell_position_to_cursor(&layout, &pos);
 
         Editor {
+            id,
             store,
             layout,
             pos,
             cursor,
-            scroll: Scrollable::new(),
+            scroll: Scrollable::new(SubscriptionId::new()),
         }
     }
 
@@ -252,30 +255,31 @@ impl Layout for Editor {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         ctx.clear(Color::WHITE);
 
-        {
-            let cursor = &self.cursor;
-            let scroll = &mut self.scroll;
-            let layout = &self.layout;
+        let cursor = &self.cursor;
+        let scroll = &mut self.scroll;
+        let layout = &self.layout;
 
-            ctx.with_key(&"editor", move |ctx| {
-                Inset::new(
-                    &mut Scrolled::new(
-                        scroll,
-                        &mut List::new(layout.iter().map(|line| {
-                            List::new(line.iter().map(|x| CellWidget(x, &cursor)))
-                                .with_direction(Direction::Horizontal)
-                        })),
-                    ),
-                    Insets::uniform(10.0),
-                )
-                .layout(ctx, Constraint::unbound());
-            });
-        }
+        Inset::new(
+            &mut Scrolled::new(
+                scroll,
+                &mut List::new(layout.iter().map(|line| {
+                    List::new(line.iter().map(|x| CellWidget(x, &cursor)))
+                        .with_direction(Direction::Horizontal)
+                })),
+            ),
+            Insets::uniform(10.0),
+        )
+        .layout(ctx, Constraint::unbound());
 
-        ctx.grab_focus();
-        ctx.subscribe(Rect::ZERO, EventType::FOCUS | EventType::KEY_DOWN, false);
+        ctx.grab_focus(self.id);
+        ctx.subscribe(
+            self.id,
+            Rect::ZERO,
+            EventType::FOCUS | EventType::KEY_DOWN,
+            false,
+        );
 
-        for x in ctx.events() {
+        for x in ctx.events(self.id) {
             debug!("Editor got event: {:?}", x);
             #[allow(clippy::single_match)]
             match x {

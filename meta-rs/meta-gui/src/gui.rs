@@ -11,7 +11,7 @@ use druid_shell::{
     Application, KeyCode, KeyEvent, MouseEvent, WinHandler, WindowBuilder, WindowHandle,
 };
 
-pub use crate::events::{Event, EventType, WidgetId};
+pub use crate::events::{Event, EventType, SubscriptionId};
 use crate::events::{EventQueue, Subscription};
 use crate::ops::{Op, Ops, ShapeBox};
 
@@ -22,7 +22,6 @@ pub struct GuiContext<'a, 'b: 'a> {
     ops: Ops<'b>,
 
     now: Instant,
-    key_stack: Vec<String>,
 }
 
 impl<'a, 'b: 'a> GuiContext<'a, 'b> {
@@ -31,28 +30,8 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
             piet,
             event_queue,
             ops: Ops::new(),
-            key_stack: Vec::new(),
             now: Instant::now(),
         }
-    }
-
-    pub fn with_key<F, R>(&mut self, key: &impl ToString, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        self.key_stack.push(key.to_string());
-        let r = f(self);
-        self.key_stack.pop();
-        r
-    }
-
-    pub fn get_widget_id(&self) -> WidgetId {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        self.key_stack.hash(&mut hasher);
-        WidgetId(hasher.finish())
     }
 
     pub fn now(&self) -> Instant {
@@ -136,23 +115,21 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
         self.ops.push_all(ops);
     }
 
-    pub fn subscribe(&mut self, rect: Rect, events: EventType, grab: bool) {
-        let widget_id = self.get_widget_id();
+    pub fn subscribe(&mut self, id: SubscriptionId, rect: Rect, events: EventType, grab: bool) {
         self.ops.push(Op::Subscribe(Subscription {
-            widget_id,
+            id,
             rect,
             events,
             grab,
         }));
     }
 
-    pub fn grab_focus(&mut self) {
-        self.ops.push(Op::GrabFocus(self.get_widget_id()));
+    pub fn grab_focus(&mut self, id: SubscriptionId) {
+        self.ops.push(Op::GrabFocus(id));
     }
 
-    pub fn events(&mut self) -> Vec<Event> {
-        let widget_id = self.get_widget_id();
-        self.event_queue.widget_events(widget_id)
+    pub fn events(&mut self, id: SubscriptionId) -> Vec<Event> {
+        self.event_queue.take_events(id)
     }
 
     /// Invalidate the current frame. This leads to the current draw to not be flashed and

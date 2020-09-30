@@ -1,7 +1,7 @@
 use druid_shell::kurbo::{Affine, Point, Rect, RoundedRect, Shape};
 use druid_shell::piet::{Color, Piet, RenderContext, Text};
 
-use crate::events::{Subscription, WidgetId};
+use crate::events::{Subscription, SubscriptionId};
 
 pub struct Ops<'a> {
     ops: Vec<Op<'a>>,
@@ -23,7 +23,7 @@ pub(crate) enum Op<'a> {
     Save,
     Restore,
     Subscribe(Subscription),
-    GrabFocus(WidgetId),
+    GrabFocus(SubscriptionId),
     Invalidate,
 }
 
@@ -36,7 +36,7 @@ pub(crate) enum ShapeBox {
 #[derive(Debug, Default)]
 pub(crate) struct ExecutionResult {
     pub subscriptions: Vec<Subscription>,
-    pub grab_focus_requests: Vec<WidgetId>,
+    pub grab_focus_requests: Vec<SubscriptionId>,
     pub invalidated: bool,
 }
 

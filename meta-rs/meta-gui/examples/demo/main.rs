@@ -1,5 +1,6 @@
 use meta_gui::{
-    Button, Clickable, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, Text, WithKey,
+    Button, Clickable, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, SubscriptionId,
+    Text,
 };
 
 use druid_shell::kurbo::Insets;
@@ -10,8 +11,8 @@ fn main() {
     let app = Application::new().unwrap();
 
     let mut ui = Ui {
-        click1: Clickable::new(),
-        click2: Clickable::new(),
+        click1: Clickable::new(SubscriptionId::new()),
+        click2: Clickable::new(SubscriptionId::new()),
     };
 
     Gui::run(app.clone(), move |ctx| ui.draw(ctx));
@@ -38,11 +39,11 @@ impl Ui {
                     .with_child(&mut Text::new("world!")),
             )
             .with_child(&mut Inset::new(
-                &mut WithKey::new(&"button1", &mut Button::new(&mut self.click1, "button1")),
+                &mut Button::new(&mut self.click1, "button1"),
                 Insets::uniform_xy(2.0, 4.0),
             ))
             .with_child(&mut Inset::new(
-                &mut WithKey::new(&"button2", &mut Button::new(&mut self.click2, "button2")),
+                &mut Button::new(&mut self.click2, "button2"),
                 Insets::uniform_xy(2.0, 4.0),
             ))
             .layout(ctx, Constraint::unbound());

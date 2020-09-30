@@ -1,21 +1,25 @@
 use crate::events::{Event, EventType};
 use crate::gui::GuiContext;
-use crate::layout::{Constraint, Layout};
+use crate::{
+    layout::{Constraint, Layout},
+    SubscriptionId,
+};
 
 use druid_shell::kurbo::Size;
 
 pub struct Click();
 
 pub struct Clickable {
+    id: SubscriptionId,
     pressed: bool,
     hovered: bool,
     clicks: Vec<Click>,
 }
 
 impl Clickable {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(id: SubscriptionId) -> Self {
         Clickable {
+            id,
             pressed: false,
             hovered: false,
             clicks: Vec::new(),
@@ -43,7 +47,7 @@ impl Layout for Clickable {
         let size = constraint.min;
         let rect = size.to_rect();
 
-        for event in ctx.events() {
+        for event in ctx.events(self.id) {
             match event {
                 Event::MouseDown(..) => {
                     self.pressed = true;
@@ -65,6 +69,7 @@ impl Layout for Clickable {
         }
 
         ctx.subscribe(
+            self.id,
             rect,
             EventType::MOUSE_DOWN
                 | EventType::MOUSE_UP

@@ -3,10 +3,17 @@ use std::collections::HashMap;
 use bitflags::bitflags;
 use druid_shell::kurbo::{Affine, Rect};
 use druid_shell::{KeyEvent, MouseEvent};
-use log::trace;
+use rand::random;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub struct WidgetId(pub(crate) u64);
+pub struct SubscriptionId(u64);
+
+impl SubscriptionId {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        SubscriptionId(random())
+    }
+}
 
 bitflags! {
     pub struct EventType: u32 {
@@ -56,9 +63,12 @@ impl Event {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Subscription {
-    pub widget_id: WidgetId,
+    /// Id of the subscription. Should remain stable between frames, so that events could find their
+    /// way to the subscriber.
+    pub id: SubscriptionId,
+    /// Screen area to receive events from. Only applies to mouse-initiated events.
     pub rect: Rect,
-    /// Filter for events. Only the specified events will be delivered to the widget.
+    /// Filter for events. Only the specified events will be delivered to the subscription.
     pub events: EventType,
     /// Whether to grab all events. Should be used sparingly.
     ///
@@ -69,7 +79,7 @@ pub(crate) struct Subscription {
 impl Subscription {
     pub fn transform(self, affine: Affine) -> Self {
         Subscription {
-            widget_id: self.widget_id,
+            id: self.id,
             rect: affine.transform_rect_bbox(self.rect),
             events: self.events,
             grab: self.grab,
@@ -81,9 +91,9 @@ impl Subscription {
 pub(crate) struct EventQueue {
     grab: Vec<Subscription>,
     subscriptions: Vec<Subscription>,
-    widget_events: HashMap<WidgetId, Vec<Event>>,
+    subscription_events: HashMap<SubscriptionId, Vec<Event>>,
     last_mouse: Option<MouseEvent>,
-    focused_widget: Option<WidgetId>,
+    focused: Option<SubscriptionId>,
 }
 
 impl EventQueue {
@@ -91,9 +101,9 @@ impl EventQueue {
         EventQueue {
             grab: Vec::new(),
             subscriptions: Vec::new(),
-            widget_events: HashMap::new(),
+            subscription_events: HashMap::new(),
             last_mouse: None,
-            focused_widget: None,
+            focused: None,
         }
     }
 
@@ -116,15 +126,15 @@ impl EventQueue {
         }
     }
 
-    pub fn handle_grab_focus_requests(&mut self, requests: Vec<WidgetId>) -> bool {
-        for req in requests {
+    pub fn handle_grab_focus_requests(&mut self, requests: Vec<SubscriptionId>) -> bool {
+        for id in requests {
             // the widget has requested focus but it already has one
-            if self.focused_widget == Some(req) {
+            if self.focused == Some(id) {
                 return false;
             }
 
-            if let Some(widget_id) = self.find_focus_subscription(req).map(|x| x.widget_id) {
-                self.focus_widget(widget_id);
+            if self.find_focus_subscription(id).is_some() {
+                self.focus_subscription(id);
                 return true;
             }
         }
@@ -136,21 +146,21 @@ impl EventQueue {
         self.subscriptions.iter().find(|x| f(x))
     }
 
-    fn focus_widget(&mut self, widget_id: WidgetId) {
-        if let Some(prev) = self.focused_widget.replace(widget_id) {
-            self.widget_events
+    fn find_focus_subscription(&self, id: SubscriptionId) -> Option<&Subscription> {
+        self.find_subscription(|sub| sub.id == id && sub.events.contains(EventType::FOCUS))
+    }
+
+    fn focus_subscription(&mut self, id: SubscriptionId) {
+        if let Some(prev) = self.focused.replace(id) {
+            self.subscription_events
                 .entry(prev)
                 .or_insert_with(Vec::new)
                 .push(Event::Focus(false));
         }
-        self.widget_events
-            .entry(widget_id)
+        self.subscription_events
+            .entry(id)
             .or_insert_with(Vec::new)
             .push(Event::Focus(true));
-    }
-
-    fn find_focus_subscription(&self, req: WidgetId) -> Option<&Subscription> {
-        self.find_subscription(|sub| sub.widget_id == req && sub.events.contains(EventType::FOCUS))
     }
 
     /// Dispatch event to the event queue of the subscribed widget.
@@ -159,9 +169,9 @@ impl EventQueue {
     pub fn dispatch(&mut self, event: Event) -> bool {
         let mut dispatched = if let Some(sub) = self.find_subscribed_widget(&event) {
             if sub.events.contains(event.event_type()) {
-                let widget_id = sub.widget_id;
-                self.widget_events
-                    .entry(widget_id)
+                let id = sub.id;
+                self.subscription_events
+                    .entry(id)
                     .or_insert_with(Vec::new)
                     .push(event.clone());
                 true
@@ -173,12 +183,6 @@ impl EventQueue {
         };
 
         dispatched |= self.fire_synthetic_events(&event);
-
-        if dispatched {
-            trace!("dispatching: {:?}", event);
-        } else {
-            trace!("not dispatched: {:?}", event);
-        }
 
         dispatched
     }
@@ -223,8 +227,8 @@ impl EventQueue {
                     Event::WidgetLeave
                 };
                 if sub.events.contains(event.event_type()) {
-                    self.widget_events
-                        .entry(sub.widget_id)
+                    self.subscription_events
+                        .entry(sub.id)
                         .or_insert_with(Vec::new)
                         .push(event);
                     dispatched = true;
@@ -261,9 +265,8 @@ impl EventQueue {
             }
             Event::MouseLeave => {}
             Event::KeyDown(..) | Event::KeyUp(..) => {
-                if let Some(focused_widget) = self.focused_widget {
-                    if let x @ Some(..) = self.find_subscription(|x| x.widget_id == focused_widget)
-                    {
+                if let Some(focused) = self.focused {
+                    if let x @ Some(..) = self.find_subscription(|x| x.id == focused) {
                         return x;
                     }
                 }
@@ -272,9 +275,10 @@ impl EventQueue {
         None
     }
 
-    pub fn widget_events(&mut self, widget_id: WidgetId) -> Vec<Event> {
-        self.widget_events
-            .remove(&widget_id)
+    /// Takes events for the subscription, removing them from the queue.
+    pub fn take_events(&mut self, id: SubscriptionId) -> Vec<Event> {
+        self.subscription_events
+            .remove(&id)
             .unwrap_or_else(Vec::new)
     }
 }
