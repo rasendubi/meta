@@ -7,9 +7,7 @@ use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
 use druid_shell::piet::{
     Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
 };
-use druid_shell::{
-    Application, KeyCode, KeyEvent, MouseEvent, WinHandler, WindowBuilder, WindowHandle,
-};
+use druid_shell::{Application, KeyEvent, MouseEvent, WinHandler, WindowBuilder, WindowHandle};
 
 pub use crate::events::{Event, EventType, SubscriptionId};
 use crate::events::{EventQueue, Subscription};
@@ -283,20 +281,4 @@ impl WinHandler for Gui {
     fn got_focus(&mut self) {
         trace!("got_focus()");
     }
-}
-
-#[allow(dead_code)]
-fn is_modifier(code: &KeyCode) -> bool {
-    use KeyCode::*;
-    matches!(
-        code,
-        LeftControl
-            | RightControl
-            | LeftAlt
-            | RightAlt
-            | LeftShift
-            | RightShift
-            | LeftMeta
-            | RightMeta
-    )
 }

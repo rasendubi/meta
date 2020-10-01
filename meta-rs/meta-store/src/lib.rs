@@ -52,11 +52,12 @@ impl MetaStore {
 
     pub fn add_datom(&mut self, datom: &Datom) {
         let Datom {
-            id: _,
+            id,
             entity,
             attribute,
             value,
         } = datom;
+        self.atoms.insert(id.clone(), datom.clone());
         self.eav
             .add(entity.clone(), attribute.clone(), datom.clone());
         self.aev
@@ -67,14 +68,19 @@ impl MetaStore {
 
     pub fn remove_datom(&mut self, datom: &Datom) {
         let Datom {
-            id: _,
+            id,
             entity,
             attribute,
             value,
         } = datom;
+        self.atoms.remove(id);
         self.eav.remove(entity.clone(), attribute.clone(), &datom);
         self.aev.remove(attribute.clone(), entity.clone(), &datom);
         self.ave.remove(attribute.clone(), value.clone(), &datom);
+    }
+
+    pub fn atoms(&self) -> &HashMap<Field, Datom> {
+        &self.atoms
     }
 
     #[inline]

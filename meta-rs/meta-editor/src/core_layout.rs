@@ -100,6 +100,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
     ])
 }
 
+#[allow(dead_code)]
 pub fn core_layout_entities(core: &MetaCore) -> Doc {
     let entities = core.store.entities().into_iter().sorted();
     RichDoc::concat(
@@ -109,6 +110,41 @@ pub fn core_layout_entities(core: &MetaCore) -> Doc {
                 RichDoc::linebreak(),
                 RichDoc::linebreak(),
             ]))
+            .collect(),
+    )
+}
+
+pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> Doc {
+    RichDoc::nest(
+        2,
+        RichDoc::group(RichDoc::concat(vec![
+            surround(punctuation("["), punctuation("]"), field(&datom.id)),
+            line(),
+            RichDoc::group(RichDoc::concat(vec![
+                annotate(core, &datom.entity),
+                punctuation("."),
+                RichDoc::linebreak(),
+                annotate(core, &datom.attribute),
+            ])),
+            whitespace(" "),
+            punctuation("="),
+            RichDoc::nest(
+                2,
+                RichDoc::concat(vec![line(), core_layout_value(core, datom)]),
+            ),
+        ])),
+    )
+}
+
+pub fn core_layout_datoms(core: &MetaCore) -> Doc {
+    let mut datoms: Vec<&Datom> = core.store.atoms().values().collect();
+    datoms.sort_by_key(|d| &d.id);
+
+    RichDoc::concat(
+        datoms
+            .iter()
+            .map(|d| core_layout_datom(core, d))
+            .intersperse(RichDoc::linebreak())
             .collect(),
     )
 }
