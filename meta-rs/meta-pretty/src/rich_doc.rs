@@ -1,4 +1,4 @@
-use crate::path::{pathify, WithPath};
+use crate::path::{follow_path, pathify, PathSegment, WithPath};
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub struct Cell<T> {
@@ -53,6 +53,15 @@ impl<T, M> RichDoc<T, M> {
 
     pub fn with_path(self) -> RichDoc<T, WithPath<M>> {
         pathify(self, Vec::new())
+    }
+}
+
+impl<T, M> RichDoc<T, WithPath<M>> {
+    pub fn follow_path<'a, 'b>(
+        &'a self,
+        path: &'b [PathSegment],
+    ) -> Result<&'a Self, (&'a Self, &'b [PathSegment])> {
+        follow_path(self, path)
     }
 }
 
