@@ -203,8 +203,9 @@ dependencies = [
 
 [[package]]
 name = "cuid"
-version = "1.0.0"
-source = "git+https://github.com/rasendubi/cuid-rust?branch=cuid-length#7cf06077caeec4a6a05a3e3b305a4e50c69ca964"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcbef25a72cae9d2177cf917b98e598d6302daee9cce90dfac181219d3a291b0"
 dependencies = [
  "hostname",
  "lazy_static",

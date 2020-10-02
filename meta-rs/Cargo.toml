@@ -12,10 +12,6 @@ meta-core = { path = "./meta-core" }
 meta-editor = { path = "./meta-editor" }
 meta-pretty = { path = "./meta-pretty" }
 
-[patch.crates-io]
-# https://github.com/mplanchard/cuid-rust/pull/2
-cuid = { git = "https://github.com/rasendubi/cuid-rust", branch = "cuid-length" }
-
 [workspace]
 members = [
     "meta-editor",
