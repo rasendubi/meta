@@ -6,6 +6,7 @@ mod inset;
 mod list;
 mod row;
 mod scrollable;
+mod scrollbar;
 mod scrolled;
 mod text;
 
@@ -17,5 +18,6 @@ pub use inset::*;
 pub use list::*;
 pub use row::*;
 pub use scrollable::*;
+pub use scrollbar::*;
 pub use scrolled::*;
 pub use text::*;

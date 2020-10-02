@@ -1,4 +1,4 @@
-use crate::{Constraint, GuiContext, Layout, Scrollable};
+use crate::{Constraint, GuiContext, Layout, Scrollable, Scrollbar};
 use druid_shell::kurbo::{Affine, Size, Vec2};
 
 /// A widget that scrolls its child according to the scrollable.
@@ -31,6 +31,19 @@ impl<'a> Layout for Scrolled<'a> {
         self.scrollable.layout(ctx, Constraint::tight(widget_size));
 
         let offset = self.scrollable.offset();
+
+        let scrollbar_width = 6.0;
+        ctx.with_save(|ctx| {
+            ctx.transform(Affine::translate(Vec2::new(
+                widget_size.width - scrollbar_width,
+                0.0,
+            )));
+            Scrollbar::new(offset.y / size.height, widget_size.height / size.height).layout(
+                ctx,
+                Constraint::tight(Size::new(scrollbar_width, widget_size.height)),
+            );
+        });
+
         if offset.y < 0.0 {
             self.scrollable.set_offset(Vec2::new(offset.x, 0.0));
             ctx.invalidate();
