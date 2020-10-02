@@ -3,7 +3,7 @@ use meta_store::{Datom, Field};
 
 use unicode_segmentation::UnicodeSegmentation;
 
-pub type Doc = RichDoc<EditorCellPayload, ()>;
+pub type Doc = RichDoc<EditorCellPayload>;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
 pub enum CellClass {
@@ -88,13 +88,13 @@ impl AsRef<str> for CellText {
     }
 }
 
-pub fn cmp_priority<M>(
-    left: &SimpleDoc<EditorCellPayload, M>,
-    right: &SimpleDoc<EditorCellPayload, M>,
+pub fn cmp_priority(
+    left: &SimpleDoc<EditorCellPayload>,
+    right: &SimpleDoc<EditorCellPayload>,
 ) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     use SimpleDocKind::*;
-    match (&left.kind, &right.kind) {
+    match (left.kind(), right.kind()) {
         (Linebreak { .. }, Linebreak { .. }) => Ordering::Equal,
         (Linebreak { .. }, Cell(..)) => Ordering::Less,
         (Cell(..), Linebreak { .. }) => Ordering::Greater,

@@ -9,17 +9,14 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::editor::CursorPosition;
 use crate::layout::{CellClass, EditorCellPayload};
 
-pub(crate) struct CellWidget<'a, M>(
-    pub &'a SimpleDoc<EditorCellPayload, M>,
-    pub &'a Option<CursorPosition<M>>,
+pub(crate) struct CellWidget<'a>(
+    pub &'a SimpleDoc<EditorCellPayload>,
+    pub &'a Option<CursorPosition>,
 );
 
-impl<'a, M> Layout for CellWidget<'a, M>
-where
-    M: PartialEq,
-{
+impl<'a> Layout for CellWidget<'a> {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
-        let (string, class) = match &self.0.kind {
+        let (string, class) = match self.0.kind() {
             SimpleDocKind::Cell(cell) => {
                 (cell.payload.text.as_ref().to_string(), cell.payload.class)
             }
@@ -53,7 +50,7 @@ where
         let size = Size::new(text_size.width, text_size.height.max(min_height));
 
         match &self.1 {
-            Some(CursorPosition::Inside { cell, offset }) if cell.meta == self.0.meta => {
+            Some(CursorPosition::Inside { cell, offset }) if cell == self.0 => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
 
@@ -70,7 +67,7 @@ where
                     .x;
                 Cursor(x, size.height).layout(ctx, constraint);
             }
-            Some(CursorPosition::Between(_after, before)) if before.meta == self.0.meta => {
+            Some(CursorPosition::Between(_after, before)) if before == self.0 => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
 

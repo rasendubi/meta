@@ -13,22 +13,17 @@ use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_datoms;
 use crate::layout::{cmp_priority, EditorCellPayload};
 use meta_core::MetaCore;
-use meta_pretty::{SimpleDoc, SimpleDocKind, WithPath};
+use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, MetaStore};
-use std::cmp::Ordering;
-
-pub type LayoutMeta = WithEnumerate<WithPath<()>>;
+use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum CursorPosition<M> {
+pub enum CursorPosition {
     Inside {
-        cell: SimpleDoc<EditorCellPayload, M>,
+        cell: SimpleDoc<EditorCellPayload>,
         offset: usize,
     },
-    Between(
-        SimpleDoc<EditorCellPayload, M>,
-        SimpleDoc<EditorCellPayload, M>,
-    ),
+    Between(SimpleDoc<EditorCellPayload>, SimpleDoc<EditorCellPayload>),
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -40,8 +35,10 @@ pub struct CellPosition {
 pub struct Editor {
     id: SubscriptionId,
     store: MetaStore,
-    layout: Vec<Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>>,
-    cursor: Option<CursorPosition<LayoutMeta>>,
+    doc: RichDoc<EditorCellPayload>,
+    layout: Vec<Vec<SimpleDoc<EditorCellPayload>>>,
+    positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
+    cursor: Option<CursorPosition>,
     pos: CellPosition,
     scroll: Scrollable,
 }
@@ -49,21 +46,25 @@ pub struct Editor {
 impl Editor {
     pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
         let core = MetaCore::new(&store);
-        let rich_doc = core_layout_datoms(&core).with_path();
+        let rich_doc = core_layout_datoms(&core);
+        // let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 
         if log_enabled!(Trace) {
             trace!("layout:\n{}", simple_doc_to_string(&sdoc));
         }
 
-        let layout = enumerate(layout_to_2d(sdoc));
+        let layout = layout_to_2d(&sdoc);
+        let positions = enumerate(&layout);
         let pos = CellPosition { row: 0, col: 0 };
-        let cursor = Editor::cell_position_to_cursor(&layout, &pos);
+        let cursor = Editor::cell_position_to_cursor(&positions, &layout, &pos);
 
         Editor {
             id,
             store,
+            doc: rich_doc,
             layout,
+            positions,
             pos,
             cursor,
             scroll: Scrollable::new(SubscriptionId::new()),
@@ -72,17 +73,28 @@ impl Editor {
 
     pub fn on_store_updated(&mut self) {
         let core = MetaCore::new(&self.store);
-        let rich_doc = core_layout_datoms(&core).with_path();
+        let rich_doc = core_layout_datoms(&core);
+        // let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 
         if log_enabled!(Trace) {
             trace!("layout:\n{}", simple_doc_to_string(&sdoc));
         }
 
-        let layout = enumerate(layout_to_2d(sdoc));
+        let layout = layout_to_2d(&sdoc);
+        let positions = enumerate(&layout);
         // TODO: adjust pos (in case it is re-layouted)
-        let cursor = Editor::cell_position_to_cursor(&layout, &self.pos);
 
+        // if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
+        //     match self.doc.follow_path(&cell.meta.meta.path) {
+        //         Ok(_) => {}
+        //         Err((cell, path)) => {}
+        //     }
+        // }
+
+        let cursor = Editor::cell_position_to_cursor(&positions, &layout, &self.pos);
+
+        self.doc = rich_doc;
         self.layout = layout;
         self.cursor = cursor;
     }
@@ -92,43 +104,42 @@ impl Editor {
             row: (self.pos.row as isize + drow) as usize,
             col: (self.pos.col as isize + dcol) as usize,
         };
-        let cursor = Self::cell_position_to_cursor(&self.layout, &pos);
+        let cursor = Self::cell_position_to_cursor(&self.positions, &self.layout, &pos);
 
         self.pos = pos;
         self.cursor = cursor;
     }
 
     fn cell_position_to_cursor(
-        layout: &[Vec<SimpleDoc<EditorCellPayload, LayoutMeta>>],
+        positions: &HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
+        layout: &[Vec<SimpleDoc<EditorCellPayload>>],
         pos: &CellPosition,
-    ) -> Option<CursorPosition<LayoutMeta>> {
+    ) -> Option<CursorPosition> {
         let CellPosition { row, col } = pos;
         layout
             .get(*row)
             .and_then(|r| {
-                let m = r
-                    .iter()
-                    .try_fold(None, |acc: Option<&SimpleDoc<_, _>>, cell| {
-                        let left = cell.meta.pos.col;
-                        let right = left + cell.width();
-                        if *col < left || right <= *col {
-                            Ok(Some(cell))
-                        } else if left == *col {
-                            Err(match acc {
-                                None => CursorPosition::Inside {
-                                    cell: cell.clone(),
-                                    offset: col - left,
-                                },
-                                Some(prev) => CursorPosition::Between(prev.clone(), cell.clone()),
-                            })
-                        } else {
-                            // strictly inside cell
-                            Err(CursorPosition::Inside {
+                let m = r.iter().try_fold(None, |acc: Option<&SimpleDoc<_>>, cell| {
+                    let left = positions.get(cell).unwrap().col;
+                    let right = left + cell.width();
+                    if *col < left || right <= *col {
+                        Ok(Some(cell))
+                    } else if left == *col {
+                        Err(match acc {
+                            None => CursorPosition::Inside {
                                 cell: cell.clone(),
                                 offset: col - left,
-                            })
-                        }
-                    });
+                            },
+                            Some(prev) => CursorPosition::Between(prev.clone(), cell.clone()),
+                        })
+                    } else {
+                        // strictly inside cell
+                        Err(CursorPosition::Inside {
+                            cell: cell.clone(),
+                            offset: col - left,
+                        })
+                    }
+                });
                 match m {
                     Err(position) => Some(position),
                     Ok(mcell) => mcell.map(|cell| CursorPosition::Inside {
@@ -140,7 +151,7 @@ impl Editor {
             .map(Self::resolve_cursor_priority)
     }
 
-    fn resolve_cursor_priority<T>(cursor: CursorPosition<T>) -> CursorPosition<T> {
+    fn resolve_cursor_priority(cursor: CursorPosition) -> CursorPosition {
         match cursor {
             CursorPosition::Inside { .. } => cursor,
             CursorPosition::Between(left, right) => match cmp_priority(&left, &right) {
@@ -259,7 +270,7 @@ impl Editor {
     /// Returns `true` if edit happened
     fn edit_datom<F: FnOnce(&Datom, usize) -> Option<Datom>>(&mut self, f: F) -> bool {
         if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
-            if let SimpleDocKind::Cell(cell) = &cell.kind {
+            if let SimpleDocKind::Cell(cell) = cell.kind() {
                 if let Some(datom) = &cell.payload.datom {
                     if let Some(new_datom) = f(datom, *offset) {
                         debug!("replacing {:?} with {:?}", datom, new_datom);
@@ -325,51 +336,46 @@ pub struct WithEnumerate<M> {
     meta: M,
 }
 
-fn enumerate<T, M>(layout: Vec<Vec<SimpleDoc<T, M>>>) -> Vec<Vec<SimpleDoc<T, WithEnumerate<M>>>> {
-    layout
-        .into_iter()
-        .enumerate()
-        .map(|(row_id, row)| {
-            let mut column = 0;
-            row.into_iter()
-                .map(|cell| {
-                    let cell = cell.map_meta(|meta| WithEnumerate {
-                        meta,
-                        pos: CellPosition {
-                            row: row_id,
-                            col: column,
-                        },
-                    });
-                    column += cell.width();
-                    cell
-                })
-                .collect()
-        })
-        .collect()
-}
+fn enumerate<T>(layout: &[Vec<SimpleDoc<T>>]) -> HashMap<SimpleDoc<T>, CellPosition> {
+    let mut result = HashMap::new();
 
-fn layout_to_2d<T, M>(layout: Vec<SimpleDoc<T, M>>) -> Vec<Vec<SimpleDoc<T, M>>> {
-    let mut result = vec![Vec::new()];
-
-    for cell in layout.into_iter() {
-        if let SimpleDocKind::Linebreak { .. } = cell.kind {
-            result.push(Vec::new());
-        }
-
-        let last = result.len() - 1;
-        unsafe {
-            result.get_unchecked_mut(last).push(cell);
+    for (row_id, row) in layout.iter().enumerate() {
+        let mut column = 0;
+        for cell in row.iter() {
+            result.insert(
+                cell.clone(),
+                CellPosition {
+                    row: row_id,
+                    col: column,
+                },
+            );
+            column += cell.width();
         }
     }
 
     result
 }
 
-pub fn simple_doc_to_string<M>(sdoc: &[SimpleDoc<EditorCellPayload, M>]) -> String {
+fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
+    let mut result = vec![Vec::new()];
+
+    for cell in layout.iter() {
+        if let SimpleDocKind::Linebreak { .. } = cell.kind() {
+            result.push(Vec::new());
+        }
+
+        let last = result.len() - 1;
+        unsafe { result.get_unchecked_mut(last) }.push(cell.clone());
+    }
+
+    result
+}
+
+pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload>]) -> String {
     let mut out = String::new();
 
     for doc in sdoc {
-        match &doc.kind {
+        match doc.kind() {
             SimpleDocKind::Linebreak { indent_width } => {
                 out.reserve(indent_width + 1);
                 out.push('\n');

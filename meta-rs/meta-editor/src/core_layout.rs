@@ -9,7 +9,7 @@ use meta_store::{Datom, Field};
 
 use crate::layout::{datom_value, field, line, punctuation, whitespace, EditorCellPayload};
 
-type Doc = RichDoc<EditorCellPayload, ()>;
+type Doc = RichDoc<EditorCellPayload>;
 
 fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
     RichDoc::concat(vec![left, doc, right])

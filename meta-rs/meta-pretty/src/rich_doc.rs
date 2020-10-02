@@ -1,4 +1,6 @@
-use crate::path::{follow_path, pathify, PathSegment, WithPath};
+use std::{collections::HashMap, hash::Hash, rc::Rc};
+
+use crate::path::{follow_path, pathify, Path, PathSegment};
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub struct Cell<T> {
@@ -11,15 +13,46 @@ pub fn cell<T>(width: usize, payload: T) -> Cell<T> {
     Cell { width, payload }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct RichDoc<T, M> {
-    pub meta: M,
-    pub kind: RichDocKind<T, M>,
-    pub key: Option<String>,
+#[derive(Debug)]
+pub struct RichDoc<T>(Rc<RichDocNode<T>>);
+
+impl<T> Clone for RichDoc<T> {
+    fn clone(&self) -> Self {
+        RichDoc(self.0.clone())
+    }
+}
+
+impl<T> RichDoc<T> {
+    pub fn kind(&self) -> &RichDocKind<T> {
+        &self.0.kind
+    }
+
+    pub fn key(&self) -> &Option<String> {
+        &self.0.key
+    }
+}
+
+impl<T> PartialEq for RichDoc<T> {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl<T> Eq for RichDoc<T> {}
+
+impl<T> Hash for RichDoc<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&*self.0, state)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum RichDocKind<T, M> {
+pub struct RichDocNode<T> {
+    kind: RichDocKind<T>,
+    key: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum RichDocKind<T> {
     Empty,
     Cell(Cell<T>),
     Line {
@@ -28,50 +61,37 @@ pub enum RichDocKind<T, M> {
     },
     Nest {
         nest_width: usize,
-        doc: Box<RichDoc<T, M>>,
+        doc: RichDoc<T>,
     },
     Concat {
-        parts: Vec<RichDoc<T, M>>,
+        parts: Vec<RichDoc<T>>,
     },
     Group {
-        doc: Box<RichDoc<T, M>>,
+        doc: RichDoc<T>,
     },
 }
 
-impl<T, M> RichDoc<T, M> {
-    pub fn map_meta<F: FnOnce(M) -> M2, G: Fn(RichDocKind<T, M>) -> RichDocKind<T, M2>, M2>(
-        self,
-        f: F,
-        g: G,
-    ) -> RichDoc<T, M2> {
-        RichDoc {
-            meta: f(self.meta),
-            kind: g(self.kind),
-            key: self.key,
-        }
-    }
+// impl<T, M> RichDoc<T, M> {
+//     pub fn map_meta<F, G, M2>(self, f: F, g: G) -> RichDoc<T, M2>
+//     where
+//         F: FnOnce(M) -> M2,
+//         G: Fn(RichDocKind<T, M>) -> RichDocKind<T, M2>,
+//     {
+//         RichDoc {
+//             meta: f(self.meta),
+//             kind: g(self.kind),
+//             key: self.key,
+//         }
+//     }
+//
+//     pub fn with_path(self) -> RichDoc<T, WithPath<M>> {
+//         pathify(self, Vec::new())
+//     }
+// }
 
-    pub fn with_path(self) -> RichDoc<T, WithPath<M>> {
-        pathify(self, Vec::new())
-    }
-}
-
-impl<T, M> RichDoc<T, WithPath<M>> {
-    pub fn follow_path<'a, 'b>(
-        &'a self,
-        path: &'b [PathSegment],
-    ) -> Result<&'a Self, (&'a Self, &'b [PathSegment])> {
-        follow_path(self, path)
-    }
-}
-
-impl<T> RichDoc<T, ()> {
-    fn new(kind: RichDocKind<T, ()>) -> Self {
-        RichDoc {
-            meta: (),
-            kind,
-            key: None,
-        }
+impl<T> RichDoc<T> {
+    fn new(kind: RichDocKind<T>) -> Self {
+        RichDoc(Rc::new(RichDocNode { kind, key: None }))
     }
 
     #[inline]
@@ -95,21 +115,34 @@ impl<T> RichDoc<T, ()> {
     }
 
     #[inline]
-    pub fn nest(width: usize, doc: RichDoc<T, ()>) -> Self {
+    pub fn nest(width: usize, doc: Self) -> Self {
         Self::new(RichDocKind::Nest {
             nest_width: width,
-            doc: Box::new(doc),
+            doc,
         })
     }
 
     #[inline]
-    pub fn concat(parts: Vec<RichDoc<T, ()>>) -> Self {
+    pub fn concat(parts: Vec<Self>) -> Self {
         Self::new(RichDocKind::Concat { parts })
     }
 
     #[inline]
-    pub fn group(doc: RichDoc<T, ()>) -> Self {
-        Self::new(RichDocKind::Group { doc: Box::new(doc) })
+    pub fn group(doc: Self) -> Self {
+        Self::new(RichDocKind::Group { doc })
+    }
+
+    pub fn pathify(&self) -> HashMap<Self, Path> {
+        let mut result = HashMap::new();
+        pathify(&mut result, &self, Vec::new());
+        result
+    }
+
+    pub fn follow_path<'a, 'b>(
+        &'a self,
+        path: &'b [PathSegment],
+    ) -> Result<&'a Self, (&'a Self, &'b [PathSegment])> {
+        follow_path(self, path)
     }
 }
 
@@ -119,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        let _empty = RichDoc::<&str, ()>::empty();
+        let _empty = RichDoc::<&str>::empty();
     }
 
     #[test]

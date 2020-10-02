@@ -7,12 +7,11 @@ enum Mode {
     Flat,
 }
 
-type Cmd<'a, T, M> = (usize, Mode, &'a RichDoc<T, M>);
+type Cmd<'a, T> = (usize, Mode, &'a RichDoc<T>);
 
-fn fits<T, M>(cmd: Cmd<T, M>, rest: &[Cmd<T, M>], max_width: usize) -> bool
+fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool
 where
     T: Clone,
-    M: Clone,
 {
     // Semantically, this function should take `cmds: Vec<Cmd<T>>`. However, that would imply a copy
     // of the cmds vector which we try to avoid.
@@ -33,7 +32,7 @@ where
                 }
             }
 
-            Some((indent, mode, doc)) => match &doc.kind {
+            Some((indent, mode, doc)) => match doc.kind() {
                 RichDocKind::Empty => {}
                 RichDocKind::Cell(cell) => {
                     width += cell.width;
@@ -65,10 +64,9 @@ where
     false
 }
 
-pub fn layout<T, M>(doc: &RichDoc<T, M>, page_width: usize) -> Vec<SimpleDoc<T, M>>
+pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>>
 where
     T: Clone,
-    M: Clone,
 {
     let mut out = vec![];
 
@@ -76,10 +74,10 @@ where
     let mut pos = 0;
 
     while let Some((indent, mode, doc)) = cmds.pop() {
-        match &doc.kind {
+        match doc.kind() {
             RichDocKind::Empty => {}
             RichDocKind::Cell(cell) => {
-                out.push(SimpleDoc::cell(doc.meta.clone(), cell.clone()));
+                out.push(SimpleDoc::cell(doc.clone(), cell.clone()));
                 pos += cell.width;
             }
             RichDocKind::Concat { parts } => {
@@ -90,12 +88,12 @@ where
             }
             RichDocKind::Line { alt } => match mode {
                 Mode::Break => {
-                    out.push(SimpleDoc::linebreak(doc.meta.clone(), indent));
+                    out.push(SimpleDoc::linebreak(doc.clone(), indent));
                     pos = indent;
                 }
                 Mode::Flat => {
                     if let Some(alt) = alt {
-                        out.push(SimpleDoc::cell(doc.meta.clone(), alt.clone()));
+                        out.push(SimpleDoc::cell(doc.clone(), alt.clone()));
                     }
                 }
             },
@@ -122,15 +120,15 @@ mod tests {
     use crate::rich_doc::{cell, Cell, RichDoc};
     use crate::simple_doc::{SimpleDoc, SimpleDocKind};
 
-    fn text(s: &str) -> RichDoc<&str, ()> {
+    fn text(s: &str) -> RichDoc<&str> {
         RichDoc::cell(s.len(), s)
     }
 
-    fn to_string<M>(sdoc: &Vec<SimpleDoc<&str, M>>) -> String {
+    fn to_string(sdoc: &Vec<SimpleDoc<&str>>) -> String {
         let mut result = String::new();
 
         for s in sdoc {
-            match &s.kind {
+            match s.kind() {
                 SimpleDocKind::Cell(Cell { payload, .. }) => {
                     result.push_str(payload);
                 }
@@ -146,7 +144,7 @@ mod tests {
         result
     }
 
-    fn layout<M: Clone>(doc: RichDoc<&str, M>) -> String {
+    fn layout(doc: RichDoc<&str>) -> String {
         to_string(&super::layout(&doc, 20))
     }
 
