@@ -1,21 +1,19 @@
-use log::Level::Trace;
-use log::{debug, log_enabled, trace};
-
 use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
+use log::debug;
 use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
     SubscriptionId,
 };
+use std::{cmp::Ordering, collections::HashMap};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_datoms;
 use crate::layout::{cmp_priority, EditorCellPayload};
 use meta_core::MetaCore;
-use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
+use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, MetaStore};
-use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
@@ -36,6 +34,7 @@ pub struct Editor {
     id: SubscriptionId,
     store: MetaStore,
     doc: RichDoc<EditorCellPayload>,
+    paths: HashMap<RichDoc<EditorCellPayload>, Path>,
     layout: Vec<Vec<SimpleDoc<EditorCellPayload>>>,
     positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
     cursor: Option<CursorPosition>,
@@ -47,12 +46,8 @@ impl Editor {
     pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
         let core = MetaCore::new(&store);
         let rich_doc = core_layout_datoms(&core);
-        // let paths = rich_doc.pathify();
+        let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
-
-        if log_enabled!(Trace) {
-            trace!("layout:\n{}", simple_doc_to_string(&sdoc));
-        }
 
         let layout = layout_to_2d(&sdoc);
         let positions = enumerate(&layout);
@@ -63,6 +58,7 @@ impl Editor {
             id,
             store,
             doc: rich_doc,
+            paths,
             layout,
             positions,
             pos,
@@ -74,29 +70,42 @@ impl Editor {
     pub fn on_store_updated(&mut self) {
         let core = MetaCore::new(&self.store);
         let rich_doc = core_layout_datoms(&core);
-        // let paths = rich_doc.pathify();
+        let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
-
-        if log_enabled!(Trace) {
-            trace!("layout:\n{}", simple_doc_to_string(&sdoc));
-        }
 
         let layout = layout_to_2d(&sdoc);
         let positions = enumerate(&layout);
-        // TODO: adjust pos (in case it is re-layouted)
 
-        // if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
-        //     match self.doc.follow_path(&cell.meta.meta.path) {
-        //         Ok(_) => {}
-        //         Err((cell, path)) => {}
-        //     }
-        // }
+        let cursor =
+            if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
+                match rich_doc.follow_path(self.paths.get(cell.rich_doc()).unwrap()) {
+                    Ok(cell) => sdoc.iter().find(|s| s.rich_doc() == cell).map(|cell| {
+                        CursorPosition::Inside {
+                            cell: cell.clone(),
+                            offset: *offset,
+                        }
+                    }),
+                    Err((_cell, _path)) => {
+                        Editor::cell_position_to_cursor(&positions, &layout, &self.pos)
+                    }
+                }
+            } else {
+                Editor::cell_position_to_cursor(&positions, &layout, &self.pos)
+            };
 
-        let cursor = Editor::cell_position_to_cursor(&positions, &layout, &self.pos);
+        if let Some(CursorPosition::Inside { cell, offset }) = &cursor {
+            let CellPosition { row, col } = positions.get(cell).unwrap();
+            self.pos = CellPosition {
+                row: *row,
+                col: col + offset,
+            };
+        }
 
+        self.paths = paths;
         self.doc = rich_doc;
         self.layout = layout;
         self.cursor = cursor;
+        self.positions = positions;
     }
 
     fn move_cursor(&mut self, drow: isize, dcol: isize) {
@@ -369,25 +378,4 @@ fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
     }
 
     result
-}
-
-pub fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload>]) -> String {
-    let mut out = String::new();
-
-    for doc in sdoc {
-        match doc.kind() {
-            SimpleDocKind::Linebreak { indent_width } => {
-                out.reserve(indent_width + 1);
-                out.push('\n');
-                for _ in 0..*indent_width {
-                    out.push(' ');
-                }
-            }
-            SimpleDocKind::Cell(cell) => {
-                out.push_str(cell.payload.text.as_ref());
-            }
-        }
-    }
-
-    out
 }
