@@ -38,7 +38,6 @@ pub struct Editor {
     layout: Vec<Vec<SimpleDoc<EditorCellPayload>>>,
     positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
     cursor: Option<CursorPosition>,
-    pos: CellPosition,
     scroll: Scrollable,
 }
 
@@ -61,9 +60,21 @@ impl Editor {
             paths,
             layout,
             positions,
-            pos,
             cursor,
             scroll: Scrollable::new(SubscriptionId::new()),
+        }
+    }
+
+    pub fn current_position(&self) -> Option<CellPosition> {
+        match &self.cursor {
+            Some(CursorPosition::Inside { cell, offset }) => {
+                let cell_position = self.positions.get(cell).unwrap();
+                Some(CellPosition {
+                    row: cell_position.row,
+                    col: cell_position.col + offset,
+                })
+            }
+            _ => None,
         }
     }
 
@@ -76,30 +87,28 @@ impl Editor {
         let layout = layout_to_2d(&sdoc);
         let positions = enumerate(&layout);
 
-        let cursor =
-            if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
-                match rich_doc.follow_path(self.paths.get(cell.rich_doc()).unwrap()) {
-                    Ok(cell) => sdoc.iter().find(|s| s.rich_doc() == cell).map(|cell| {
-                        CursorPosition::Inside {
+        let cursor = if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
+            match rich_doc.follow_path(self.paths.get(cell.rich_doc()).unwrap()) {
+                Ok(cell) => {
+                    sdoc.iter()
+                        .find(|s| s.rich_doc() == cell)
+                        .map(|cell| CursorPosition::Inside {
                             cell: cell.clone(),
                             offset: *offset,
-                        }
-                    }),
-                    Err((_cell, _path)) => {
-                        Editor::cell_position_to_cursor(&positions, &layout, &self.pos)
-                    }
+                        })
                 }
-            } else {
-                Editor::cell_position_to_cursor(&positions, &layout, &self.pos)
-            };
-
-        if let Some(CursorPosition::Inside { cell, offset }) = &cursor {
-            let CellPosition { row, col } = positions.get(cell).unwrap();
-            self.pos = CellPosition {
-                row: *row,
-                col: col + offset,
-            };
-        }
+                Err((_cell, _path)) => {
+                    // TODO: The target cell has been deleted. Make cursor point to adjusted cell.
+                    Editor::cell_position_to_cursor(
+                        &positions,
+                        &layout,
+                        &self.current_position().unwrap(),
+                    )
+                }
+            }
+        } else {
+            Editor::cell_position_to_cursor(&positions, &layout, &self.current_position().unwrap())
+        };
 
         self.paths = paths;
         self.doc = rich_doc;
@@ -109,13 +118,13 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, drow: isize, dcol: isize) {
+        let pos = self.current_position().unwrap();
         let pos = CellPosition {
-            row: (self.pos.row as isize + drow) as usize,
-            col: (self.pos.col as isize + dcol) as usize,
+            row: (pos.row as isize + drow) as usize,
+            col: (pos.col as isize + dcol) as usize,
         };
         let cursor = Self::cell_position_to_cursor(&self.positions, &self.layout, &pos);
 
-        self.pos = pos;
         self.cursor = cursor;
     }
 

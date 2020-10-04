@@ -20,3 +20,6 @@ members = [
     "meta-core",
     "meta-gui",
 ]
+
+[profile.dev]
+opt-level = 3
