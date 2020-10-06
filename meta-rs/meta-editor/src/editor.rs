@@ -324,7 +324,7 @@ impl Layout for Editor {
                 Insets::uniform(10.0),
             ),
         )
-        .layout(ctx, Constraint::loose(ctx.window_size()));
+        .layout(ctx, Constraint::tight(ctx.window_size()));
 
         ctx.grab_focus(self.id);
         ctx.subscribe(
