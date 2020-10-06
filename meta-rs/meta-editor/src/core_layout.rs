@@ -7,7 +7,7 @@ use meta_core::MetaCore;
 use meta_pretty::RichDoc;
 use meta_store::{Datom, Field};
 
-use crate::layout::{datom_value, field, line, punctuation, whitespace, EditorCellPayload};
+use crate::layout::{datom_value, field, line, punctuation, text, whitespace, EditorCellPayload};
 
 type Doc = RichDoc<EditorCellPayload>;
 
@@ -136,6 +136,7 @@ pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> Doc {
     )
 }
 
+#[allow(dead_code)]
 pub fn core_layout_datoms(core: &MetaCore) -> Doc {
     let mut datoms: Vec<&Datom> = core.store.atoms().values().collect();
     datoms.sort_by_key(|d| &d.id);
@@ -144,6 +145,51 @@ pub fn core_layout_datoms(core: &MetaCore) -> Doc {
         datoms
             .iter()
             .map(|d| core_layout_datom(core, d))
+            .intersperse(RichDoc::linebreak())
+            .collect(),
+    )
+}
+
+pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
+    let language_entity_id = "13".into();
+    let entities = core
+        .store
+        .eav2(id, &language_entity_id)
+        .cloned()
+        .unwrap_or_else(HashSet::new);
+
+    RichDoc::concat(vec![
+        text("language"),
+        whitespace(" "),
+        annotate(core, id),
+        RichDoc::linebreak(),
+        RichDoc::linebreak(),
+        RichDoc::concat(
+            entities
+                .iter()
+                .map(|e| core_layout_entity(core, &e.value))
+                .intersperse(RichDoc::concat(vec![
+                    RichDoc::linebreak(),
+                    RichDoc::linebreak(),
+                ]))
+                .collect(),
+        ),
+    ])
+}
+
+pub fn core_layout_languages(core: &MetaCore) -> Doc {
+    let type_id = "5".into();
+    let language_id = "12".into();
+    // TODO: core.get_of_type("12")
+    let languages: Vec<&Datom> = core
+        .store
+        .ave2(&type_id, &language_id)
+        .map_or_else(Vec::new, |x| x.iter().collect());
+
+    RichDoc::concat(
+        languages
+            .iter()
+            .map(|l| core_layout_language(core, &l.entity))
             .intersperse(RichDoc::linebreak())
             .collect(),
     )

@@ -9,7 +9,7 @@ use std::{cmp::Ordering, collections::HashMap};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::cell_widget::CellWidget;
-use crate::core_layout::core_layout_datoms;
+use crate::core_layout::core_layout_languages;
 use crate::layout::{cmp_priority, EditorCellPayload};
 use meta_core::MetaCore;
 use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
@@ -44,7 +44,7 @@ pub struct Editor {
 impl Editor {
     pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
         let core = MetaCore::new(&store);
-        let rich_doc = core_layout_datoms(&core);
+        let rich_doc = core_layout_languages(&core);
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 
@@ -80,7 +80,7 @@ impl Editor {
 
     pub fn on_store_updated(&mut self) {
         let core = MetaCore::new(&self.store);
-        let rich_doc = core_layout_datoms(&core);
+        let rich_doc = core_layout_languages(&core);
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 

@@ -70,3 +70,45 @@
 ["11", "5", "8"]                               ; IntegerNumber(11).type(5) = ValueType(8)
 ;; IntegerNumber(11).comment(4) = "Value is an decimal-encoded integer number. e.g., \"-42\" represents number -42."
 ["11", "4", "Value is an decimal-encoded integer number. e.g., \"-42\" represents number -42."]
+
+["12", "0", "Language"]
+["12", "5", "6"]
+
+["13", "0", "Language.entity"]
+["13", "5", "7"]
+["13", "1", "3"]
+
+;; meta.core(14) : Language(12) {
+["14", "0", "meta.core"]
+["14", "5", "12"]
+
+;; assign all other entities to meta.core(14).Language.entity(13)
+["14", "13", "0"]
+["14", "13", "1"]
+["14", "13", "2"]
+["14", "13", "3"]
+["14", "13", "4"]
+["14", "13", "5"]
+["14", "13", "6"]
+["14", "13", "7"]
+["14", "13", "8"]
+["14", "13", "9"]
+["14", "13", "10"]
+["14", "13", "11"]
+["14", "13", "12"]
+["14", "13", "13"]
+;; }
+
+["15", "0", "Type.attribute"]
+["15", "4", "Allows associating attributes with specific types. Useful for when attribute is only useful for specific entity types."]
+["15", "5", "7"]
+["15", "1", "3"]
+["15", "10", "7"]
+["14", "13", "15"]
+;; Type.attribute only makes sense for Type entities
+["6", "15", "15"]                              ; Type(6).Type.attribute(15) = Type.attribute(15)
+
+["7", "15", "1"]                               ; Attribute(7).Type.attribute(15) = Attribute.value-type(1)
+["7", "15", "10"]                              ; Attribute(7).Type.attribute(15) = Attribute.reference-type(10)
+
+["12", "15", "13"]                             ; Language(12).Type.attribute(15) = Language.entity(13)

@@ -68,6 +68,10 @@ pub fn line() -> Doc {
     ))
 }
 
+pub fn text(s: &'static str) -> Doc {
+    literal(CellClass::NonEditable, s)
+}
+
 fn literal(class: CellClass, s: &'static str) -> Doc {
     RichDoc::cell(
         str_length(s),
