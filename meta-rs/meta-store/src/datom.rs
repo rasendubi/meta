@@ -1,13 +1,18 @@
-use cuid::cuid;
-use string_cache::{Atom, DefaultAtom};
+use std::fmt::Debug;
 
+use cuid::cuid;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
+use string_cache::{Atom, DefaultAtom};
 
-#[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Field(DefaultAtom);
+
+impl Debug for Field {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Field").field(&self.as_ref()).finish()
+    }
+}
 
 impl AsRef<str> for Field {
     fn as_ref(&self) -> &str {
@@ -35,12 +40,23 @@ impl ToString for Field {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub struct Datom {
     pub id: Field,
     pub entity: Field,
     pub attribute: Field,
     pub value: Field,
+}
+
+impl Debug for Datom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Datom")
+            .field(&self.id.as_ref())
+            .field(&self.entity.as_ref())
+            .field(&self.attribute.as_ref())
+            .field(&self.value.as_ref())
+            .finish()
+    }
 }
 
 impl<'a> From<(&'a str, &'a str, &'a str, &'a str)> for Datom {
