@@ -25,6 +25,11 @@ impl<'a> MetaCore<'a> {
         let attribute_type = Field::from("1");
         self.store.value(entity, &attribute_type)
     }
+
+    pub fn after(&self, datom: &Datom) -> Option<&Field> {
+        let after_id = Field::from("16");
+        self.store.value(&datom.id, &after_id).map(|a| &a.value)
+    }
 }
 
 #[cfg(test)]

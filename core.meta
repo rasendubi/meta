@@ -83,20 +83,20 @@
 ["14", "5", "12"]
 
 ;; assign all other entities to meta.core(14).Language.entity(13)
-["14", "13", "0"]
-["14", "13", "1"]
-["14", "13", "2"]
-["14", "13", "3"]
-["14", "13", "4"]
-["14", "13", "5"]
-["14", "13", "6"]
-["14", "13", "7"]
-["14", "13", "8"]
-["14", "13", "9"]
-["14", "13", "10"]
-["14", "13", "11"]
-["14", "13", "12"]
-["14", "13", "13"]
+["-1", "14", "13", "0"]    ; identifier
+["-2", "14", "13", "1"]    ; Attribute.value-type
+["-3", "14", "13", "2"]    ; String
+["-4", "14", "13", "3"]    ; Reference
+["-5", "14", "13", "4"]    ; comment
+["-6", "14", "13", "5"]    ; type
+["-7", "14", "13", "6"]    ; Type
+["-8", "14", "13", "7"]    ; Attribute
+["-9", "14", "13", "8"]    ; ValueType
+["-10", "14", "13", "9"]   ; NaturalNumber
+["-11", "14", "13", "10"]  ; Attribute.reference-type
+["-12", "14", "13", "11"]  ; IntegerNumber
+["-13", "14", "13", "12"]  ; Language
+["-14", "14", "13", "13"]  ; Language.entity
 ;; }
 
 ["15", "0", "Type.attribute"]
@@ -104,7 +104,7 @@
 ["15", "5", "7"]
 ["15", "1", "3"]
 ["15", "10", "7"]
-["14", "13", "15"]
+["-15", "14", "13", "15"]
 ;; Type.attribute only makes sense for Type entities
 ["6", "15", "15"]                              ; Type(6).Type.attribute(15) = Type.attribute(15)
 
@@ -112,3 +112,27 @@
 ["7", "15", "10"]                              ; Attribute(7).Type.attribute(15) = Attribute.reference-type(10)
 
 ["12", "15", "13"]                             ; Language(12).Type.attribute(15) = Language.entity(13)
+
+["16", "0", "after"]
+["16", "4", "after attribute can be assigned to atoms to ensure ordering of values within (entity, attribute) pair."]
+["16", "5", "7"]
+["16", "1", "3"]
+["-16", "14", "13", "16"]
+
+;; assign order to meta.core(14).Language.entity(13)
+                      ; identifier
+["-5", "16", "-1"]    ; comment
+["-16", "16", "-5"]   ; after
+["-6", "16", "-16"]   ; type
+["-7", "16", "-6"]    ; Type
+["-15", "16", "-7"]   ; Type.attribute
+["-8", "16", "-15"]   ; Attribute
+["-2", "16", "-8"]    ; Attribute.value-type
+["-11", "16", "-2"]   ; Attribute.reference-type
+["-9", "16", "-11"]   ; ValueType
+["-3", "16", "-9"]    ; String
+["-10", "16", "-3"]   ; NaturalNumber
+["-12", "16", "-10"]  ; IntegerNumber
+["-4", "16", "-12"]   ; Reference
+["-13", "16", "-4"]   ; Language
+["-14", "16", "-13"]  ; Language.entity

@@ -8,6 +8,7 @@ use meta_pretty::RichDoc;
 use meta_store::{Datom, Field};
 
 use crate::layout::{datom_value, field, line, punctuation, text, whitespace, EditorCellPayload};
+use std::collections::HashMap;
 
 type Doc = RichDoc<EditorCellPayload>;
 
@@ -157,6 +158,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
         .eav2(id, &language_entity_id)
         .cloned()
         .unwrap_or_else(HashSet::new);
+    let entities = order(core, entities.iter().collect());
 
     RichDoc::concat(vec![
         text("language"),
@@ -193,4 +195,143 @@ pub fn core_layout_languages(core: &MetaCore) -> Doc {
             .intersperse(RichDoc::linebreak())
             .collect(),
     )
+}
+
+// Believe me or not, it's actually O(n + m*log(m)), where n is the total number of datoms and m is
+// the number of atoms without "after" attribute.
+fn order<'a>(core: &'a MetaCore, atoms: Vec<&'a Datom>) -> Vec<&'a Datom> {
+    let mut no_after = HashSet::new();
+    let mut next = HashMap::<&Field, HashSet<&Datom>>::new();
+    for x in atoms.iter() {
+        if let Some(a) = core.after(x) {
+            next.entry(a).or_insert_with(HashSet::new).insert(x);
+        } else {
+            no_after.insert(x);
+        }
+    }
+
+    // it would be much easier if Rust allowed recursive closures
+    fn process_atom<'a>(
+        x: &'a Datom,
+        result: &'_ mut Vec<&'a Datom>,
+        next: &HashMap<&'a Field, HashSet<&'a Datom>>,
+    ) {
+        result.push(x);
+        if let Some(next_atoms) = next.get(&x.id) {
+            for a in next_atoms.iter() {
+                process_atom(a, result, next);
+            }
+        }
+    }
+
+    let mut result = Vec::new();
+    for a in no_after.iter().sorted_by_key(|x| &x.id) {
+        process_atom(a, &mut result, &next);
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use meta_store::MetaStore;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_order_no_after() {
+        let store = MetaStore::from_str(
+            r#"
+              ["10", "0", "1", "2"]
+              ["11", "0", "1", "3"]
+              ["12", "0", "1", "4"]
+            "#,
+        )
+        .unwrap();
+        let core = MetaCore::new(&store);
+
+        let result = order(
+            &core,
+            store
+                .eav2(&"0".into(), &"1".into())
+                .map(|x| x.iter().collect())
+                .unwrap_or_else(Vec::new),
+        );
+
+        assert_eq!(
+            vec![
+                &("10", "0", "1", "2").into(),
+                &("11", "0", "1", "3").into(),
+                &("12", "0", "1", "4").into(),
+            ] as Vec<&Datom>,
+            result
+        );
+    }
+
+    #[test]
+    fn test_order_with_after() {
+        let store = MetaStore::from_str(
+            r#"
+              ["10", "0", "1", "2"]
+              ["11", "0", "1", "3"]
+              ["12", "0", "1", "4"]
+              ["13", "12", "16", "10"]
+              ["14", "11", "16", "12"]
+            "#,
+        )
+        .unwrap();
+        let core = MetaCore::new(&store);
+
+        let result = order(
+            &core,
+            store
+                .eav2(&"0".into(), &"1".into())
+                .map(|x| x.iter().collect())
+                .unwrap_or_else(Vec::new),
+        );
+
+        assert_eq!(
+            vec![
+                &("10", "0", "1", "2").into(),
+                &("12", "0", "1", "4").into(),
+                &("11", "0", "1", "3").into(),
+            ] as Vec<&Datom>,
+            result
+        );
+    }
+
+    #[test]
+    #[ignore] // TODO: order silently drops all loops now (a after b, b after a)
+    fn test_order_with_after_loop() {
+        let store = MetaStore::from_str(
+            r#"
+              ["10", "0", "1", "2"]
+              ["11", "0", "1", "3"]
+              ["12", "0", "1", "4"]
+              ["13", "12", "16", "10"]
+              ["14", "11", "16", "12"]
+              ["15", "10", "16", "11"]
+            "#,
+        )
+        .unwrap();
+        let core = MetaCore::new(&store);
+
+        let result = order(
+            &core,
+            store
+                .eav2(&"0".into(), &"1".into())
+                .map(|x| x.iter().collect())
+                .unwrap_or_else(Vec::new),
+        );
+
+        // if loop is detected, prefer starting from the lowest id
+        assert_eq!(
+            vec![
+                &("10", "0", "1", "2").into(),
+                &("12", "0", "1", "4").into(),
+                &("11", "0", "1", "3").into(),
+            ] as Vec<&Datom>,
+            result
+        );
+    }
 }
