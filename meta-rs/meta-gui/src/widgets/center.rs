@@ -3,17 +3,20 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Size};
 
-pub struct Center<'a> {
-    child: &'a mut dyn Layout,
+pub struct Center<T> {
+    child: T,
 }
 
-impl<'a> Center<'a> {
-    pub fn new(child: &'a mut impl Layout) -> Self {
+impl<T> Center<T> {
+    pub fn new(child: T) -> Self {
         Center { child }
     }
 }
 
-impl<'a> Layout for Center<'a> {
+impl<T> Layout for Center<T>
+where
+    T: Layout,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let (child_size, ops) = ctx.capture(|ctx| self.child.layout(ctx, constraint.to_loose()));
         let max = constraint.max;

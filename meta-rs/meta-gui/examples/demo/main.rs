@@ -29,7 +29,7 @@ impl Ui {
         ctx.clear(Color::WHITE);
 
         Column::new()
-            .with_child(&mut Text::new("Hello, world!").with_font("Input"))
+            .with_child(&mut Text::new("Hello, world!").with_font("Input") as &mut dyn Layout)
             .with_child(&mut Text::new(
                 "Almost before we knew it, we had left the ground.",
             ))

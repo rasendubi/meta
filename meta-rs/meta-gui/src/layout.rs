@@ -55,3 +55,18 @@ pub trait Layout {
     /// This function must return the Size widget will occupy (within the provided constraints).
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size;
 }
+
+impl<'a, T> Layout for &'a mut T
+where
+    T: Layout,
+{
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+        (*self).layout(ctx, constraint)
+    }
+}
+
+impl<'a> Layout for &'a mut dyn Layout {
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+        (*self).layout(ctx, constraint)
+    }
+}

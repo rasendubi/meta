@@ -3,18 +3,21 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Insets, Size, Vec2};
 
-pub struct Inset<'a> {
-    child: &'a mut dyn Layout,
+pub struct Inset<T> {
+    child: T,
     insets: Insets,
 }
 
-impl<'a> Inset<'a> {
-    pub fn new(child: &'a mut dyn Layout, insets: Insets) -> Self {
+impl<T> Inset<T> {
+    pub fn new(child: T, insets: Insets) -> Self {
         Inset { child, insets }
     }
 }
 
-impl<'a> Layout for Inset<'a> {
+impl<T> Layout for Inset<T>
+where
+    T: Layout,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let child_size = ctx.with_save(|ctx| {
             ctx.transform(Affine::translate(Vec2::new(self.insets.x0, self.insets.y0)));

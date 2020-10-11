@@ -3,11 +3,11 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Size, Vec2};
 
-pub struct Column<'a> {
-    children: Vec<&'a mut dyn Layout>,
+pub struct Column<T> {
+    children: Vec<T>,
 }
 
-impl<'a> Column<'a> {
+impl<T> Column<T> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Column {
@@ -15,13 +15,16 @@ impl<'a> Column<'a> {
         }
     }
 
-    pub fn with_child(mut self, child: &'a mut impl Layout) -> Self {
+    pub fn with_child(mut self, child: T) -> Self {
         self.children.push(child);
         self
     }
 }
 
-impl<'a> Layout for Column<'a> {
+impl<T> Layout for Column<T>
+where
+    T: Layout,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let mut size_left = constraint.max;
         let mut my_size = Size::ZERO;

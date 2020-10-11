@@ -5,18 +5,21 @@ use druid_shell::kurbo::{Affine, Size, Vec2};
 ///
 /// Takes at most as much space as needed for the child. Does not allow scrolling past the edges of
 /// child.
-pub struct Scrolled<'a> {
+pub struct Scrolled<'a, T> {
     scrollable: &'a mut Scrollable,
-    child: &'a mut dyn Layout,
+    child: T,
 }
 
-impl<'a> Scrolled<'a> {
-    pub fn new(scrollable: &'a mut Scrollable, child: &'a mut dyn Layout) -> Self {
+impl<'a, T> Scrolled<'a, T> {
+    pub fn new(scrollable: &'a mut Scrollable, child: T) -> Self {
         Scrolled { scrollable, child }
     }
 }
 
-impl<'a> Layout for Scrolled<'a> {
+impl<'a, T> Layout for Scrolled<'a, T>
+where
+    T: Layout,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let size = ctx.with_save(|ctx| {
             ctx.clip(constraint.max.to_rect());
