@@ -85,6 +85,6 @@ impl Layout for Text<'_> {
             x_offset += layout.width();
         }
 
-        text_size
+        constraint.clamp(text_size)
     }
 }
