@@ -32,10 +32,11 @@ impl<I: Iterator<Item = Item>, Item: Layout> List<I> {
     fn layout_horizontal(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let mut size_left = constraint.max;
         let mut my_size = Size::ZERO;
+        let min_child_size = Size::new(0.0, constraint.min.height);
         for mut child in self.iter.by_ref() {
             let x = ctx.with_save(|ctx| {
                 ctx.transform(Affine::translate(Vec2::new(my_size.width, 0.0)));
-                child.layout(ctx, Constraint::loose(size_left))
+                child.layout(ctx, Constraint::new(min_child_size, size_left))
             });
 
             size_left.width -= x.width;
@@ -50,10 +51,11 @@ impl<I: Iterator<Item = Item>, Item: Layout> List<I> {
     fn layout_vertical(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let mut size_left = constraint.max;
         let mut my_size = Size::ZERO;
+        let min_child_size = Size::new(constraint.min.width, 0.0);
         for mut child in self.iter.by_ref() {
             let x = ctx.with_save(|ctx| {
                 ctx.transform(Affine::translate(Vec2::new(0.0, my_size.height)));
-                child.layout(ctx, Constraint::loose(size_left))
+                child.layout(ctx, Constraint::new(min_child_size, size_left))
             });
 
             size_left.height -= x.height;
