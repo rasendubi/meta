@@ -2,9 +2,11 @@ use druid_shell::{
     kurbo::{Rect, Size},
     piet::{Color, TextLayout},
 };
+use log::trace;
+use unicode_segmentation::UnicodeSegmentation;
+
 use meta_gui::{Constraint, GuiContext, Layout, Text};
 use meta_pretty::{SimpleDoc, SimpleDocKind};
-use unicode_segmentation::UnicodeSegmentation;
 
 use crate::editor::CursorPosition;
 use crate::layout::{CellClass, EditorCellPayload};
@@ -17,9 +19,10 @@ pub(crate) struct CellWidget<'a>(
 impl<'a> Layout for CellWidget<'a> {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let (string, class) = match self.0.kind() {
-            SimpleDocKind::Cell(cell) => {
-                (cell.payload.text.as_ref().to_string(), cell.payload.class)
-            }
+            SimpleDocKind::Cell(cell) => (
+                cell.payload.text.as_ref().to_string(),
+                cell.payload.class.clone(),
+            ),
             SimpleDocKind::Linebreak { indent_width } => (
                 {
                     let mut s = String::with_capacity(*indent_width);
@@ -33,8 +36,8 @@ impl<'a> Layout for CellWidget<'a> {
         };
 
         let text_color = match class {
-            CellClass::Editable => Color::rgb8(0x00, 0x30, 0xa6),
-            CellClass::Reference => Color::rgb8(0x8f, 0x00, 0x75),
+            CellClass::Editable(..) => Color::rgb8(0x00, 0x30, 0xa6),
+            CellClass::Reference(..) => Color::rgb8(0x8f, 0x00, 0x75),
             CellClass::Punctuation => Color::rgb8(0x50, 0x50, 0x50),
             _ => Color::BLACK,
         };
@@ -54,6 +57,8 @@ impl<'a> Layout for CellWidget<'a> {
             Some(CursorPosition::Inside { cell, offset }) if cell == self.0 => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
+
+                trace!("Cursor at: {:?}", cell);
 
                 ctx.replay(text_ops);
                 let text_layout = text.text_layout(ctx).unwrap();

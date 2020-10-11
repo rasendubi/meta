@@ -40,7 +40,7 @@ impl ToString for Field {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Datom {
     pub id: Field,
     pub entity: Field,

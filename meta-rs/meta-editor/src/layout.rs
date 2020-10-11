@@ -1,18 +1,40 @@
 use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
+use im::HashSet;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub type Doc = RichDoc<EditorCellPayload>;
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
+pub struct TypeFilter(Option<HashSet<Field>>);
+
+impl TypeFilter {
+    pub fn new(types: Option<HashSet<Field>>) -> Self {
+        Self(types)
+    }
+
+    pub fn from_types(types: HashSet<Field>) -> Self {
+        Self(Some(types))
+    }
+
+    pub fn from_type(type_: Field) -> Self {
+        Self::from_types(HashSet::unit(type_))
+    }
+
+    pub fn unfiltered() -> Self {
+        Self(None)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub enum CellClass {
     // order determines priority when selecting active cell
     Whitespace,
     Punctuation,
     NonEditable,
-    Reference,
-    Editable,
+    Reference(Datom, ReferenceTarget, TypeFilter),
+    Editable(Datom),
 }
 
 #[allow(dead_code)]
@@ -49,8 +71,6 @@ impl ReferenceTarget {
 pub struct EditorCellPayload {
     pub text: CellText,
     pub class: CellClass,
-    pub datom: Option<Datom>,
-    pub reference_target: Option<ReferenceTarget>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -82,8 +102,6 @@ pub fn field(field: &Field) -> Doc {
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::NonEditable,
-            datom: None,
-            reference_target: None,
         },
     )
 }
@@ -94,21 +112,22 @@ pub fn datom_value(datom: &Datom) -> Doc {
         str_length(field.as_ref()),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
-            class: CellClass::Editable,
-            datom: Some(datom.clone()),
-            reference_target: Some(ReferenceTarget::Value),
+            class: CellClass::Editable(datom.clone()),
         },
     )
 }
 
-pub fn datom_reference(datom: &Datom, target: ReferenceTarget, text: &Field) -> Doc {
+pub fn datom_reference(
+    datom: &Datom,
+    target: ReferenceTarget,
+    type_filter: TypeFilter,
+    text: &Field,
+) -> Doc {
     RichDoc::cell(
         str_length(text.as_ref()),
         EditorCellPayload {
             text: CellText::Field(text.clone()),
-            class: CellClass::Reference,
-            datom: Some(datom.clone()),
-            reference_target: Some(target),
+            class: CellClass::Reference(datom.clone(), target, type_filter),
         },
     )
 }
@@ -126,8 +145,6 @@ pub fn line() -> Doc {
         EditorCellPayload {
             text: CellText::Literal(" "),
             class: CellClass::Whitespace,
-            datom: None,
-            reference_target: None,
         },
     ))
 }
@@ -142,8 +159,6 @@ fn literal(class: CellClass, s: &'static str) -> Doc {
         EditorCellPayload {
             text: CellText::Literal(s),
             class,
-            datom: None,
-            reference_target: None,
         },
     )
 }

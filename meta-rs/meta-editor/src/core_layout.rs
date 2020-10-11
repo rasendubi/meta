@@ -9,7 +9,7 @@ use meta_store::{Datom, Field};
 
 use crate::layout::{
     brackets, concat, datom_reference, datom_value, empty, field, group, line, linebreak, nest,
-    parentheses, punctuation, quotes, text, whitespace, Doc, ReferenceTarget,
+    parentheses, punctuation, quotes, text, whitespace, Doc, ReferenceTarget, TypeFilter,
 };
 
 fn annotate(core: &MetaCore, entity: &Field) -> Doc {
@@ -19,16 +19,28 @@ fn annotate(core: &MetaCore, entity: &Field) -> Doc {
 }
 
 fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> Doc {
+    let type_filter = match target {
+        ReferenceTarget::Attribute => {
+            let attribute_id = "7".into();
+            TypeFilter::from_type(attribute_id)
+        }
+        ReferenceTarget::Value => TypeFilter::new(
+            core.meta_attribute_reference_type(&atom.attribute)
+                .map(|hs| hs.iter().map(|datom| datom.value.clone()).collect()),
+        ),
+        ReferenceTarget::Id | ReferenceTarget::Entity => TypeFilter::unfiltered(),
+    };
+
     let entity = target.get_field(atom);
     match core.identifier(entity) {
-        Some(identifier) => datom_reference(atom, target, &identifier.value),
+        Some(identifier) => datom_reference(atom, target, type_filter, &identifier.value),
         None => {
             let mut s = String::new();
             s += "(";
             s += entity.as_ref();
             s += ")";
 
-            datom_reference(atom, target, &s.into())
+            datom_reference(atom, target, type_filter, &s.into())
         }
     }
 }

@@ -5,4 +5,6 @@ authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+im = "15.0.0"
+
 meta-store = { path = "../meta-store" }

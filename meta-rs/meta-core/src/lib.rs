@@ -1,4 +1,6 @@
 //! Some helpers for the meta.core language.
+use im::HashSet;
+
 use meta_store::{Datom, Field, MetaStore};
 
 pub struct MetaCore<'a> {
@@ -24,6 +26,11 @@ impl<'a> MetaCore<'a> {
     pub fn meta_attribute_type(&self, entity: &Field) -> Option<&Datom> {
         let attribute_type = Field::from("1");
         self.store.value(entity, &attribute_type)
+    }
+
+    pub fn meta_attribute_reference_type(&self, entity: &Field) -> Option<&HashSet<Datom>> {
+        let attribute_reference_type = "10".into();
+        self.store.values(entity, &attribute_reference_type)
     }
 
     pub fn after(&self, datom: &Datom) -> Option<&Field> {

@@ -1,19 +1,21 @@
+use std::{cmp::Ordering, collections::HashMap};
+
 use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
 use log::debug;
+use unicode_segmentation::UnicodeSegmentation;
+
+use meta_core::MetaCore;
 use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
     SubscriptionId,
 };
-use std::{cmp::Ordering, collections::HashMap};
-use unicode_segmentation::UnicodeSegmentation;
+use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
+use meta_store::{Datom, MetaStore};
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
-use crate::layout::{cmp_priority, EditorCellPayload};
-use meta_core::MetaCore;
-use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
-use meta_store::{Datom, MetaStore};
+use crate::layout::{cmp_priority, CellClass, EditorCellPayload};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
@@ -289,7 +291,7 @@ impl Editor {
     fn edit_datom<F: FnOnce(&Datom, usize) -> Option<Datom>>(&mut self, f: F) -> bool {
         if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
             if let SimpleDocKind::Cell(cell) = cell.kind() {
-                if let Some(datom) = &cell.payload.datom {
+                if let CellClass::Editable(datom) = &cell.payload.class {
                     if let Some(new_datom) = f(datom, *offset) {
                         debug!("replacing {:?} with {:?}", datom, new_datom);
 
