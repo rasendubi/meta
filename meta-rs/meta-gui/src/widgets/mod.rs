@@ -1,3 +1,4 @@
+mod background;
 mod button;
 mod center;
 mod clickable;
@@ -10,6 +11,7 @@ mod scrollbar;
 mod scrolled;
 mod text;
 
+pub use background::*;
 pub use button::*;
 pub use center::*;
 pub use clickable::*;
