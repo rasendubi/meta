@@ -2,7 +2,6 @@ use druid_shell::{
     kurbo::{Rect, Size},
     piet::{Color, TextLayout},
 };
-use log::trace;
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_gui::{Constraint, GuiContext, Layout, Text};
@@ -57,8 +56,6 @@ impl<'a> Layout for CellWidget<'a> {
             Some(CursorPosition::Inside { cell, offset }) if cell == self.0 => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
-
-                trace!("Cursor at: {:?}", cell);
 
                 ctx.replay(text_ops);
                 let text_layout = text.text_layout(ctx).unwrap();

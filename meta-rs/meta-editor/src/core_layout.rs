@@ -182,13 +182,8 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
 }
 
 pub fn core_layout_languages(core: &MetaCore) -> Doc {
-    let type_id = "5".into();
     let language_id = "12".into();
-    // TODO: core.get_of_type("12")
-    let languages: Vec<&Datom> = core
-        .store
-        .ave2(&type_id, &language_id)
-        .map_or_else(Vec::new, |x| x.iter().collect());
+    let languages = core.of_type(&language_id);
 
     concat(
         languages

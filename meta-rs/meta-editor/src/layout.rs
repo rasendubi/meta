@@ -25,6 +25,10 @@ impl TypeFilter {
     pub fn unfiltered() -> Self {
         Self(None)
     }
+
+    pub fn filter(&self) -> &Option<HashSet<Field>> {
+        &self.0
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]

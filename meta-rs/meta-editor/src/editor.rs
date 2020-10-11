@@ -2,7 +2,8 @@ use std::{cmp::Ordering, collections::HashMap};
 
 use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
-use log::debug;
+use im::HashSet;
+use log::{debug, trace};
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_core::MetaCore;
@@ -11,11 +12,14 @@ use meta_gui::{
     SubscriptionId,
 };
 use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
-use meta_store::{Datom, MetaStore};
+use meta_store::{Datom, Field, MetaStore};
 
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
-use crate::layout::{cmp_priority, CellClass, EditorCellPayload};
+use crate::{
+    autocomplete::Autocomplete,
+    layout::{cmp_priority, CellClass, EditorCellPayload},
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
@@ -346,14 +350,43 @@ impl Layout for Editor {
             ctx.invalidate();
         }
 
+        if let Some(CursorPosition::Inside { cell, offset: _ }) = &self.cursor {
+            if let SimpleDocKind::Cell(cell) = cell.kind() {
+                if let CellClass::Reference(datom, target, type_filter) = &cell.payload.class {
+                    let core = MetaCore::new(&self.store);
+                    let candidates: HashSet<Field> = match type_filter.filter() {
+                        None => core.store.entities().into_iter().cloned().collect(),
+                        Some(filter) => HashSet::unions(filter.iter().map(|type_| {
+                            core.of_type(&type_)
+                                .into_iter()
+                                .map(|datom| datom.entity)
+                                .collect()
+                        })),
+                    };
+
+                    let mut candidates = candidates
+                        .iter()
+                        .map(|id| core.identifier(&id).map_or(id, |datom| &datom.value))
+                        .map(|id| id.as_ref())
+                        .collect::<Vec<_>>();
+
+                    candidates.sort();
+
+                    Autocomplete::new(candidates.as_slice()).layout(ctx, constraint);
+
+                    trace!(
+                        "datom: {:?}, target: {:?}, type_filter: {:?}, candidates: {:?}",
+                        datom,
+                        target,
+                        type_filter,
+                        candidates
+                    );
+                }
+            }
+        }
+
         constraint.max
     }
-}
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct WithEnumerate<M> {
-    pos: CellPosition,
-    meta: M,
 }
 
 fn enumerate<T>(layout: &[Vec<SimpleDoc<T>>]) -> HashMap<SimpleDoc<T>, CellPosition> {
@@ -389,4 +422,26 @@ fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
     }
 
     result
+}
+
+#[allow(dead_code)]
+fn simple_doc_to_string(sdoc: &[SimpleDoc<EditorCellPayload>]) -> String {
+    let mut out = String::new();
+
+    for doc in sdoc {
+        match doc.kind() {
+            SimpleDocKind::Linebreak { indent_width } => {
+                out.reserve(indent_width + 1);
+                out.push('\n');
+                for _ in 0..*indent_width {
+                    out.push(' ');
+                }
+            }
+            SimpleDocKind::Cell(cell) => {
+                out.push_str(cell.payload.text.as_ref());
+            }
+        }
+    }
+
+    out
 }

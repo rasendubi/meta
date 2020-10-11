@@ -1,3 +1,4 @@
+mod autocomplete;
 mod cell_widget;
 mod core_layout;
 mod editor;

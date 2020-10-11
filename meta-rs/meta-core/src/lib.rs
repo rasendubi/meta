@@ -37,6 +37,14 @@ impl<'a> MetaCore<'a> {
         let after_id = Field::from("16");
         self.store.value(&datom.id, &after_id).map(|a| &a.value)
     }
+
+    pub fn of_type(&self, type_: &Field) -> HashSet<Datom> {
+        let type_id = "5".into();
+        self.store
+            .ave2(&type_id, type_)
+            .cloned()
+            .unwrap_or_else(HashSet::new)
+    }
 }
 
 #[cfg(test)]
