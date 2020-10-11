@@ -27,6 +27,23 @@ pub enum CellText {
     Literal(&'static str),
 }
 
+// Specialize and re-export
+pub fn concat(parts: Vec<Doc>) -> Doc {
+    RichDoc::concat(parts)
+}
+pub fn empty() -> Doc {
+    RichDoc::empty()
+}
+pub fn linebreak() -> Doc {
+    RichDoc::linebreak()
+}
+pub fn group(doc: Doc) -> Doc {
+    RichDoc::group(doc)
+}
+pub fn nest(width: usize, doc: Doc) -> Doc {
+    RichDoc::nest(width, doc)
+}
+
 pub fn field(field: &Field) -> Doc {
     RichDoc::cell(
         str_length(field.as_ref()),
@@ -81,6 +98,22 @@ fn literal(class: CellClass, s: &'static str) -> Doc {
             datom: None,
         },
     )
+}
+
+pub fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
+    RichDoc::concat(vec![left, doc, right])
+}
+
+pub fn parentheses(doc: Doc) -> Doc {
+    surround(punctuation("("), punctuation(")"), doc)
+}
+
+pub fn brackets(doc: Doc) -> Doc {
+    surround(punctuation("["), punctuation("]"), doc)
+}
+
+pub fn quotes(doc: Doc) -> Doc {
+    surround(punctuation("\""), punctuation("\""), doc)
 }
 
 impl AsRef<str> for CellText {

@@ -114,7 +114,7 @@
 ["12", "15", "13"]                             ; Language(12).Type.attribute(15) = Language.entity(13)
 
 ["16", "0", "after"]
-["16", "4", "after attribute can be assigned to atoms to ensure ordering of values within (entity, attribute) pair."]
+["16", "4", "Can be assigned to atoms/entities to ensure ordering of things."]
 ["16", "5", "7"]
 ["16", "1", "3"]
 ["-16", "14", "13", "16"]

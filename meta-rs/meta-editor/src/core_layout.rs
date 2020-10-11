@@ -1,60 +1,64 @@
-use im::HashSet;
+use std::collections::HashMap;
 
+use im::HashSet;
 use itertools::Itertools;
 use maplit::hashset;
 
 use meta_core::MetaCore;
-use meta_pretty::RichDoc;
 use meta_store::{Datom, Field};
 
-use crate::layout::{datom_value, field, line, punctuation, text, whitespace, EditorCellPayload};
-use std::collections::HashMap;
-
-type Doc = RichDoc<EditorCellPayload>;
-
-fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
-    RichDoc::concat(vec![left, doc, right])
-}
+use crate::layout::{
+    brackets, concat, datom_value, empty, field, group, line, linebreak, nest, parentheses,
+    punctuation, quotes, text, whitespace, Doc,
+};
 
 fn annotate(core: &MetaCore, entity: &Field) -> Doc {
-    let identifier = core
-        .identifier(entity)
-        .map_or(RichDoc::empty(), datom_value);
+    let identifier = core.identifier(entity).map_or(empty(), datom_value);
 
-    RichDoc::concat(vec![
-        identifier,
-        punctuation("("),
-        field(entity),
-        punctuation(")"),
-    ])
+    concat(vec![identifier, parentheses(field(entity))])
+}
+
+fn reference(core: &MetaCore, entity: &Field) -> Doc {
+    match core.identifier(entity) {
+        Some(identifier) => field(&identifier.value),
+        None => {
+            let mut s = String::new();
+            s += "(";
+            s += entity.as_ref();
+            s += ")";
+
+            field(&s.into())
+        }
+    }
 }
 
 fn core_layout_value(core: &MetaCore, datom: &Datom) -> Doc {
     let attribute_type = core.meta_attribute_type(&datom.attribute).map(|d| &d.value);
     let reference_type = "3".into();
     if attribute_type == Some(&reference_type) {
-        annotate(core, &datom.value)
+        reference(core, &datom.value)
     } else {
-        surround(punctuation("\""), punctuation("\""), datom_value(datom))
+        quotes(datom_value(datom))
     }
+    // TODO: handle NaturalNumber, IntegerNumber
 }
 
 fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Datom>)) -> Doc {
     let (attr, values) = attr;
-    RichDoc::concat(vec![
-        RichDoc::linebreak(),
-        RichDoc::group(RichDoc::nest(
+    concat(vec![
+        linebreak(),
+        group(nest(
             2,
-            RichDoc::concat(vec![
-                annotate(core, attr),
+            concat(vec![
+                reference(core, attr),
                 whitespace(" "),
                 punctuation("="),
                 line(),
-                RichDoc::concat(
+                concat(
                     values
                         .iter()
                         .map(|x| core_layout_value(core, x))
-                        .intersperse(RichDoc::concat(vec![punctuation(","), line()]))
+                        .intersperse(concat(vec![punctuation(","), line()]))
                         .collect(),
                 ),
             ]),
@@ -77,17 +81,17 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
         Field::from("5")
     };
 
-    RichDoc::concat(vec![
+    concat(vec![
         annotate(core, entity),
         whitespace(" "),
         punctuation(":"),
         whitespace(" "),
-        type_.map_or_else(RichDoc::empty, |x| annotate(core, &x.value)),
+        type_.map_or_else(empty, |x| reference(core, &x.value)),
         whitespace(" "),
         punctuation("{"),
-        RichDoc::nest(
+        nest(
             2,
-            RichDoc::concat(
+            concat(
                 attributes
                     .iter()
                     .filter(|x| !hide_attributes.contains(x.0))
@@ -96,7 +100,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
                     .collect(),
             ),
         ),
-        RichDoc::linebreak(),
+        linebreak(),
         punctuation("}"),
     ])
 }
@@ -104,35 +108,29 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
 #[allow(dead_code)]
 pub fn core_layout_entities(core: &MetaCore) -> Doc {
     let entities = core.store.entities().into_iter().sorted();
-    RichDoc::concat(
+    concat(
         entities
             .map(|e| core_layout_entity(core, e))
-            .intersperse(RichDoc::concat(vec![
-                RichDoc::linebreak(),
-                RichDoc::linebreak(),
-            ]))
+            .intersperse(concat(vec![linebreak(), linebreak()]))
             .collect(),
     )
 }
 
 pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> Doc {
-    RichDoc::nest(
+    nest(
         2,
-        RichDoc::group(RichDoc::concat(vec![
-            surround(punctuation("["), punctuation("]"), field(&datom.id)),
+        group(concat(vec![
+            brackets(field(&datom.id)),
             line(),
-            RichDoc::group(RichDoc::concat(vec![
+            group(concat(vec![
                 annotate(core, &datom.entity),
                 punctuation("."),
-                RichDoc::linebreak(),
+                linebreak(),
                 annotate(core, &datom.attribute),
             ])),
             whitespace(" "),
             punctuation("="),
-            RichDoc::nest(
-                2,
-                RichDoc::concat(vec![line(), core_layout_value(core, datom)]),
-            ),
+            nest(2, concat(vec![line(), core_layout_value(core, datom)])),
         ])),
     )
 }
@@ -142,11 +140,11 @@ pub fn core_layout_datoms(core: &MetaCore) -> Doc {
     let mut datoms: Vec<&Datom> = core.store.atoms().values().collect();
     datoms.sort_by_key(|d| &d.id);
 
-    RichDoc::concat(
+    concat(
         datoms
             .iter()
             .map(|d| core_layout_datom(core, d))
-            .intersperse(RichDoc::linebreak())
+            .intersperse(linebreak())
             .collect(),
     )
 }
@@ -160,20 +158,17 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
         .unwrap_or_else(HashSet::new);
     let entities = order(core, entities.iter().collect());
 
-    RichDoc::concat(vec![
+    concat(vec![
         text("language"),
         whitespace(" "),
         annotate(core, id),
-        RichDoc::linebreak(),
-        RichDoc::linebreak(),
-        RichDoc::concat(
+        linebreak(),
+        linebreak(),
+        concat(
             entities
                 .iter()
                 .map(|e| core_layout_entity(core, &e.value))
-                .intersperse(RichDoc::concat(vec![
-                    RichDoc::linebreak(),
-                    RichDoc::linebreak(),
-                ]))
+                .intersperse(concat(vec![linebreak(), linebreak()]))
                 .collect(),
         ),
     ])
@@ -188,11 +183,11 @@ pub fn core_layout_languages(core: &MetaCore) -> Doc {
         .ave2(&type_id, &language_id)
         .map_or_else(Vec::new, |x| x.iter().collect());
 
-    RichDoc::concat(
+    concat(
         languages
             .iter()
             .map(|l| core_layout_language(core, &l.entity))
-            .intersperse(RichDoc::linebreak())
+            .intersperse(linebreak())
             .collect(),
     )
 }
