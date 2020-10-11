@@ -33,7 +33,8 @@ impl<'a> Layout for CellWidget<'a> {
         };
 
         let text_color = match class {
-            CellClass::Editable => Color::rgb8(0, 0x30, 0xa6),
+            CellClass::Editable => Color::rgb8(0x00, 0x30, 0xa6),
+            CellClass::Reference => Color::rgb8(0x8f, 0x00, 0x75),
             CellClass::Punctuation => Color::rgb8(0x50, 0x50, 0x50),
             _ => Color::BLACK,
         };
@@ -41,7 +42,7 @@ impl<'a> Layout for CellWidget<'a> {
         let (text_size, text_ops) = ctx.capture(|ctx| text.layout(ctx, constraint));
 
         // Empty strings layout as 0x0 size, which makes empty rows collapse. We still want to show
-        // empty rows of proper size, we draw a placeholder whitespace to calculate the height of
+        // empty rows of proper size, so we draw a placeholder whitespace to calculate the height of
         // the line.
         let min_height = Text::new(&" ")
             .with_font("Input")

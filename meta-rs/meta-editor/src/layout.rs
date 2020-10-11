@@ -11,7 +11,38 @@ pub enum CellClass {
     Whitespace,
     Punctuation,
     NonEditable,
+    Reference,
     Editable,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+pub enum ReferenceTarget {
+    Id,
+    Entity,
+    Attribute,
+    Value,
+}
+
+impl ReferenceTarget {
+    pub fn get_field<'a>(&self, datom: &'a Datom) -> &'a Field {
+        match self {
+            ReferenceTarget::Id => &datom.id,
+            ReferenceTarget::Entity => &datom.entity,
+            ReferenceTarget::Attribute => &datom.attribute,
+            ReferenceTarget::Value => &datom.value,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn get_field_mut<'a>(&self, datom: &'a mut Datom) -> &'a mut Field {
+        match self {
+            ReferenceTarget::Id => &mut datom.id,
+            ReferenceTarget::Entity => &mut datom.entity,
+            ReferenceTarget::Attribute => &mut datom.attribute,
+            ReferenceTarget::Value => &mut datom.value,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -19,6 +50,7 @@ pub struct EditorCellPayload {
     pub text: CellText,
     pub class: CellClass,
     pub datom: Option<Datom>,
+    pub reference_target: Option<ReferenceTarget>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -51,6 +83,7 @@ pub fn field(field: &Field) -> Doc {
             text: CellText::Field(field.clone()),
             class: CellClass::NonEditable,
             datom: None,
+            reference_target: None,
         },
     )
 }
@@ -63,6 +96,19 @@ pub fn datom_value(datom: &Datom) -> Doc {
             text: CellText::Field(field.clone()),
             class: CellClass::Editable,
             datom: Some(datom.clone()),
+            reference_target: Some(ReferenceTarget::Value),
+        },
+    )
+}
+
+pub fn datom_reference(datom: &Datom, target: ReferenceTarget, text: &Field) -> Doc {
+    RichDoc::cell(
+        str_length(text.as_ref()),
+        EditorCellPayload {
+            text: CellText::Field(text.clone()),
+            class: CellClass::Reference,
+            datom: Some(datom.clone()),
+            reference_target: Some(target),
         },
     )
 }
@@ -81,6 +127,7 @@ pub fn line() -> Doc {
             text: CellText::Literal(" "),
             class: CellClass::Whitespace,
             datom: None,
+            reference_target: None,
         },
     ))
 }
@@ -96,6 +143,7 @@ fn literal(class: CellClass, s: &'static str) -> Doc {
             text: CellText::Literal(s),
             class,
             datom: None,
+            reference_target: None,
         },
     )
 }

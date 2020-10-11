@@ -8,8 +8,8 @@ use meta_core::MetaCore;
 use meta_store::{Datom, Field};
 
 use crate::layout::{
-    brackets, concat, datom_value, empty, field, group, line, linebreak, nest, parentheses,
-    punctuation, quotes, text, whitespace, Doc,
+    brackets, concat, datom_reference, datom_value, empty, field, group, line, linebreak, nest,
+    parentheses, punctuation, quotes, text, whitespace, Doc, ReferenceTarget,
 };
 
 fn annotate(core: &MetaCore, entity: &Field) -> Doc {
@@ -18,16 +18,17 @@ fn annotate(core: &MetaCore, entity: &Field) -> Doc {
     concat(vec![identifier, parentheses(field(entity))])
 }
 
-fn reference(core: &MetaCore, entity: &Field) -> Doc {
+fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> Doc {
+    let entity = target.get_field(atom);
     match core.identifier(entity) {
-        Some(identifier) => field(&identifier.value),
+        Some(identifier) => datom_reference(atom, target, &identifier.value),
         None => {
             let mut s = String::new();
             s += "(";
             s += entity.as_ref();
             s += ")";
 
-            field(&s.into())
+            datom_reference(atom, target, &s.into())
         }
     }
 }
@@ -36,34 +37,28 @@ fn core_layout_value(core: &MetaCore, datom: &Datom) -> Doc {
     let attribute_type = core.meta_attribute_type(&datom.attribute).map(|d| &d.value);
     let reference_type = "3".into();
     if attribute_type == Some(&reference_type) {
-        reference(core, &datom.value)
+        reference(core, datom, ReferenceTarget::Value)
     } else {
         quotes(datom_value(datom))
     }
     // TODO: handle NaturalNumber, IntegerNumber
 }
 
-fn core_layout_attribute(core: &MetaCore, attr: (&Field, &HashSet<Datom>)) -> Doc {
-    let (attr, values) = attr;
-    concat(vec![
-        linebreak(),
-        group(nest(
-            2,
-            concat(vec![
-                reference(core, attr),
-                whitespace(" "),
-                punctuation("="),
-                line(),
-                concat(
-                    values
-                        .iter()
-                        .map(|x| core_layout_value(core, x))
-                        .intersperse(concat(vec![punctuation(","), line()]))
-                        .collect(),
-                ),
-            ]),
-        )),
-    ])
+fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> Doc {
+    concat(
+        value_datoms
+            .iter()
+            .map(|x| {
+                concat(vec![
+                    linebreak(),
+                    reference(core, x, ReferenceTarget::Attribute),
+                    whitespace(" "),
+                    punctuation("="),
+                    group(nest(2, concat(vec![line(), core_layout_value(core, x)]))),
+                ])
+            })
+            .collect(),
+    )
 }
 
 pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
@@ -86,7 +81,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
         whitespace(" "),
         punctuation(":"),
         whitespace(" "),
-        type_.map_or_else(empty, |x| reference(core, &x.value)),
+        type_.map_or_else(empty, |x| reference(core, x, ReferenceTarget::Value)),
         whitespace(" "),
         punctuation("{"),
         nest(
@@ -96,7 +91,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
                     .iter()
                     .filter(|x| !hide_attributes.contains(x.0))
                     .sorted_by_key(|attr| attr.0)
-                    .map(|attr| core_layout_attribute(&core, attr))
+                    .map(|attr| core_layout_attribute(&core, attr.1))
                     .collect(),
             ),
         ),
