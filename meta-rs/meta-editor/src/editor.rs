@@ -370,7 +370,7 @@ impl Layout for Editor {
                         .map(|id| id.as_ref())
                         .collect::<Vec<_>>();
 
-                    candidates.sort();
+                    candidates.sort_unstable();
 
                     Autocomplete::new(candidates.as_slice()).layout(ctx, constraint);
 
