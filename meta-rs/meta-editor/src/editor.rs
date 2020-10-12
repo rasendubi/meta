@@ -465,7 +465,10 @@ fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
         }
 
         let last = result.len() - 1;
-        unsafe { result.get_unchecked_mut(last) }.push(cell.clone());
+        result
+            .get_mut(last)
+            .expect("layout_to_2d: last element")
+            .push(cell.clone());
     }
 
     result
