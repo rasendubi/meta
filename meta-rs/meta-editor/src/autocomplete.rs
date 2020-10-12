@@ -4,17 +4,17 @@ use druid_shell::{
 };
 use meta_gui::{Background, Constraint, GuiContext, Inset, Layout, List, Text};
 
-pub struct Autocomplete<'a> {
-    candidates: &'a [&'a str],
+pub struct Autocomplete {
+    candidates: Vec<String>,
 }
 
-impl<'a> Autocomplete<'a> {
-    pub fn new(candidates: &'a [&'a str]) -> Self {
+impl Autocomplete {
+    pub fn new(candidates: Vec<String>) -> Self {
         Self { candidates }
     }
 }
 
-impl<'a> Layout for Autocomplete<'a> {
+impl Layout for Autocomplete {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let tooltip = (Color::rgb8(0xf0, 0xf0, 0xf0), Color::rgb8(0x50, 0x50, 0x50));
         let selection = (Color::rgb8(0xc0, 0xef, 0xff), Color::rgb8(0x28, 0x28, 0x28)); // Bold
@@ -32,7 +32,7 @@ impl<'a> Layout for Autocomplete<'a> {
 
             Background::new(Inset::new(
                 Text::new(s).with_font("Input").with_color(foreground),
-                Insets::uniform(1.0),
+                Insets::uniform_xy(0.0, 1.0),
             ))
             .with_color(background)
         }))

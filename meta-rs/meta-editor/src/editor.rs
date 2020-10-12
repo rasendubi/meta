@@ -1,7 +1,8 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use druid_shell::kurbo::{Insets, Rect, Size};
-use druid_shell::{piet::Color, HotKey, KeyCode, KeyEvent};
+use druid_shell::kurbo::{Affine, Insets, Rect, Size, Vec2};
+use druid_shell::piet::Color;
+use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 use im::HashSet;
 use log::{debug, trace};
 use unicode_segmentation::UnicodeSegmentation;
@@ -27,6 +28,7 @@ pub enum CursorPosition {
         cell: SimpleDoc<EditorCellPayload>,
         offset: usize,
     },
+    // TODO: drop Between as at is virtually never used
     Between(SimpleDoc<EditorCellPayload>, SimpleDoc<EditorCellPayload>),
 }
 
@@ -45,6 +47,7 @@ pub struct Editor {
     positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
     cursor: Option<CursorPosition>,
     scroll: Scrollable,
+    autocomplete: Option<(CellPosition, Autocomplete)>,
 }
 
 impl Editor {
@@ -68,6 +71,7 @@ impl Editor {
             positions,
             cursor,
             scroll: Scrollable::new(SubscriptionId::new()),
+            autocomplete: None,
         }
     }
 
@@ -208,12 +212,20 @@ impl Editor {
                         return;
                     }
                 }
+                if HotKey::new(None, KeyCode::Escape).matches(key) {
+                    self.escape();
+                    return;
+                }
                 if HotKey::new(None, KeyCode::Backspace).matches(key) {
                     self.backspace();
                     return;
                 }
                 if HotKey::new(None, KeyCode::Delete).matches(key) {
                     self.delete();
+                    return;
+                }
+                if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
+                    self.complete();
                     return;
                 }
             }
@@ -310,6 +322,64 @@ impl Editor {
         }
         false
     }
+
+    fn complete(&mut self) {
+        if let Some(CursorPosition::Inside {
+            cell: sdoc,
+            offset: _,
+        }) = &self.cursor
+        {
+            if let SimpleDocKind::Cell(cell) = sdoc.kind() {
+                if let CellClass::Reference(datom, target, type_filter) = &cell.payload.class {
+                    let core = MetaCore::new(&self.store);
+                    let candidates: HashSet<Field> = match type_filter.filter() {
+                        None => core.store.entities().into_iter().cloned().collect(),
+                        Some(filter) => HashSet::unions(filter.iter().map(|type_| {
+                            core.of_type(&type_)
+                                .into_iter()
+                                .map(|datom| datom.entity)
+                                .collect()
+                        })),
+                    };
+
+                    let mut candidates = candidates
+                        .iter()
+                        .map(|id| core.identifier(&id).map_or(id, |datom| &datom.value))
+                        .map(|id| id.to_string())
+                        .collect::<Vec<_>>();
+
+                    candidates.sort_unstable();
+
+                    let position = self
+                        .positions
+                        .get(sdoc)
+                        .copied()
+                        .expect("complete: get cell position");
+
+                    trace!(
+                        "datom: {:?}, target: {:?}, type_filter: {:?}, candidates: {:?}",
+                        datom,
+                        target,
+                        type_filter,
+                        candidates
+                    );
+
+                    self.autocomplete = Some((position, Autocomplete::new(candidates)));
+                }
+            }
+        }
+    }
+
+    fn escape(&mut self) {
+        if self.close_complete() {
+            return;
+        }
+    }
+
+    /// Returns `true` if completion was open.
+    fn close_complete(&mut self) -> bool {
+        self.autocomplete.take().is_some()
+    }
 }
 
 impl Layout for Editor {
@@ -332,6 +402,18 @@ impl Layout for Editor {
         )
         .layout(ctx, Constraint::tight(ctx.window_size()));
 
+        if let Some((CellPosition { row, col }, autocomplete)) = &mut self.autocomplete {
+            ctx.with_save(|ctx| {
+                let char_width = 6.0;
+                let char_height = 12.0;
+                let inset = 10.0;
+                let x_offset = *col as f64 * char_width + inset;
+                let y_offset = (*row + 1) as f64 * char_height + inset;
+                ctx.transform(Affine::translate(Vec2::new(x_offset, y_offset)));
+                autocomplete.layout(ctx, constraint);
+            });
+        }
+
         ctx.grab_focus(self.id);
         ctx.subscribe(
             self.id,
@@ -348,41 +430,6 @@ impl Layout for Editor {
                 _ => {}
             }
             ctx.invalidate();
-        }
-
-        if let Some(CursorPosition::Inside { cell, offset: _ }) = &self.cursor {
-            if let SimpleDocKind::Cell(cell) = cell.kind() {
-                if let CellClass::Reference(datom, target, type_filter) = &cell.payload.class {
-                    let core = MetaCore::new(&self.store);
-                    let candidates: HashSet<Field> = match type_filter.filter() {
-                        None => core.store.entities().into_iter().cloned().collect(),
-                        Some(filter) => HashSet::unions(filter.iter().map(|type_| {
-                            core.of_type(&type_)
-                                .into_iter()
-                                .map(|datom| datom.entity)
-                                .collect()
-                        })),
-                    };
-
-                    let mut candidates = candidates
-                        .iter()
-                        .map(|id| core.identifier(&id).map_or(id, |datom| &datom.value))
-                        .map(|id| id.as_ref())
-                        .collect::<Vec<_>>();
-
-                    candidates.sort_unstable();
-
-                    Autocomplete::new(candidates.as_slice()).layout(ctx, constraint);
-
-                    trace!(
-                        "datom: {:?}, target: {:?}, type_filter: {:?}, candidates: {:?}",
-                        datom,
-                        target,
-                        type_filter,
-                        candidates
-                    );
-                }
-            }
         }
 
         constraint.max
