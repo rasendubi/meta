@@ -108,17 +108,17 @@ impl<'de> Deserialize<'de> for Datom {
     {
         let v: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        match v.len() {
-            3 => Ok(Datom::eav(
-                v.get(0).unwrap().as_str().into(),
-                v.get(1).unwrap().as_str().into(),
-                v.get(2).unwrap().as_str().into(),
+        match &v.as_slice() {
+            [e, a, v] => Ok(Datom::eav(
+                e.as_str().into(),
+                a.as_str().into(),
+                v.as_str().into(),
             )),
-            4 => Ok(Datom::new(
-                v.get(0).unwrap().as_str().into(),
-                v.get(1).unwrap().as_str().into(),
-                v.get(2).unwrap().as_str().into(),
-                v.get(3).unwrap().as_str().into(),
+            [i, e, a, v] => Ok(Datom::new(
+                i.as_str().into(),
+                e.as_str().into(),
+                a.as_str().into(),
+                v.as_str().into(),
             )),
             _ => Err(serde::de::Error::invalid_length(v.len(), &"3 or 4")),
         }
