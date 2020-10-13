@@ -1,4 +1,5 @@
-use std::{cmp::Ordering, collections::HashMap};
+use std::cmp::Ordering;
+use std::collections::HashMap;
 
 use druid_shell::kurbo::{Affine, Insets, Rect, Size, Vec2};
 use druid_shell::piet::Color;
@@ -15,12 +16,10 @@ use meta_gui::{
 use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field, MetaStore};
 
+use crate::autocomplete::{Autocomplete, AutocompleteEvent};
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
-use crate::{
-    autocomplete::Autocomplete,
-    layout::{cmp_priority, CellClass, EditorCellPayload},
-};
+use crate::layout::{cmp_priority, CellClass, EditorCellPayload};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
@@ -364,7 +363,10 @@ impl Editor {
                         candidates
                     );
 
-                    self.autocomplete = Some((position, Autocomplete::new(candidates)));
+                    self.autocomplete = Some((
+                        position,
+                        Autocomplete::new(SubscriptionId::new(), candidates),
+                    ));
                 }
             }
         }
@@ -412,6 +414,14 @@ impl Layout for Editor {
                 ctx.transform(Affine::translate(Vec2::new(x_offset, y_offset)));
                 autocomplete.layout(ctx, constraint);
             });
+
+            for e in autocomplete.events() {
+                let AutocompleteEvent::Close(e) = e;
+                debug!("Autocomplete close with: {:?}", e);
+
+                self.close_complete();
+                ctx.invalidate();
+            }
         }
 
         ctx.grab_focus(self.id);
@@ -423,7 +433,7 @@ impl Layout for Editor {
         );
 
         for x in ctx.events(self.id) {
-            debug!("Editor got event: {:?}", x);
+            trace!("Editor got event: {:?}", x);
             #[allow(clippy::single_match)]
             match x {
                 Event::KeyDown(key) => self.handle_key(key),
@@ -464,10 +474,9 @@ fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
             result.push(Vec::new());
         }
 
-        let last = result.len() - 1;
         result
-            .get_mut(last)
-            .expect("layout_to_2d: last element")
+            .last_mut()
+            .expect("layout_to_2d: last_mut")
             .push(cell.clone());
     }
 
