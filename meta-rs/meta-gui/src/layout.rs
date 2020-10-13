@@ -70,3 +70,15 @@ impl<'a> Layout for &'a mut dyn Layout {
         (*self).layout(ctx, constraint)
     }
 }
+
+impl<T> Layout for Option<T>
+where
+    T: Layout,
+{
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+        match self {
+            Some(x) => x.layout(ctx, constraint),
+            None => Size::ZERO,
+        }
+    }
+}
