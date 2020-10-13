@@ -46,7 +46,7 @@ pub struct Editor {
     positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
     cursor: Option<CursorPosition>,
     scroll: Scrollable,
-    autocomplete: Option<(CellPosition, Autocomplete)>,
+    autocomplete: Option<(CellPosition, Autocomplete<Field>)>,
 }
 
 impl Editor {
@@ -343,8 +343,14 @@ impl Editor {
 
                     let mut candidates = candidates
                         .iter()
-                        .map(|id| core.identifier(&id).map_or(id, |datom| &datom.value))
-                        .map(|id| id.to_string())
+                        .map(|id| {
+                            (
+                                id.clone(),
+                                core.identifier(&id)
+                                    .map_or(id, |datom| &datom.value)
+                                    .to_string(),
+                            )
+                        })
                         .collect::<Vec<_>>();
 
                     candidates.sort_unstable();
@@ -367,6 +373,28 @@ impl Editor {
                         position,
                         Autocomplete::new(SubscriptionId::new(), candidates),
                     ));
+                }
+            }
+        }
+    }
+
+    fn finish_completion(&mut self, selection: Field) {
+        if let Some(CursorPosition::Inside {
+            cell: sdoc,
+            offset: _,
+        }) = &self.cursor
+        {
+            if let SimpleDocKind::Cell(cell) = sdoc.kind() {
+                if let CellClass::Reference(datom, target, _type_filter) = &cell.payload.class {
+                    let old_datom = datom;
+                    let mut new_datom = datom.clone();
+                    *target.get_field_mut(&mut new_datom) = selection;
+
+                    trace!("replacing {:?} with {:?}", old_datom, new_datom);
+
+                    self.store.remove_datom(old_datom);
+                    self.store.add_datom(&new_datom);
+                    self.on_store_updated();
                 }
             }
         }
@@ -418,6 +446,10 @@ impl Layout for Editor {
             for e in autocomplete.events() {
                 let AutocompleteEvent::Close(e) = e;
                 debug!("Autocomplete close with: {:?}", e);
+
+                if let Some((selection, _)) = e {
+                    self.finish_completion(selection);
+                }
 
                 self.close_complete();
                 ctx.invalidate();

@@ -7,19 +7,19 @@ use meta_gui::{
     Background, Constraint, Event, EventType, GuiContext, Inset, Layout, List, SubscriptionId, Text,
 };
 
-pub struct Autocomplete {
+pub struct Autocomplete<T> {
     id: SubscriptionId,
-    candidates: Vec<String>,
+    candidates: Vec<(T, String)>,
     selection: usize,
-    events: Vec<AutocompleteEvent>,
+    events: Vec<AutocompleteEvent<T>>,
 }
 
-pub enum AutocompleteEvent {
-    Close(Option<String>),
+pub enum AutocompleteEvent<T> {
+    Close(Option<(T, String)>),
 }
 
-impl Autocomplete {
-    pub fn new(id: SubscriptionId, candidates: Vec<String>) -> Self {
+impl<T> Autocomplete<T> {
+    pub fn new(id: SubscriptionId, candidates: Vec<(T, String)>) -> Self {
         Self {
             id,
             candidates,
@@ -29,12 +29,15 @@ impl Autocomplete {
     }
 
     /// Return all autocomplete events that happened after the previous call to `events()`.
-    pub fn events(&mut self) -> Vec<AutocompleteEvent> {
+    pub fn events(&mut self) -> Vec<AutocompleteEvent<T>> {
         self.events.split_off(0)
     }
 }
 
-impl Layout for Autocomplete {
+impl<T> Layout for Autocomplete<T>
+where
+    T: Clone,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         ctx.grab_focus(self.id);
         ctx.subscribe(
@@ -85,7 +88,7 @@ impl Layout for Autocomplete {
             };
 
             Background::new(Inset::new(
-                Text::new(s).with_font("Input").with_color(foreground),
+                Text::new(&s.1).with_font("Input").with_color(foreground),
                 Insets::uniform_xy(0.0, 1.0),
             ))
             .with_color(background)
