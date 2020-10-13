@@ -10,6 +10,7 @@ mod scrollable;
 mod scrollbar;
 mod scrolled;
 mod text;
+mod translate;
 
 pub use background::*;
 pub use button::*;
@@ -23,3 +24,4 @@ pub use scrollable::*;
 pub use scrollbar::*;
 pub use scrolled::*;
 pub use text::*;
+pub use translate::*;
