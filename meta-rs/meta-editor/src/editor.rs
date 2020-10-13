@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use druid_shell::kurbo::{Affine, Insets, Rect, Size, Vec2};
+use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
 use druid_shell::piet::Color;
 use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 use im::HashSet;
@@ -11,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use meta_core::MetaCore;
 use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
-    SubscriptionId,
+    SubscriptionId, Translate,
 };
 use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field, MetaStore};
@@ -27,7 +27,7 @@ pub enum CursorPosition {
         cell: SimpleDoc<EditorCellPayload>,
         offset: usize,
     },
-    // TODO: drop Between as at is virtually never used
+    // TODO: drop Between as it is virtually never used
     Between(SimpleDoc<EditorCellPayload>, SimpleDoc<EditorCellPayload>),
 }
 
@@ -410,6 +410,16 @@ impl Editor {
     fn close_complete(&mut self) -> bool {
         self.autocomplete.take().is_some()
     }
+
+    fn cell_position_to_screen_offset(pos: CellPosition) -> Vec2 {
+        let CellPosition { row, col } = pos;
+        let char_width = 6.0;
+        let char_height = 12.0;
+        let inset = 10.0;
+        let x_offset = col as f64 * char_width + inset;
+        let y_offset = row as f64 * char_height + inset;
+        Vec2::new(x_offset, y_offset)
+    }
 }
 
 impl Layout for Editor {
@@ -432,16 +442,10 @@ impl Layout for Editor {
         )
         .layout(ctx, Constraint::tight(ctx.window_size()));
 
-        if let Some((CellPosition { row, col }, autocomplete)) = &mut self.autocomplete {
-            ctx.with_save(|ctx| {
-                let char_width = 6.0;
-                let char_height = 12.0;
-                let inset = 10.0;
-                let x_offset = *col as f64 * char_width + inset;
-                let y_offset = (*row + 1) as f64 * char_height + inset;
-                ctx.transform(Affine::translate(Vec2::new(x_offset, y_offset)));
-                autocomplete.layout(ctx, constraint);
-            });
+        if let Some((CellPosition { row, col }, ref mut autocomplete)) = self.autocomplete {
+            let offset = Self::cell_position_to_screen_offset(CellPosition { row: row + 1, col })
+                + self.scroll.offset();
+            Translate::new(&mut *autocomplete, offset).layout(ctx, constraint);
 
             for e in autocomplete.events() {
                 let AutocompleteEvent::Close(e) = e;
