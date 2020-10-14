@@ -1,11 +1,12 @@
-use crate::rich_doc::{RichDoc, RichDocKind};
 use std::collections::HashMap;
+
+use crate::rich_doc::{RichDoc, RichDocKind};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum PathSegment {
     Nest,
     Group,
-    /// A child of concat cell. Stores index and optional key.
+    /// A child of `RichDoc::Concat`. Stores index and optional key.
     Index(usize, Option<String>),
 }
 
@@ -41,7 +42,6 @@ pub(crate) fn pathify<T>(
     result.insert(doc.clone(), path);
 }
 
-#[allow(clippy::type_complexity)]
 pub(crate) fn follow_path<'a, 'b, T>(
     this: &'a RichDoc<T>,
     path: &'b [PathSegment],

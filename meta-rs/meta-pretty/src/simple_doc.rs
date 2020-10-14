@@ -1,5 +1,6 @@
-use crate::RichDoc;
 use std::{hash::Hash, rc::Rc};
+
+use crate::RichDoc;
 
 pub use crate::rich_doc::Cell;
 
@@ -16,25 +17,6 @@ struct SimpleDocNode<T> {
 pub enum SimpleDocKind<T> {
     Cell(Cell<T>),
     Linebreak { indent_width: usize },
-}
-
-impl<T> Clone for SimpleDoc<T> {
-    fn clone(&self) -> Self {
-        SimpleDoc(self.0.clone())
-    }
-}
-
-impl<T> PartialEq for SimpleDoc<T> {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
-    }
-}
-impl<T> Eq for SimpleDoc<T> {}
-
-impl<T> Hash for SimpleDoc<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        std::ptr::hash(&*self.0, state)
-    }
 }
 
 impl<T> SimpleDoc<T> {
@@ -71,5 +53,24 @@ impl<T> SimpleDoc<T> {
             kind: SimpleDocKind::Cell(cell),
             rich_doc,
         })
+    }
+}
+
+impl<T> PartialEq for SimpleDoc<T> {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl<T> Eq for SimpleDoc<T> {}
+
+impl<T> Hash for SimpleDoc<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&*self.0, state)
+    }
+}
+
+impl<T> Clone for SimpleDoc<T> {
+    fn clone(&self) -> Self {
+        SimpleDoc(self.0.clone())
     }
 }

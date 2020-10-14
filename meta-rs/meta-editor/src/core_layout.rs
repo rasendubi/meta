@@ -194,6 +194,8 @@ pub fn core_layout_languages(core: &MetaCore) -> Doc {
     )
 }
 
+/// Order atoms in order determines by `after` attribute. If `after` is not specified, order by atom
+/// id.
 // Believe me or not, it's actually O(n + m*log(m)), where n is the total number of datoms and m is
 // the number of atoms without "after" attribute.
 fn order<'a>(core: &'a MetaCore, atoms: Vec<&'a Datom>) -> Vec<&'a Datom> {
@@ -208,7 +210,7 @@ fn order<'a>(core: &'a MetaCore, atoms: Vec<&'a Datom>) -> Vec<&'a Datom> {
     }
 
     // it would be much easier if Rust allowed recursive closures
-    fn process_atom<'a>(
+    fn traverse_atom<'a>(
         x: &'a Datom,
         result: &'_ mut Vec<&'a Datom>,
         next: &HashMap<&'a Field, HashSet<&'a Datom>>,
@@ -216,14 +218,14 @@ fn order<'a>(core: &'a MetaCore, atoms: Vec<&'a Datom>) -> Vec<&'a Datom> {
         result.push(x);
         if let Some(next_atoms) = next.get(&x.id) {
             for a in next_atoms.iter() {
-                process_atom(a, result, next);
+                traverse_atom(a, result, next);
             }
         }
     }
 
     let mut result = Vec::new();
     for a in no_after.iter().sorted_by_key(|x| &x.id) {
-        process_atom(a, &mut result, &next);
+        traverse_atom(a, &mut result, &next);
     }
 
     result

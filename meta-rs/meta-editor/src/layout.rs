@@ -1,4 +1,4 @@
-use meta_pretty::{RichDoc, SimpleDoc, SimpleDocKind};
+use meta_pretty::{Cell, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
 use im::HashSet;
@@ -101,24 +101,24 @@ pub fn nest(width: usize, doc: Doc) -> Doc {
 }
 
 pub fn field(field: &Field) -> Doc {
-    RichDoc::cell(
+    RichDoc::cell(Cell::new(
         str_length(field.as_ref()),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::NonEditable,
         },
-    )
+    ))
 }
 
 pub fn datom_value(datom: &Datom) -> Doc {
     let field = &datom.value;
-    RichDoc::cell(
+    RichDoc::cell(Cell::new(
         str_length(field.as_ref()),
         EditorCellPayload {
             text: CellText::Field(field.clone()),
             class: CellClass::Editable(datom.clone()),
         },
-    )
+    ))
 }
 
 pub fn datom_reference(
@@ -127,13 +127,13 @@ pub fn datom_reference(
     type_filter: TypeFilter,
     text: &Field,
 ) -> Doc {
-    RichDoc::cell(
+    RichDoc::cell(Cell::new(
         str_length(text.as_ref()),
         EditorCellPayload {
             text: CellText::Field(text.clone()),
             class: CellClass::Reference(datom.clone(), target, type_filter),
         },
-    )
+    ))
 }
 
 pub fn punctuation(s: &'static str) -> Doc {
@@ -144,7 +144,7 @@ pub fn whitespace(s: &'static str) -> Doc {
     literal(CellClass::Whitespace, s)
 }
 pub fn line() -> Doc {
-    RichDoc::line(meta_pretty::cell(
+    RichDoc::line(Cell::new(
         1,
         EditorCellPayload {
             text: CellText::Literal(" "),
@@ -158,13 +158,13 @@ pub fn text(s: &'static str) -> Doc {
 }
 
 fn literal(class: CellClass, s: &'static str) -> Doc {
-    RichDoc::cell(
+    RichDoc::cell(Cell::new(
         str_length(s),
         EditorCellPayload {
             text: CellText::Literal(s),
             class,
         },
-    )
+    ))
 }
 
 pub fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {

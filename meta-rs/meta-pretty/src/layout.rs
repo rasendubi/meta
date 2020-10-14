@@ -9,14 +9,13 @@ enum Mode {
 
 type Cmd<'a, T> = (usize, Mode, &'a RichDoc<T>);
 
-fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool
-where
-    T: Clone,
-{
+fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
     // Semantically, this function should take `cmds: Vec<Cmd<T>>`. However, that would imply a copy
     // of the cmds vector which we try to avoid.
     //
     // Create a separate cmds vector and pull commands from `rest` as needed.
+    //
+    // Another option would be to try im::Vector which offers O(1) copy.
     let mut rest_cmds = rest.iter().rev();
     let mut cmds = vec![cmd];
 
@@ -66,6 +65,9 @@ where
 
 pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>>
 where
+    // TODO: think of a way to lift off this `T: Clone` constraint. It is needed because cells are
+    // currently copied to `SimpleDoc`, but that's not really necessary as `SimpleDoc` already holds
+    // a reference to originating `RichDoc` (which owns `Cell`).
     T: Clone,
 {
     let mut out = vec![];
@@ -117,11 +119,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::rich_doc::{cell, Cell, RichDoc};
+    use crate::rich_doc::{Cell, RichDoc};
     use crate::simple_doc::{SimpleDoc, SimpleDocKind};
 
     fn text(s: &str) -> RichDoc<&str> {
-        RichDoc::cell(s.len(), s)
+        RichDoc::cell(Cell::new(s.len(), s))
     }
 
     fn to_string(sdoc: &Vec<SimpleDoc<&str>>) -> String {
@@ -208,7 +210,10 @@ mod tests {
 
     #[test]
     fn test_group_line_alt() {
-        assert_eq!(layout(RichDoc::group(RichDoc::line(cell(1, ",")))), ",");
+        assert_eq!(
+            layout(RichDoc::group(RichDoc::line(Cell::new(1, ",")))),
+            ","
+        );
     }
 
     #[test]
@@ -221,7 +226,7 @@ mod tests {
         assert_eq!(
             layout(RichDoc::group(RichDoc::concat(vec![
                 text("text"),
-                RichDoc::line(cell(1, " ")),
+                RichDoc::line(Cell::new(1, " ")),
                 text("more text")
             ]))),
             "text more text"
@@ -233,7 +238,7 @@ mod tests {
         assert_eq!(
             layout(RichDoc::group(RichDoc::concat(vec![
                 text("long text"),
-                RichDoc::line(cell(1, " ")),
+                RichDoc::line(Cell::new(1, " ")),
                 text("more long text")
             ]))),
             "long text\nmore long text"
