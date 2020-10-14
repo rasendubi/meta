@@ -1,8 +1,8 @@
-use meta_pretty::{Cell, RichDoc, SimpleDoc, SimpleDocKind};
-use meta_store::{Datom, Field};
-
 use im::HashSet;
 use unicode_segmentation::UnicodeSegmentation;
+
+use meta_pretty::{Cell, RichDoc, SimpleDoc, SimpleDocKind};
+use meta_store::{Datom, Field};
 
 pub type Doc = RichDoc<EditorCellPayload>;
 
@@ -144,13 +144,7 @@ pub fn whitespace(s: &'static str) -> Doc {
     literal(CellClass::Whitespace, s)
 }
 pub fn line() -> Doc {
-    RichDoc::line(Cell::new(
-        1,
-        EditorCellPayload {
-            text: CellText::Literal(" "),
-            class: CellClass::Whitespace,
-        },
-    ))
+    RichDoc::line(literal_cell(CellClass::Whitespace, " "))
 }
 
 pub fn text(s: &'static str) -> Doc {
@@ -158,13 +152,17 @@ pub fn text(s: &'static str) -> Doc {
 }
 
 fn literal(class: CellClass, s: &'static str) -> Doc {
-    RichDoc::cell(Cell::new(
+    literal_cell(class, s).into()
+}
+
+fn literal_cell(class: CellClass, s: &'static str) -> Cell<EditorCellPayload> {
+    Cell::new(
         str_length(s),
         EditorCellPayload {
             text: CellText::Literal(s),
             class,
         },
-    ))
+    )
 }
 
 pub fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
