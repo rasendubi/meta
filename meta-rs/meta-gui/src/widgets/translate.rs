@@ -12,6 +12,14 @@ impl<T> Translate<T> {
     pub fn new(child: T, offset: Vec2) -> Self {
         Self { child, offset }
     }
+
+    pub fn child(&self) -> &T {
+        &self.child
+    }
+
+    pub fn child_mut(&mut self) -> &mut T {
+        &mut self.child
+    }
 }
 
 impl<T> Layout for Translate<T>

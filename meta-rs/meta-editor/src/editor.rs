@@ -11,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use meta_core::MetaCore;
 use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
-    SubscriptionId, Translate,
+    Stack, SubscriptionId, Translate,
 };
 use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field, MetaStore};
@@ -46,7 +46,7 @@ pub struct Editor {
     positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
     cursor: Option<CursorPosition>,
     scroll: Scrollable,
-    autocomplete: Option<(CellPosition, Autocomplete<Field>)>,
+    autocomplete: Option<Translate<Autocomplete<Field>>>,
 }
 
 impl Editor {
@@ -369,9 +369,12 @@ impl Editor {
                         candidates
                     );
 
-                    self.autocomplete = Some((
-                        position,
+                    let CellPosition { row, col } = position;
+                    let offset =
+                        Self::cell_position_to_screen_offset(CellPosition { row: row + 1, col });
+                    self.autocomplete = Some(Translate::new(
                         Autocomplete::new(SubscriptionId::new(), candidates),
+                        offset,
                     ));
                 }
             }
@@ -415,9 +418,8 @@ impl Editor {
         let CellPosition { row, col } = pos;
         let char_width = 6.0;
         let char_height = 12.0;
-        let inset = 10.0;
-        let x_offset = col as f64 * char_width + inset;
-        let y_offset = row as f64 * char_height + inset;
+        let x_offset = col as f64 * char_width;
+        let y_offset = row as f64 * char_height;
         Vec2::new(x_offset, y_offset)
     }
 }
@@ -432,22 +434,24 @@ impl Layout for Editor {
 
         Scrolled::new(
             scroll,
-            &mut Inset::new(
-                &mut List::new(layout.iter().map(|line| {
-                    List::new(line.iter().map(|x| CellWidget(x, &cursor)))
-                        .with_direction(Direction::Horizontal)
-                })),
+            Inset::new(
+                Stack::new(
+                    [
+                        &mut List::new(layout.iter().map(|line| {
+                            List::new(line.iter().map(|x| CellWidget(x, &cursor)))
+                                .with_direction(Direction::Horizontal)
+                        })) as &mut dyn Layout,
+                        &mut self.autocomplete,
+                    ]
+                    .iter_mut(),
+                ),
                 Insets::uniform(10.0),
             ),
         )
         .layout(ctx, Constraint::tight(ctx.window_size()));
 
-        if let Some((CellPosition { row, col }, ref mut autocomplete)) = self.autocomplete {
-            let offset = Self::cell_position_to_screen_offset(CellPosition { row: row + 1, col })
-                + self.scroll.offset();
-            Translate::new(&mut *autocomplete, offset).layout(ctx, constraint);
-
-            for e in autocomplete.events() {
+        if let Some(autocomplete) = &mut self.autocomplete {
+            for e in autocomplete.child_mut().events() {
                 let AutocompleteEvent::Close(e) = e;
                 debug!("Autocomplete close with: {:?}", e);
 

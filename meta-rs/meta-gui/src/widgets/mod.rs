@@ -9,6 +9,7 @@ mod row;
 mod scrollable;
 mod scrollbar;
 mod scrolled;
+mod stack;
 mod text;
 mod translate;
 
@@ -23,5 +24,6 @@ pub use row::*;
 pub use scrollable::*;
 pub use scrollbar::*;
 pub use scrolled::*;
+pub use stack::*;
 pub use text::*;
 pub use translate::*;
