@@ -198,6 +198,11 @@ impl Editor {
         }
     }
 
+    // needless_collect is false-positive here because clippy doesn't understand that we collect
+    // to get a double-ended iterator.
+    //
+    // See https://github.com/rust-lang/rust-clippy/issues/5991#issuecomment-688224759
+    #[allow(clippy::needless_collect)]
     fn handle_key(&mut self, key: KeyEvent) {
         let path = match &self.cursor {
             Some(CursorPosition::Inside {
