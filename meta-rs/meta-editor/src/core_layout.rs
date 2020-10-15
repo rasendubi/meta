@@ -110,22 +110,17 @@ fn core_layout_value(core: &MetaCore, datom: &Datom) -> RDoc {
     // TODO: handle NaturalNumber, IntegerNumber
 }
 
-fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> RDoc {
-    concat(
-        value_datoms
-            .iter()
-            .sorted_by_key(|x| &x.id)
-            .map(|x| {
-                concat(vec![
-                    linebreak(),
-                    reference(core, x, ReferenceTarget::Attribute),
-                    whitespace(" "),
-                    punctuation("="),
-                    group(nest(2, concat(vec![line(), core_layout_value(core, x)]))),
-                ])
-            })
-            .collect(),
-    )
+fn core_layout_attribute(core: &MetaCore, datom: &Datom) -> RDoc {
+    concat(vec![
+        linebreak(),
+        reference(core, datom, ReferenceTarget::Attribute),
+        whitespace(" "),
+        punctuation("="),
+        group(nest(
+            2,
+            concat(vec![line(), core_layout_value(core, datom)]),
+        )),
+    ])
 }
 
 pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
@@ -155,9 +150,13 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
                 2,
                 concat(
                     attributes
+                        .values()
+                        .fold(HashSet::new(), |acc, x| acc.union(x.clone()))
                         .into_iter()
-                        .sorted_by(|(a, _), (b, _)| a.cmp(b))
-                        .map(|(_attr, datoms)| core_layout_attribute(&core, &datoms))
+                        .sorted_by(|a, b| (&a.attribute, &a.id).cmp(&(&b.attribute, &b.id)))
+                        .map(|datom| {
+                            core_layout_attribute(&core, &datom).with_key(datom.id.to_string())
+                        })
                         .collect(),
                 ),
             ),
@@ -231,7 +230,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
             concat(
                 entities
                     .iter()
-                    .map(|e| core_layout_entity(core, &e.value))
+                    .map(|e| core_layout_entity(core, &e.value).with_key(e.value.to_string()))
                     .intersperse_with(|| concat(vec![linebreak(), linebreak()]))
                     .collect(),
             ),

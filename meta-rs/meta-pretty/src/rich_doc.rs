@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, ops::Deref, rc::Rc};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, ops::Deref, rc::Rc};
 
 use crate::path::{follow_path, pathify, FollowPath, Path, PathSegment};
 
@@ -53,8 +53,8 @@ impl<T, M> RichDoc<T, M> {
         Self { kind, key: None }
     }
 
-    pub fn with_key(mut self, key: Option<String>) -> Self {
-        self.key = key;
+    pub fn with_key(mut self, key: String) -> Self {
+        self.key = Some(key);
         self
     }
 
@@ -197,5 +197,24 @@ mod tests {
                 RichDoc::linebreak(),
             ]),
         ));
+    }
+
+    #[test]
+    fn follow_path_with_key() {
+        let doc: RichDocRef<i32> = RichDoc::concat(vec![
+            RichDoc::cell(Cell::new(2, 11)).with_key("1".to_string()),
+            RichDoc::empty().with_key("2".to_string()),
+            RichDoc::line(Cell::new(2, 22)).with_key("3".to_string()),
+            RichDoc::linebreak().with_key("4".to_string()),
+        ])
+        .into();
+
+        let r = doc
+            .follow_path(&[PathSegment::Index(0, Some("3".to_string()))])
+            .last()
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(Some("3".to_string()), r.key,);
     }
 }
