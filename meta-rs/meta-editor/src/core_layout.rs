@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use druid_shell::{HotKey, KeyCode, RawMods};
 use im::HashSet;
 use itertools::Itertools;
-use maplit::hashset;
 
 use meta_core::MetaCore;
 use meta_store::{Datom, Field};
@@ -53,10 +52,6 @@ impl KeyHandler for LanguageKeys {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
             editor.with_store(|store| {
                 let entity = Field::new_id();
-
-                let identifier_id = "0".into();
-                store.add_datom(&Datom::eav(entity.clone(), identifier_id, "".into()));
-
                 let language_entity_id = "13".into();
                 store.add_datom(&Datom::eav(
                     self.language.clone(),
@@ -137,35 +132,32 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
     let attributes = core
         .store
         .eav1(entity)
-        .unwrap_or_else(|| panic!("{:?} has no attributes", entity));
+        .cloned()
+        .unwrap_or_else(im::HashMap::new);
 
     let type_ = core.meta_type(entity);
-
-    let hide_attributes = hashset! {
-        // identifier
-        Field::from("0"),
-        // type
-        Field::from("5")
-    };
 
     with_key_handler(
         Box::new(EntityKeys::new(entity.clone())),
         concat(vec![
             annotate(core, entity),
             whitespace(" "),
-            punctuation(":"),
-            whitespace(" "),
-            type_.map_or_else(empty, |x| reference(core, x, ReferenceTarget::Value)),
-            whitespace(" "),
+            type_.map_or_else(empty, |x| {
+                concat(vec![
+                    punctuation(":"),
+                    whitespace(" "),
+                    reference(core, x, ReferenceTarget::Value),
+                    whitespace(" "),
+                ])
+            }),
             punctuation("{"),
             nest(
                 2,
                 concat(
                     attributes
-                        .iter()
-                        .filter(|&(attr, _datoms)| !hide_attributes.contains(attr))
-                        .sorted_by_key(|&(attr, _datoms)| attr)
-                        .map(|(_attr, datoms)| core_layout_attribute(&core, datoms))
+                        .into_iter()
+                        .sorted_by(|(a, _), (b, _)| a.cmp(b))
+                        .map(|(_attr, datoms)| core_layout_attribute(&core, &datoms))
                         .collect(),
                 ),
             ),
