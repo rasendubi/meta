@@ -3,16 +3,16 @@ use std::{collections::HashMap, hash::Hash, rc::Rc};
 use crate::path::{follow_path, pathify, Path, PathSegment};
 
 #[derive(Debug)]
-pub struct RichDoc<T>(Rc<RichDocNode<T>>);
+pub struct RichDoc<T, M = ()>(Rc<RichDocNode<T, M>>);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-struct RichDocNode<T> {
-    kind: RichDocKind<T>,
+struct RichDocNode<T, M> {
+    kind: RichDocKind<T, M>,
     key: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum RichDocKind<T> {
+pub enum RichDocKind<T, M = ()> {
     Empty,
     Cell(Cell<T>),
     Line {
@@ -22,13 +22,17 @@ pub enum RichDocKind<T> {
     },
     Nest {
         nest_width: usize,
-        doc: RichDoc<T>,
+        doc: RichDoc<T, M>,
     },
     Concat {
-        parts: Vec<RichDoc<T>>,
+        parts: Vec<RichDoc<T, M>>,
     },
     Group {
-        doc: RichDoc<T>,
+        doc: RichDoc<T, M>,
+    },
+    Meta {
+        doc: RichDoc<T, M>,
+        meta: M,
     },
 }
 
@@ -44,8 +48,8 @@ impl<T> Cell<T> {
     }
 }
 
-impl<T> RichDoc<T> {
-    pub fn kind(&self) -> &RichDocKind<T> {
+impl<T, M> RichDoc<T, M> {
+    pub fn kind(&self) -> &RichDocKind<T, M> {
         &self.0.kind
     }
 
@@ -53,7 +57,7 @@ impl<T> RichDoc<T> {
         &self.0.key
     }
 
-    fn new(kind: RichDocKind<T>) -> Self {
+    fn new(kind: RichDocKind<T, M>) -> Self {
         RichDoc(Rc::new(RichDocNode { kind, key: None }))
     }
 
@@ -102,26 +106,26 @@ impl<T> RichDoc<T> {
     }
 }
 
-impl<T> From<Cell<T>> for RichDoc<T> {
+impl<T, M> From<Cell<T>> for RichDoc<T, M> {
     fn from(cell: Cell<T>) -> Self {
         RichDoc::cell(cell)
     }
 }
 
-impl<T> PartialEq for RichDoc<T> {
+impl<T, M> PartialEq for RichDoc<T, M> {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.0, &other.0)
     }
 }
-impl<T> Eq for RichDoc<T> {}
+impl<T, M> Eq for RichDoc<T, M> {}
 
-impl<T> Hash for RichDoc<T> {
+impl<T, M> Hash for RichDoc<T, M> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::ptr::hash(&*self.0, state)
     }
 }
 
-impl<T> Clone for RichDoc<T> {
+impl<T, M> Clone for RichDoc<T, M> {
     fn clone(&self) -> Self {
         RichDoc(self.0.clone())
     }
@@ -138,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_complex() {
-        let _doc = RichDoc::group(RichDoc::nest(
+        let _doc = RichDoc::<i32, ()>::group(RichDoc::nest(
             2,
             RichDoc::concat(vec![
                 RichDoc::cell(Cell::new(2, 11)),

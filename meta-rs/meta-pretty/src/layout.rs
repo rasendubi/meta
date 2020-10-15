@@ -7,9 +7,9 @@ enum Mode {
     Flat,
 }
 
-type Cmd<'a, T> = (usize, Mode, &'a RichDoc<T>);
+type Cmd<'a, T, M> = (usize, Mode, &'a RichDoc<T, M>);
 
-fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
+fn fits<T, M>(cmd: Cmd<T, M>, rest: &[Cmd<T, M>], max_width: usize) -> bool {
     // Semantically, this function should take `cmds: Vec<Cmd<T>>`. However, that would imply a copy
     // of the cmds vector which we try to avoid.
     //
@@ -56,6 +56,7 @@ fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
                 RichDocKind::Group { doc } => {
                     cmds.push((indent, Mode::Flat, doc));
                 }
+                RichDocKind::Meta { doc, meta: _meta } => cmds.push((indent, mode, doc)),
             },
         }
     }
@@ -63,7 +64,7 @@ fn fits<T>(cmd: Cmd<T>, rest: &[Cmd<T>], max_width: usize) -> bool {
     false
 }
 
-pub fn layout<T>(doc: &RichDoc<T>, page_width: usize) -> Vec<SimpleDoc<T>>
+pub fn layout<T, M>(doc: &RichDoc<T, M>, page_width: usize) -> Vec<SimpleDoc<T, M>>
 where
     // TODO: think of a way to lift off this `T: Clone` constraint. It is needed because cells are
     // currently copied to `SimpleDoc`, but that's not really necessary as `SimpleDoc` already holds
@@ -109,6 +110,9 @@ where
                     Mode::Break
                 };
 
+                cmds.push((indent, mode, &doc));
+            }
+            RichDocKind::Meta { doc, meta: _meta } => {
                 cmds.push((indent, mode, &doc));
             }
         }

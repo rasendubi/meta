@@ -6,15 +6,17 @@ use crate::rich_doc::{RichDoc, RichDocKind};
 pub enum PathSegment {
     Nest,
     Group,
+    Meta,
     /// A child of `RichDoc::Concat`. Stores index and optional key.
     Index(usize, Option<String>),
 }
 
+// TODO: consider using im::Vector for Path as it allows O(1) clone and structural sharing.
 pub type Path = Vec<PathSegment>;
 
-pub(crate) fn pathify<T>(
-    result: &mut HashMap<RichDoc<T>, Path>,
-    doc: &RichDoc<T>,
+pub(crate) fn pathify<T, M>(
+    result: &mut HashMap<RichDoc<T, M>, Path>,
+    doc: &RichDoc<T, M>,
     path: Vec<PathSegment>,
 ) {
     match doc.kind() {
@@ -36,16 +38,21 @@ pub(crate) fn pathify<T>(
             path.push(PathSegment::Group);
             pathify(result, doc, path);
         }
+        RichDocKind::Meta { doc, meta: _meta } => {
+            let mut path = path.clone();
+            path.push(PathSegment::Meta);
+            pathify(result, doc, path);
+        }
         RichDocKind::Empty | RichDocKind::Cell(_) | RichDocKind::Line { .. } => {}
     };
 
     result.insert(doc.clone(), path);
 }
 
-pub(crate) fn follow_path<'a, 'b, T>(
-    this: &'a RichDoc<T>,
+pub(crate) fn follow_path<'a, 'b, T, M>(
+    this: &'a RichDoc<T, M>,
     path: &'b [PathSegment],
-) -> Result<&'a RichDoc<T>, (&'a RichDoc<T>, &'b [PathSegment])> {
+) -> Result<&'a RichDoc<T, M>, (&'a RichDoc<T, M>, &'b [PathSegment])> {
     if path.is_empty() {
         return Ok(this);
     }
