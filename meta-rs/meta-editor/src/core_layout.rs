@@ -180,7 +180,7 @@ pub fn core_layout_entities(core: &MetaCore) -> Doc {
     concat(
         entities
             .map(|e| core_layout_entity(core, e))
-            .intersperse(concat(vec![linebreak(), linebreak()]))
+            .intersperse_with(|| concat(vec![linebreak(), linebreak()]))
             .collect(),
     )
 }
@@ -213,7 +213,7 @@ pub fn core_layout_datoms(core: &MetaCore) -> Doc {
         datoms
             .iter()
             .map(|d| core_layout_datom(core, d))
-            .intersperse(linebreak())
+            .intersperse_with(linebreak)
             .collect(),
     )
 }
@@ -239,7 +239,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
                 entities
                     .iter()
                     .map(|e| core_layout_entity(core, &e.value))
-                    .intersperse(concat(vec![linebreak(), linebreak()]))
+                    .intersperse_with(|| concat(vec![linebreak(), linebreak()]))
                     .collect(),
             ),
         ]),
@@ -254,7 +254,7 @@ pub fn core_layout_languages(core: &MetaCore) -> Doc {
         languages
             .iter()
             .map(|l| core_layout_language(core, &l.entity))
-            .intersperse(linebreak())
+            .intersperse_with(linebreak)
             .collect(),
     )
 }

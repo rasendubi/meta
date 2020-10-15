@@ -23,3 +23,9 @@ members = [
 
 [profile.dev]
 opt-level = 3
+
+[patch.crates-io]
+# Use itertools from master to get Itertools::intersperse_with() function
+#
+# See https://github.com/rust-itertools/itertools/pull/381
+itertools = { git = "https://github.com/rust-itertools/itertools.git" }
