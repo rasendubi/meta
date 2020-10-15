@@ -1,12 +1,13 @@
 use im::HashSet;
 use unicode_segmentation::UnicodeSegmentation;
 
-use meta_pretty::{Cell, RichDoc, SimpleDoc, SimpleDocKind};
+use meta_pretty::{Cell, RichDoc, RichDocRef, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
 use crate::key::KeyHandler;
 
-pub type Doc = RichDoc<EditorCellPayload, Box<dyn KeyHandler>>;
+pub type Doc = RichDocRef<EditorCellPayload, Box<dyn KeyHandler>>;
+pub type RDoc = RichDoc<EditorCellPayload, Box<dyn KeyHandler>>;
 pub type SDoc = SimpleDoc<EditorCellPayload, Box<dyn KeyHandler>>;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
@@ -86,28 +87,28 @@ pub enum CellText {
     Literal(&'static str),
 }
 
-pub fn with_key_handler(key_handler: Box<dyn KeyHandler>, doc: Doc) -> Doc {
+pub fn with_key_handler(key_handler: Box<dyn KeyHandler>, doc: RDoc) -> RDoc {
     RichDoc::meta(key_handler, doc)
 }
 
 // Specialize and re-export
-pub fn concat(parts: Vec<Doc>) -> Doc {
+pub fn concat(parts: Vec<RDoc>) -> RDoc {
     RichDoc::concat(parts)
 }
-pub fn empty() -> Doc {
+pub fn empty() -> RDoc {
     RichDoc::empty()
 }
-pub fn linebreak() -> Doc {
+pub fn linebreak() -> RDoc {
     RichDoc::linebreak()
 }
-pub fn group(doc: Doc) -> Doc {
+pub fn group(doc: RDoc) -> RDoc {
     RichDoc::group(doc)
 }
-pub fn nest(width: usize, doc: Doc) -> Doc {
+pub fn nest(width: usize, doc: RDoc) -> RDoc {
     RichDoc::nest(width, doc)
 }
 
-pub fn field(field: &Field) -> Doc {
+pub fn field(field: &Field) -> RDoc {
     RichDoc::cell(Cell::new(
         str_length(field.as_ref()),
         EditorCellPayload {
@@ -117,7 +118,7 @@ pub fn field(field: &Field) -> Doc {
     ))
 }
 
-pub fn datom_value(datom: &Datom) -> Doc {
+pub fn datom_value(datom: &Datom) -> RDoc {
     let field = &datom.value;
     RichDoc::cell(Cell::new(
         str_length(field.as_ref()),
@@ -133,7 +134,7 @@ pub fn datom_reference(
     target: ReferenceTarget,
     type_filter: TypeFilter,
     text: &Field,
-) -> Doc {
+) -> RDoc {
     RichDoc::cell(Cell::new(
         str_length(text.as_ref()),
         EditorCellPayload {
@@ -143,22 +144,22 @@ pub fn datom_reference(
     ))
 }
 
-pub fn punctuation(s: &'static str) -> Doc {
+pub fn punctuation(s: &'static str) -> RDoc {
     literal(CellClass::Punctuation, s)
 }
 
-pub fn whitespace(s: &'static str) -> Doc {
+pub fn whitespace(s: &'static str) -> RDoc {
     literal(CellClass::Whitespace, s)
 }
-pub fn line() -> Doc {
+pub fn line() -> RDoc {
     RichDoc::line(literal_cell(CellClass::Whitespace, " "))
 }
 
-pub fn text(s: &'static str) -> Doc {
+pub fn text(s: &'static str) -> RDoc {
     literal(CellClass::NonEditable, s)
 }
 
-fn literal(class: CellClass, s: &'static str) -> Doc {
+fn literal(class: CellClass, s: &'static str) -> RDoc {
     literal_cell(class, s).into()
 }
 
@@ -172,19 +173,19 @@ fn literal_cell(class: CellClass, s: &'static str) -> Cell<EditorCellPayload> {
     )
 }
 
-pub fn surround(left: Doc, right: Doc, doc: Doc) -> Doc {
+pub fn surround(left: RDoc, right: RDoc, doc: RDoc) -> RDoc {
     RichDoc::concat(vec![left, doc, right])
 }
 
-pub fn parentheses(doc: Doc) -> Doc {
+pub fn parentheses(doc: RDoc) -> RDoc {
     surround(punctuation("("), punctuation(")"), doc)
 }
 
-pub fn brackets(doc: Doc) -> Doc {
+pub fn brackets(doc: RDoc) -> RDoc {
     surround(punctuation("["), punctuation("]"), doc)
 }
 
-pub fn quotes(doc: Doc) -> Doc {
+pub fn quotes(doc: RDoc) -> RDoc {
     surround(punctuation("\""), punctuation("\""), doc)
 }
 

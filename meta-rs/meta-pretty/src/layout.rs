@@ -1,4 +1,4 @@
-use crate::rich_doc::{RichDoc, RichDocKind};
+use crate::rich_doc::{RichDocKind, RichDocRef};
 use crate::simple_doc::SimpleDoc;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -7,7 +7,7 @@ enum Mode {
     Flat,
 }
 
-type Cmd<'a, T, M> = (usize, Mode, &'a RichDoc<T, M>);
+type Cmd<'a, T, M> = (usize, Mode, &'a RichDocRef<T, M>);
 
 fn fits<T, M>(cmd: Cmd<T, M>, rest: &[Cmd<T, M>], max_width: usize) -> bool {
     // Semantically, this function should take `cmds: Vec<Cmd<T>>`. However, that would imply a copy
@@ -31,7 +31,7 @@ fn fits<T, M>(cmd: Cmd<T, M>, rest: &[Cmd<T, M>], max_width: usize) -> bool {
                 }
             }
 
-            Some((indent, mode, doc)) => match doc.kind() {
+            Some((indent, mode, doc)) => match &doc.kind {
                 RichDocKind::Empty => {}
                 RichDocKind::Cell(cell) => {
                     width += cell.width;
@@ -64,7 +64,7 @@ fn fits<T, M>(cmd: Cmd<T, M>, rest: &[Cmd<T, M>], max_width: usize) -> bool {
     false
 }
 
-pub fn layout<T, M>(doc: &RichDoc<T, M>, page_width: usize) -> Vec<SimpleDoc<T, M>>
+pub fn layout<T, M>(doc: &RichDocRef<T, M>, page_width: usize) -> Vec<SimpleDoc<T, M>>
 where
     // TODO: think of a way to lift off this `T: Clone` constraint. It is needed because cells are
     // currently copied to `SimpleDoc`, but that's not really necessary as `SimpleDoc` already holds
@@ -77,7 +77,7 @@ where
     let mut pos = 0;
 
     while let Some((indent, mode, doc)) = cmds.pop() {
-        match doc.kind() {
+        match &doc.kind {
             RichDocKind::Empty => {}
             RichDocKind::Cell(cell) => {
                 out.push(SimpleDoc::cell(doc.clone(), cell.clone()));
@@ -151,7 +151,7 @@ mod tests {
     }
 
     fn layout(doc: RichDoc<&str>) -> String {
-        to_string(&super::layout(&doc, 20))
+        to_string(&super::layout(&doc.into(), 20))
     }
 
     #[test]

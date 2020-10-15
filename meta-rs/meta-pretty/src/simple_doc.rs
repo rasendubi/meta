@@ -1,6 +1,6 @@
 use std::{fmt::Debug, hash::Hash, rc::Rc};
 
-use crate::RichDoc;
+use crate::RichDocRef;
 
 pub use crate::rich_doc::Cell;
 
@@ -9,7 +9,7 @@ pub struct SimpleDoc<T, M = ()>(Rc<SimpleDocNode<T, M>>);
 #[derive(PartialEq, Eq, Hash, Clone)]
 struct SimpleDocNode<T, M> {
     pub kind: SimpleDocKind<T>,
-    pub rich_doc: RichDoc<T, M>,
+    pub rich_doc: RichDocRef<T, M>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
@@ -47,7 +47,7 @@ impl<T, M> SimpleDoc<T, M> {
         &self.0.kind
     }
 
-    pub fn rich_doc(&self) -> &RichDoc<T, M> {
+    pub fn rich_doc(&self) -> &RichDocRef<T, M> {
         &self.0.rich_doc
     }
 
@@ -59,7 +59,7 @@ impl<T, M> SimpleDoc<T, M> {
     }
 
     #[inline]
-    pub(crate) fn linebreak(rich_doc: RichDoc<T, M>, indent_width: usize) -> Self {
+    pub(crate) fn linebreak(rich_doc: RichDocRef<T, M>, indent_width: usize) -> Self {
         Self::new(SimpleDocNode {
             kind: SimpleDocKind::Linebreak { indent_width },
             rich_doc,
@@ -67,7 +67,7 @@ impl<T, M> SimpleDoc<T, M> {
     }
 
     #[inline]
-    pub(crate) fn cell(rich_doc: RichDoc<T, M>, cell: Cell<T>) -> Self {
+    pub(crate) fn cell(rich_doc: RichDocRef<T, M>, cell: Cell<T>) -> Self {
         Self::new(SimpleDocNode {
             kind: SimpleDocKind::Cell(cell),
             rich_doc,

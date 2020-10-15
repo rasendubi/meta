@@ -50,7 +50,7 @@ pub struct Editor {
 impl Editor {
     pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
         let core = MetaCore::new(&store);
-        let rich_doc = core_layout_languages(&core);
+        let rich_doc: Doc = core_layout_languages(&core).into();
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 
@@ -87,7 +87,7 @@ impl Editor {
 
     pub fn on_store_updated(&mut self) {
         let core = MetaCore::new(&self.store);
-        let rich_doc = core_layout_languages(&core);
+        let rich_doc: Doc = core_layout_languages(&core).into();
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 

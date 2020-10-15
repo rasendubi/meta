@@ -1,14 +1,14 @@
-use std::{collections::HashMap, hash::Hash, rc::Rc};
+use std::{collections::HashMap, hash::Hash, ops::Deref, rc::Rc};
 
 use crate::path::{follow_path, pathify, FollowPath, Path, PathSegment};
 
 #[derive(Debug)]
-pub struct RichDoc<T, M = ()>(Rc<RichDocNode<T, M>>);
+pub struct RichDocRef<T, M = ()>(Rc<RichDoc<T, M>>);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-struct RichDocNode<T, M> {
-    kind: RichDocKind<T, M>,
-    key: Option<String>,
+pub struct RichDoc<T, M = ()> {
+    pub kind: RichDocKind<T, M>,
+    pub key: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -22,16 +22,16 @@ pub enum RichDocKind<T, M = ()> {
     },
     Nest {
         nest_width: usize,
-        doc: RichDoc<T, M>,
+        doc: RichDocRef<T, M>,
     },
     Concat {
-        parts: Vec<RichDoc<T, M>>,
+        parts: Vec<RichDocRef<T, M>>,
     },
     Group {
-        doc: RichDoc<T, M>,
+        doc: RichDocRef<T, M>,
     },
     Meta {
-        doc: RichDoc<T, M>,
+        doc: RichDocRef<T, M>,
         meta: M,
     },
 }
@@ -49,16 +49,13 @@ impl<T> Cell<T> {
 }
 
 impl<T, M> RichDoc<T, M> {
-    pub fn kind(&self) -> &RichDocKind<T, M> {
-        &self.0.kind
+    pub fn new(kind: RichDocKind<T, M>) -> Self {
+        Self { kind, key: None }
     }
 
-    pub fn key(&self) -> &Option<String> {
-        &self.0.key
-    }
-
-    fn new(kind: RichDocKind<T, M>) -> Self {
-        RichDoc(Rc::new(RichDocNode { kind, key: None }))
+    pub fn with_key(mut self, key: Option<String>) -> Self {
+        self.key = key;
+        self
     }
 
     pub fn empty() -> Self {
@@ -80,20 +77,52 @@ impl<T, M> RichDoc<T, M> {
     pub fn nest(width: usize, doc: Self) -> Self {
         Self::new(RichDocKind::Nest {
             nest_width: width,
-            doc,
+            doc: doc.into(),
         })
     }
 
-    pub fn concat(parts: Vec<Self>) -> Self {
-        Self::new(RichDocKind::Concat { parts })
+    pub fn concat<I>(parts: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        Self::new(RichDocKind::Concat {
+            parts: parts.into_iter().map(|x| x.into()).collect(),
+        })
     }
 
     pub fn group(doc: Self) -> Self {
-        Self::new(RichDocKind::Group { doc })
+        Self::new(RichDocKind::Group { doc: doc.into() })
     }
 
     pub fn meta(meta: M, doc: Self) -> Self {
-        Self::new(RichDocKind::Meta { meta, doc })
+        Self::new(RichDocKind::Meta {
+            meta,
+            doc: doc.into(),
+        })
+    }
+
+    pub fn kind(&self) -> &RichDocKind<T, M> {
+        &self.kind
+    }
+
+    pub fn key(&self) -> &Option<String> {
+        &self.key
+    }
+}
+
+impl<T, M> From<RichDoc<T, M>> for RichDocRef<T, M> {
+    fn from(node: RichDoc<T, M>) -> Self {
+        RichDocRef(Rc::new(node))
+    }
+}
+
+impl<T, M> RichDocRef<T, M> {
+    pub fn kind(&self) -> &RichDocKind<T, M> {
+        &self.0.kind
+    }
+
+    pub fn key(&self) -> &Option<String> {
+        &self.0.key
     }
 
     pub fn pathify(&self) -> HashMap<Self, Path> {
@@ -121,22 +150,30 @@ impl<T, M> From<Cell<T>> for RichDoc<T, M> {
     }
 }
 
-impl<T, M> PartialEq for RichDoc<T, M> {
+impl<T, M> Deref for RichDocRef<T, M> {
+    type Target = RichDoc<T, M>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T, M> PartialEq for RichDocRef<T, M> {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.0, &other.0)
     }
 }
-impl<T, M> Eq for RichDoc<T, M> {}
+impl<T, M> Eq for RichDocRef<T, M> {}
 
-impl<T, M> Hash for RichDoc<T, M> {
+impl<T, M> Hash for RichDocRef<T, M> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::ptr::hash(&*self.0, state)
     }
 }
 
-impl<T, M> Clone for RichDoc<T, M> {
+impl<T, M> Clone for RichDocRef<T, M> {
     fn clone(&self) -> Self {
-        RichDoc(self.0.clone())
+        RichDocRef(self.0.clone())
     }
 }
 

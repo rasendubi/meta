@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::rich_doc::{RichDoc, RichDocKind};
+use crate::{RichDocKind, RichDocRef};
 
 pub enum FollowPath<'a, 'b, T, M> {
     Done,
-    Ok(&'a RichDoc<T, M>, &'b [PathSegment]),
-    Error(&'a RichDoc<T, M>, &'b [PathSegment]),
+    Ok(&'a RichDocRef<T, M>, &'b [PathSegment]),
+    Error(&'a RichDocRef<T, M>, &'b [PathSegment]),
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -21,8 +21,8 @@ pub enum PathSegment {
 pub type Path = Vec<PathSegment>;
 
 pub(crate) fn pathify<T, M>(
-    result: &mut HashMap<RichDoc<T, M>, Path>,
-    doc: &RichDoc<T, M>,
+    result: &mut HashMap<RichDocRef<T, M>, Path>,
+    doc: &RichDocRef<T, M>,
     path: Vec<PathSegment>,
 ) {
     match doc.kind() {
@@ -57,7 +57,7 @@ pub(crate) fn pathify<T, M>(
 
 impl<'a, 'b, T, M> Iterator for FollowPath<'a, 'b, T, M> {
     #[allow(clippy::type_complexity)]
-    type Item = Result<&'a RichDoc<T, M>, (&'a RichDoc<T, M>, &'b [PathSegment])>;
+    type Item = Result<&'a RichDocRef<T, M>, (&'a RichDocRef<T, M>, &'b [PathSegment])>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut this = FollowPath::Done;
@@ -86,9 +86,9 @@ impl<'a, 'b, T, M> Iterator for FollowPath<'a, 'b, T, M> {
 }
 
 fn follow_segment<'a, 'b, T, M>(
-    doc: &'a RichDoc<T, M>,
+    doc: &'a RichDocRef<T, M>,
     segment: &'b PathSegment,
-) -> Option<&'a RichDoc<T, M>> {
+) -> Option<&'a RichDocRef<T, M>> {
     match doc.kind() {
         RichDocKind::Nest { doc, .. } if *segment == PathSegment::Nest => {
             return Some(doc);
@@ -119,7 +119,7 @@ fn follow_segment<'a, 'b, T, M>(
 }
 
 pub(crate) fn follow_path<'a, 'b, T, M>(
-    doc: &'a RichDoc<T, M>,
+    doc: &'a RichDocRef<T, M>,
     path: &'b [PathSegment],
 ) -> FollowPath<'a, 'b, T, M> {
     FollowPath::Ok(doc, path)

@@ -10,7 +10,7 @@ use meta_store::{Datom, Field};
 use crate::key::KeyHandler;
 use crate::layout::{
     brackets, concat, datom_reference, datom_value, empty, field, group, line, linebreak, nest,
-    parentheses, punctuation, quotes, text, whitespace, with_key_handler, Doc, ReferenceTarget,
+    parentheses, punctuation, quotes, text, whitespace, with_key_handler, RDoc, ReferenceTarget,
     TypeFilter,
 };
 
@@ -66,13 +66,13 @@ impl KeyHandler for LanguageKeys {
     }
 }
 
-fn annotate(core: &MetaCore, entity: &Field) -> Doc {
+fn annotate(core: &MetaCore, entity: &Field) -> RDoc {
     let identifier = core.identifier(entity).map_or(empty(), datom_value);
 
     concat(vec![identifier, parentheses(field(entity))])
 }
 
-fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> Doc {
+fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> RDoc {
     let type_filter = match target {
         ReferenceTarget::Attribute => {
             let attribute_id = "7".into();
@@ -99,7 +99,7 @@ fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> Doc {
     }
 }
 
-fn core_layout_value(core: &MetaCore, datom: &Datom) -> Doc {
+fn core_layout_value(core: &MetaCore, datom: &Datom) -> RDoc {
     let attribute_type = core.meta_attribute_type(&datom.attribute).map(|d| &d.value);
     let reference_type = "3".into();
     if attribute_type == Some(&reference_type) {
@@ -110,7 +110,7 @@ fn core_layout_value(core: &MetaCore, datom: &Datom) -> Doc {
     // TODO: handle NaturalNumber, IntegerNumber
 }
 
-fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> Doc {
+fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> RDoc {
     concat(
         value_datoms
             .iter()
@@ -128,7 +128,7 @@ fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> Doc 
     )
 }
 
-pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
+pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
     let attributes = core
         .store
         .eav1(entity)
@@ -168,7 +168,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
 }
 
 #[allow(dead_code)]
-pub fn core_layout_entities(core: &MetaCore) -> Doc {
+pub fn core_layout_entities(core: &MetaCore) -> RDoc {
     let entities = core.store.entities().into_iter().sorted();
     concat(
         entities
@@ -178,7 +178,7 @@ pub fn core_layout_entities(core: &MetaCore) -> Doc {
     )
 }
 
-pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> Doc {
+pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> RDoc {
     nest(
         2,
         group(concat(vec![
@@ -198,7 +198,7 @@ pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> Doc {
 }
 
 #[allow(dead_code)]
-pub fn core_layout_datoms(core: &MetaCore) -> Doc {
+pub fn core_layout_datoms(core: &MetaCore) -> RDoc {
     let mut datoms: Vec<&Datom> = core.store.atoms().values().collect();
     datoms.sort_by_key(|d| &d.id);
 
@@ -211,7 +211,7 @@ pub fn core_layout_datoms(core: &MetaCore) -> Doc {
     )
 }
 
-pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
+pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
     let language_entity_id = "13".into();
     let entities = core
         .store
@@ -239,7 +239,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
     )
 }
 
-pub fn core_layout_languages(core: &MetaCore) -> Doc {
+pub fn core_layout_languages(core: &MetaCore) -> RDoc {
     let language_id = "12".into();
     let languages = core.of_type(&language_id);
 
