@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
 use druid_shell::piet::Color;
-use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
+use druid_shell::KeyEvent;
 use im::HashSet;
 use log::{debug, trace};
 use unicode_segmentation::UnicodeSegmentation;
@@ -13,22 +13,20 @@ use meta_gui::{
     Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
     Stack, SubscriptionId, Translate,
 };
-use meta_pretty::{Path, RichDoc, SimpleDoc, SimpleDocKind};
+use meta_pretty::{Path, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field, MetaStore};
 
 use crate::autocomplete::{Autocomplete, AutocompleteEvent};
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
-use crate::layout::{cmp_priority, CellClass, EditorCellPayload};
+use crate::key::{GlobalKeys, KeyHandler};
+use crate::layout::{cmp_priority, CellClass, Doc, EditorCellPayload, SDoc};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
-    Inside {
-        cell: SimpleDoc<EditorCellPayload>,
-        offset: usize,
-    },
+    Inside { cell: SDoc, offset: usize },
     // TODO: drop Between as it is virtually never used
-    Between(SimpleDoc<EditorCellPayload>, SimpleDoc<EditorCellPayload>),
+    Between(SDoc, SDoc),
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -40,10 +38,10 @@ pub struct CellPosition {
 pub struct Editor {
     id: SubscriptionId,
     store: MetaStore,
-    doc: RichDoc<EditorCellPayload>,
-    paths: HashMap<RichDoc<EditorCellPayload>, Path>,
-    layout: Vec<Vec<SimpleDoc<EditorCellPayload>>>,
-    positions: HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
+    doc: Doc,
+    paths: HashMap<Doc, Path>,
+    layout: Vec<Vec<SDoc>>,
+    positions: HashMap<SDoc, CellPosition>,
     cursor: Option<CursorPosition>,
     scroll: Scrollable,
     autocomplete: Option<Translate<Autocomplete<Field>>>,
@@ -97,7 +95,11 @@ impl Editor {
         let positions = enumerate(&layout);
 
         let cursor = if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
-            match rich_doc.follow_path(self.paths.get(cell.rich_doc()).unwrap()) {
+            match rich_doc
+                .follow_path(self.paths.get(cell.rich_doc()).unwrap())
+                .last()
+                .unwrap()
+            {
                 Ok(cell) => {
                     sdoc.iter()
                         .find(|s| s.rich_doc() == cell)
@@ -126,7 +128,7 @@ impl Editor {
         self.positions = positions;
     }
 
-    fn move_cursor(&mut self, drow: isize, dcol: isize) {
+    pub fn move_cursor(&mut self, drow: isize, dcol: isize) {
         let pos = self.current_position().unwrap();
         let pos = CellPosition {
             row: (pos.row as isize + drow) as usize,
@@ -138,35 +140,37 @@ impl Editor {
     }
 
     fn cell_position_to_cursor(
-        positions: &HashMap<SimpleDoc<EditorCellPayload>, CellPosition>,
-        layout: &[Vec<SimpleDoc<EditorCellPayload>>],
+        positions: &HashMap<SDoc, CellPosition>,
+        layout: &[Vec<SDoc>],
         pos: &CellPosition,
     ) -> Option<CursorPosition> {
         let CellPosition { row, col } = pos;
         layout
             .get(*row)
             .and_then(|r| {
-                let m = r.iter().try_fold(None, |acc: Option<&SimpleDoc<_>>, cell| {
-                    let left = positions.get(cell).unwrap().col;
-                    let right = left + cell.width();
-                    if *col < left || right <= *col {
-                        Ok(Some(cell))
-                    } else if left == *col {
-                        Err(match acc {
-                            None => CursorPosition::Inside {
+                let m = r
+                    .iter()
+                    .try_fold(None, |acc: Option<&SimpleDoc<_, _>>, cell| {
+                        let left = positions.get(cell).unwrap().col;
+                        let right = left + cell.width();
+                        if *col < left || right <= *col {
+                            Ok(Some(cell))
+                        } else if left == *col {
+                            Err(match acc {
+                                None => CursorPosition::Inside {
+                                    cell: cell.clone(),
+                                    offset: col - left,
+                                },
+                                Some(prev) => CursorPosition::Between(prev.clone(), cell.clone()),
+                            })
+                        } else {
+                            // strictly inside cell
+                            Err(CursorPosition::Inside {
                                 cell: cell.clone(),
                                 offset: col - left,
-                            },
-                            Some(prev) => CursorPosition::Between(prev.clone(), cell.clone()),
-                        })
-                    } else {
-                        // strictly inside cell
-                        Err(CursorPosition::Inside {
-                            cell: cell.clone(),
-                            offset: col - left,
-                        })
-                    }
-                });
+                            })
+                        }
+                    });
                 match m {
                     Err(position) => Some(position),
                     Ok(mcell) => mcell.map(|cell| CursorPosition::Inside {
@@ -195,43 +199,30 @@ impl Editor {
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
-        match key.key_code {
-            KeyCode::ArrowLeft => self.move_cursor(0, -1),
-            KeyCode::ArrowUp => self.move_cursor(-1, 0),
-            KeyCode::ArrowDown => self.move_cursor(1, 0),
-            KeyCode::ArrowRight => self.move_cursor(0, 1),
-            _ => {
-                if let Some(text) = key.text() {
-                    if !key.mods.alt
-                        && !key.mods.ctrl
-                        && !key.mods.meta
-                        && text.chars().all(|c| !c.is_control())
-                    {
-                        self.self_insert(text);
-                        return;
-                    }
-                }
-                if HotKey::new(None, KeyCode::Escape).matches(key) {
-                    self.escape();
-                    return;
-                }
-                if HotKey::new(None, KeyCode::Backspace).matches(key) {
-                    self.backspace();
-                    return;
-                }
-                if HotKey::new(None, KeyCode::Delete).matches(key) {
-                    self.delete();
-                    return;
-                }
-                if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
-                    self.complete();
-                    return;
-                }
+        let path = match &self.cursor {
+            Some(CursorPosition::Inside {
+                cell,
+                offset: _offset,
+            }) => self.paths.get(cell.rich_doc()).unwrap(),
+            Some(CursorPosition::Between(..)) => panic!("cursor should not be Between"),
+            None => panic!("cursor should not be None"),
+        };
+
+        let doc = self.doc.clone();
+        let handlers = doc
+            .follow_path(path)
+            .filter_map(|x| x.ok())
+            .filter_map(|x| x.as_meta())
+            .collect::<Vec<_>>();
+        for h in handlers.into_iter().rev() {
+            if h.handle_key(key, self) {
+                return;
             }
         }
+        GlobalKeys.handle_key(key, self);
     }
 
-    fn self_insert(&mut self, text: &str) {
+    pub fn self_insert(&mut self, text: &str) {
         let edited = self.edit_datom(|datom, offset| {
             let grapheme_offset = datom
                 .value
@@ -253,7 +244,7 @@ impl Editor {
         }
     }
 
-    fn backspace(&mut self) {
+    pub fn backspace(&mut self) {
         let edited = self.edit_datom(|datom, offset| {
             let mut new_value = datom.value.to_string();
             if offset == 0 {
@@ -280,7 +271,7 @@ impl Editor {
         }
     }
 
-    fn delete(&mut self) {
+    pub fn delete(&mut self) {
         self.edit_datom(|datom, offset| {
             let grapheme_offset = datom
                 .value
@@ -322,7 +313,7 @@ impl Editor {
         false
     }
 
-    fn complete(&mut self) {
+    pub fn complete(&mut self) {
         if let Some(CursorPosition::Inside {
             cell: sdoc,
             offset: _,
@@ -403,7 +394,7 @@ impl Editor {
         }
     }
 
-    fn escape(&mut self) {
+    pub fn escape(&mut self) {
         if self.close_complete() {
             return;
         }
@@ -421,6 +412,15 @@ impl Editor {
         let x_offset = col as f64 * char_width;
         let y_offset = row as f64 * char_height;
         Vec2::new(x_offset, y_offset)
+    }
+
+    pub fn with_store<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut MetaStore) -> R,
+    {
+        let result = f(&mut self.store);
+        self.on_store_updated();
+        result
     }
 }
 
@@ -486,7 +486,7 @@ impl Layout for Editor {
     }
 }
 
-fn enumerate<T>(layout: &[Vec<SimpleDoc<T>>]) -> HashMap<SimpleDoc<T>, CellPosition> {
+fn enumerate<T, M>(layout: &[Vec<SimpleDoc<T, M>>]) -> HashMap<SimpleDoc<T, M>, CellPosition> {
     let mut result = HashMap::new();
 
     for (row_id, row) in layout.iter().enumerate() {
@@ -506,7 +506,7 @@ fn enumerate<T>(layout: &[Vec<SimpleDoc<T>>]) -> HashMap<SimpleDoc<T>, CellPosit
     result
 }
 
-fn layout_to_2d<T>(layout: &[SimpleDoc<T>]) -> Vec<Vec<SimpleDoc<T>>> {
+fn layout_to_2d<T, M>(layout: &[SimpleDoc<T, M>]) -> Vec<Vec<SimpleDoc<T, M>>> {
     let mut result = vec![Vec::new()];
 
     for cell in layout.iter() {

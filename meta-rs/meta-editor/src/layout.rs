@@ -4,7 +4,10 @@ use unicode_segmentation::UnicodeSegmentation;
 use meta_pretty::{Cell, RichDoc, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
-pub type Doc = RichDoc<EditorCellPayload>;
+use crate::key::KeyHandler;
+
+pub type Doc = RichDoc<EditorCellPayload, Box<dyn KeyHandler>>;
+pub type SDoc = SimpleDoc<EditorCellPayload, Box<dyn KeyHandler>>;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub struct TypeFilter(Option<HashSet<Field>>);
@@ -81,6 +84,10 @@ pub struct EditorCellPayload {
 pub enum CellText {
     Field(Field),
     Literal(&'static str),
+}
+
+pub fn with_key_handler(key_handler: Box<dyn KeyHandler>, doc: Doc) -> Doc {
+    RichDoc::meta(key_handler, doc)
 }
 
 // Specialize and re-export
@@ -190,9 +197,9 @@ impl AsRef<str> for CellText {
     }
 }
 
-pub fn cmp_priority(
-    left: &SimpleDoc<EditorCellPayload>,
-    right: &SimpleDoc<EditorCellPayload>,
+pub fn cmp_priority<M>(
+    left: &SimpleDoc<EditorCellPayload, M>,
+    right: &SimpleDoc<EditorCellPayload, M>,
 ) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     use SimpleDocKind::*;

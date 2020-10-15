@@ -5,15 +5,12 @@ use druid_shell::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_gui::{Constraint, GuiContext, Layout, Text};
-use meta_pretty::{SimpleDoc, SimpleDocKind};
+use meta_pretty::SimpleDocKind;
 
 use crate::editor::CursorPosition;
-use crate::layout::{CellClass, EditorCellPayload};
+use crate::layout::{CellClass, SDoc};
 
-pub(crate) struct CellWidget<'a>(
-    pub &'a SimpleDoc<EditorCellPayload>,
-    pub &'a Option<CursorPosition>,
-);
+pub(crate) struct CellWidget<'a>(pub &'a SDoc, pub &'a Option<CursorPosition>);
 
 impl<'a> Layout for CellWidget<'a> {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {

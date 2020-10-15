@@ -8,6 +8,12 @@ use string_cache::{Atom, DefaultAtom};
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Field(DefaultAtom);
 
+impl Field {
+    pub fn new_id() -> Self {
+        Self(cuid().expect("cuid failure").into())
+    }
+}
+
 impl Debug for Field {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Field").field(&self.as_ref()).finish()

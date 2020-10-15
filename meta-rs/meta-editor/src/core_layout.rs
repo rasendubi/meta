@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use druid_shell::{HotKey, KeyCode, RawMods};
 use im::HashSet;
 use itertools::Itertools;
 use maplit::hashset;
@@ -7,10 +8,68 @@ use maplit::hashset;
 use meta_core::MetaCore;
 use meta_store::{Datom, Field};
 
+use crate::key::KeyHandler;
 use crate::layout::{
     brackets, concat, datom_reference, datom_value, empty, field, group, line, linebreak, nest,
-    parentheses, punctuation, quotes, text, whitespace, Doc, ReferenceTarget, TypeFilter,
+    parentheses, punctuation, quotes, text, whitespace, with_key_handler, Doc, ReferenceTarget,
+    TypeFilter,
 };
+
+struct EntityKeys {
+    entity: Field,
+}
+
+impl EntityKeys {
+    fn new(entity: Field) -> Self {
+        Self { entity }
+    }
+}
+
+impl KeyHandler for EntityKeys {
+    fn handle_key(&self, key: druid_shell::KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(self.entity.clone(), "".into(), "".into()));
+            });
+            return true;
+        }
+
+        false
+    }
+}
+
+struct LanguageKeys {
+    language: Field,
+}
+
+impl LanguageKeys {
+    fn new(language: Field) -> Self {
+        Self { language }
+    }
+}
+
+impl KeyHandler for LanguageKeys {
+    fn handle_key(&self, key: druid_shell::KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            editor.with_store(|store| {
+                let entity = Field::new_id();
+
+                let identifier_id = "0".into();
+                store.add_datom(&Datom::eav(entity.clone(), identifier_id, "".into()));
+
+                let language_entity_id = "13".into();
+                store.add_datom(&Datom::eav(
+                    self.language.clone(),
+                    language_entity_id,
+                    entity,
+                ));
+            });
+            return true;
+        }
+
+        false
+    }
+}
 
 fn annotate(core: &MetaCore, entity: &Field) -> Doc {
     let identifier = core.identifier(entity).map_or(empty(), datom_value);
@@ -88,28 +147,31 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
         Field::from("5")
     };
 
-    concat(vec![
-        annotate(core, entity),
-        whitespace(" "),
-        punctuation(":"),
-        whitespace(" "),
-        type_.map_or_else(empty, |x| reference(core, x, ReferenceTarget::Value)),
-        whitespace(" "),
-        punctuation("{"),
-        nest(
-            2,
-            concat(
-                attributes
-                    .iter()
-                    .filter(|x| !hide_attributes.contains(x.0))
-                    .sorted_by_key(|attr| attr.0)
-                    .map(|attr| core_layout_attribute(&core, attr.1))
-                    .collect(),
+    with_key_handler(
+        Box::new(EntityKeys::new(entity.clone())),
+        concat(vec![
+            annotate(core, entity),
+            whitespace(" "),
+            punctuation(":"),
+            whitespace(" "),
+            type_.map_or_else(empty, |x| reference(core, x, ReferenceTarget::Value)),
+            whitespace(" "),
+            punctuation("{"),
+            nest(
+                2,
+                concat(
+                    attributes
+                        .iter()
+                        .filter(|x| !hide_attributes.contains(x.0))
+                        .sorted_by_key(|attr| attr.0)
+                        .map(|attr| core_layout_attribute(&core, attr.1))
+                        .collect(),
+                ),
             ),
-        ),
-        linebreak(),
-        punctuation("}"),
-    ])
+            linebreak(),
+            punctuation("}"),
+        ]),
+    )
 }
 
 #[allow(dead_code)]
@@ -165,20 +227,23 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> Doc {
         .unwrap_or_else(HashSet::new);
     let entities = order(core, entities.iter().collect());
 
-    concat(vec![
-        text("language"),
-        whitespace(" "),
-        annotate(core, id),
-        linebreak(),
-        linebreak(),
-        concat(
-            entities
-                .iter()
-                .map(|e| core_layout_entity(core, &e.value))
-                .intersperse(concat(vec![linebreak(), linebreak()]))
-                .collect(),
-        ),
-    ])
+    with_key_handler(
+        Box::new(LanguageKeys::new(id.clone())),
+        concat(vec![
+            text("language"),
+            whitespace(" "),
+            annotate(core, id),
+            linebreak(),
+            linebreak(),
+            concat(
+                entities
+                    .iter()
+                    .map(|e| core_layout_entity(core, &e.value))
+                    .intersperse(concat(vec![linebreak(), linebreak()]))
+                    .collect(),
+            ),
+        ]),
+    )
 }
 
 pub fn core_layout_languages(core: &MetaCore) -> Doc {

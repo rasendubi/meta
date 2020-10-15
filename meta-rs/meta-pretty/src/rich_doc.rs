@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash, rc::Rc};
 
-use crate::path::{follow_path, pathify, Path, PathSegment};
+use crate::path::{follow_path, pathify, FollowPath, Path, PathSegment};
 
 #[derive(Debug)]
 pub struct RichDoc<T, M = ()>(Rc<RichDocNode<T, M>>);
@@ -16,7 +16,7 @@ pub enum RichDocKind<T, M = ()> {
     Empty,
     Cell(Cell<T>),
     Line {
-        /// Cell to draw on when line is collapsed.
+        /// Cell to draw when line is collapsed.
         alt: Option<Cell<T>>,
         // TODO: hard-break
     },
@@ -92,17 +92,26 @@ impl<T, M> RichDoc<T, M> {
         Self::new(RichDocKind::Group { doc })
     }
 
+    pub fn meta(meta: M, doc: Self) -> Self {
+        Self::new(RichDocKind::Meta { meta, doc })
+    }
+
     pub fn pathify(&self) -> HashMap<Self, Path> {
         let mut result = HashMap::new();
         pathify(&mut result, &self, Vec::new());
         result
     }
 
-    pub fn follow_path<'a, 'b>(
-        &'a self,
-        path: &'b [PathSegment],
-    ) -> Result<&'a Self, (&'a Self, &'b [PathSegment])> {
+    pub fn follow_path<'a, 'b>(&'a self, path: &'b [PathSegment]) -> FollowPath<'a, 'b, T, M> {
         follow_path(self, path)
+    }
+
+    pub fn as_meta(&self) -> Option<&M> {
+        if let RichDocKind::Meta { meta, doc: _doc } = self.kind() {
+            Some(meta)
+        } else {
+            None
+        }
     }
 }
 

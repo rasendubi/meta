@@ -1,13 +1,12 @@
-use std::{hash::Hash, rc::Rc};
+use std::{fmt::Debug, hash::Hash, rc::Rc};
 
 use crate::RichDoc;
 
 pub use crate::rich_doc::Cell;
 
-#[derive(Debug)]
 pub struct SimpleDoc<T, M = ()>(Rc<SimpleDocNode<T, M>>);
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 struct SimpleDocNode<T, M> {
     pub kind: SimpleDocKind<T>,
     pub rich_doc: RichDoc<T, M>,
@@ -17,6 +16,26 @@ struct SimpleDocNode<T, M> {
 pub enum SimpleDocKind<T> {
     Cell(Cell<T>),
     Linebreak { indent_width: usize },
+}
+
+impl<T, M> Debug for SimpleDoc<T, M>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SimpleDoc").field(&self.0).finish()
+    }
+}
+
+impl<T, M> Debug for SimpleDocNode<T, M>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SimpleDocNode")
+            .field("kind", &self.kind)
+            .finish()
+    }
 }
 
 impl<T, M> SimpleDoc<T, M> {

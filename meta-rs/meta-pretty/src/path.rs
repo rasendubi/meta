@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 use crate::rich_doc::{RichDoc, RichDocKind};
 
+pub enum FollowPath<'a, 'b, T, M> {
+    Done,
+    Ok(&'a RichDoc<T, M>, &'b [PathSegment]),
+    Error(&'a RichDoc<T, M>, &'b [PathSegment]),
+}
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum PathSegment {
     Nest,
@@ -49,36 +55,72 @@ pub(crate) fn pathify<T, M>(
     result.insert(doc.clone(), path);
 }
 
-pub(crate) fn follow_path<'a, 'b, T, M>(
-    this: &'a RichDoc<T, M>,
-    path: &'b [PathSegment],
-) -> Result<&'a RichDoc<T, M>, (&'a RichDoc<T, M>, &'b [PathSegment])> {
-    if path.is_empty() {
-        return Ok(this);
-    }
+impl<'a, 'b, T, M> Iterator for FollowPath<'a, 'b, T, M> {
+    #[allow(clippy::type_complexity)]
+    type Item = Result<&'a RichDoc<T, M>, (&'a RichDoc<T, M>, &'b [PathSegment])>;
 
-    match this.kind() {
-        RichDocKind::Nest { doc, .. } if path[0] == PathSegment::Nest => {
-            return follow_path(doc, &path[1..]);
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut this = FollowPath::Done;
+        std::mem::swap(self, &mut this);
+
+        match this {
+            FollowPath::Done => None,
+            FollowPath::Ok(doc, path) => {
+                *self = if path.is_empty() {
+                    FollowPath::Done
+                } else if let Some(next) = follow_segment(&doc, &path[0]) {
+                    FollowPath::Ok(next, &path[1..])
+                } else {
+                    FollowPath::Error(doc, path)
+                };
+
+                Some(Ok(doc))
+            }
+            FollowPath::Error(doc, path) => {
+                *self = FollowPath::Done;
+
+                Some(Err((doc, path)))
+            }
         }
-        RichDocKind::Concat { parts } => match &path[0] {
+    }
+}
+
+fn follow_segment<'a, 'b, T, M>(
+    doc: &'a RichDoc<T, M>,
+    segment: &'b PathSegment,
+) -> Option<&'a RichDoc<T, M>> {
+    match doc.kind() {
+        RichDocKind::Nest { doc, .. } if *segment == PathSegment::Nest => {
+            return Some(doc);
+        }
+        RichDocKind::Concat { parts } => match segment {
             PathSegment::Index(_, Some(s)) => {
                 if let Some(doc) = parts.iter().find(|x| x.key().as_ref() == Some(s)) {
-                    return follow_path(doc, &path[1..]);
+                    return Some(doc);
                 }
             }
             PathSegment::Index(i, None) => {
                 if let Some(doc) = parts.get(*i) {
-                    return follow_path(doc, &path[1..]);
+                    return Some(doc);
                 }
             }
             _ => {}
         },
-        RichDocKind::Group { doc } if path[0] == PathSegment::Group => {
-            return follow_path(doc, &path[1..]);
+        RichDocKind::Group { doc } if *segment == PathSegment::Group => {
+            return Some(doc);
+        }
+        RichDocKind::Meta { doc, meta: _meta } if *segment == PathSegment::Meta => {
+            return Some(doc);
         }
         _ => {}
     }
 
-    Err((this, path))
+    None
+}
+
+pub(crate) fn follow_path<'a, 'b, T, M>(
+    doc: &'a RichDoc<T, M>,
+    path: &'b [PathSegment],
+) -> FollowPath<'a, 'b, T, M> {
+    FollowPath::Ok(doc, path)
 }
