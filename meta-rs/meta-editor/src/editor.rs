@@ -136,7 +136,9 @@ impl Editor {
         };
         let cursor = Self::cell_position_to_cursor(&self.positions, &self.layout, &pos);
 
-        self.cursor = cursor;
+        if cursor.is_some() {
+            self.cursor = cursor;
+        }
     }
 
     fn cell_position_to_cursor(
