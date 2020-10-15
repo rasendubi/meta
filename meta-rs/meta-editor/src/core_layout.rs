@@ -119,6 +119,7 @@ fn core_layout_attribute(core: &MetaCore, value_datoms: &HashSet<Datom>) -> Doc 
     concat(
         value_datoms
             .iter()
+            .sorted_by_key(|x| &x.id)
             .map(|x| {
                 concat(vec![
                     linebreak(),
@@ -162,9 +163,9 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> Doc {
                 concat(
                     attributes
                         .iter()
-                        .filter(|x| !hide_attributes.contains(x.0))
-                        .sorted_by_key(|attr| attr.0)
-                        .map(|attr| core_layout_attribute(&core, attr.1))
+                        .filter(|&(attr, _datoms)| !hide_attributes.contains(attr))
+                        .sorted_by_key(|&(attr, _datoms)| attr)
+                        .map(|(_attr, datoms)| core_layout_attribute(&core, datoms))
                         .collect(),
                 ),
             ),
