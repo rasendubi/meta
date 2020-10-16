@@ -2,9 +2,11 @@ use druid_shell::kurbo::{Insets, Size};
 use druid_shell::piet::Color;
 use druid_shell::{HotKey, KeyCode, RawMods};
 use log::trace;
+use unicode_segmentation::UnicodeSegmentation;
 
 use meta_gui::{
-    Background, Constraint, Event, EventType, GuiContext, Inset, Layout, List, SubscriptionId, Text,
+    Background, Column, Constraint, Event, EventType, GuiContext, Inset, Layout, List,
+    SubscriptionId, Text,
 };
 
 pub struct Autocomplete<T> {
@@ -12,10 +14,12 @@ pub struct Autocomplete<T> {
     candidates: Vec<(T, String)>,
     selection: usize,
     events: Vec<AutocompleteEvent<T>>,
+    input: String,
 }
 
 pub enum AutocompleteEvent<T> {
     Close(Option<(T, String)>),
+    InputChanged(String),
 }
 
 impl<T> Autocomplete<T> {
@@ -25,12 +29,23 @@ impl<T> Autocomplete<T> {
             candidates,
             selection: 0,
             events: Vec::new(),
+            input: String::new(),
         }
     }
 
     /// Return all autocomplete events that happened after the previous call to `events()`.
     pub fn events(&mut self) -> Vec<AutocompleteEvent<T>> {
         self.events.split_off(0)
+    }
+
+    pub fn with_input(mut self, input: String) -> Self {
+        self.input = input;
+        self
+    }
+
+    pub fn set_candidates(&mut self, candidates: Vec<(T, String)>) {
+        self.candidates = candidates;
+        self.selection = self.selection.min(self.candidates.len().saturating_sub(1));
     }
 }
 
@@ -65,6 +80,23 @@ where
                         || HotKey::new(None, KeyCode::ArrowUp).matches(key)
                     {
                         self.selection = self.selection.saturating_sub(1);
+                    } else if HotKey::new(None, KeyCode::Backspace).matches(key) {
+                        let idx = self.input.grapheme_indices(true).last().map(|x| x.0);
+                        if let Some(idx) = idx {
+                            self.input.remove(idx);
+                            self.events
+                                .push(AutocompleteEvent::InputChanged(self.input.clone()));
+                        }
+                    } else if let Some(text) = key.text() {
+                        if !key.mods.alt
+                            && !key.mods.ctrl
+                            && !key.mods.meta
+                            && text.chars().all(|c| !c.is_control())
+                        {
+                            self.input.push_str(text);
+                            self.events
+                                .push(AutocompleteEvent::InputChanged(self.input.clone()));
+                        }
                     }
 
                     // TODO: bubble up unknown keys?
@@ -80,19 +112,39 @@ where
         let default_width = 180.0;
         let new_min = constraint.clamp(Size::new(default_width, 0.0));
 
-        List::new(self.candidates.iter().enumerate().map(|(i, s)| {
-            let (background, foreground) = if i == self.selection {
-                selection.clone()
-            } else {
-                tooltip.clone()
-            };
+        let mut minput = if self.input.is_empty() {
+            None
+        } else {
+            Some(&self.input)
+        }
+        .map(|x| {
+            Box::new(
+                Background::new(
+                    Text::new(x.clone())
+                        .with_font("Input")
+                        .with_color(Color::rgb8(0x0a, 0x0a, 0x0a)),
+                )
+                .with_color(Color::rgb8(0xd7, 0xd7, 0xd7)),
+            )
+        });
 
-            Background::new(Inset::new(
-                Text::new(&s.1).with_font("Input").with_color(foreground),
-                Insets::uniform_xy(0.0, 1.0),
-            ))
-            .with_color(background)
-        }))
-        .layout(ctx, Constraint::new(new_min, constraint.max))
+        Column::new()
+            .with_child(&mut minput as &mut dyn Layout)
+            .with_child(&mut List::new(self.candidates.iter().enumerate().map(
+                |(i, s)| {
+                    let (background, foreground) = if i == self.selection {
+                        selection.clone()
+                    } else {
+                        tooltip.clone()
+                    };
+
+                    Background::new(Inset::new(
+                        Text::new(&s.1).with_font("Input").with_color(foreground),
+                        Insets::uniform_xy(0.0, 1.0),
+                    ))
+                    .with_color(background)
+                },
+            )))
+            .layout(ctx, Constraint::new(new_min, constraint.max))
     }
 }

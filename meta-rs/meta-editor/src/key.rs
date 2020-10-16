@@ -18,7 +18,12 @@ impl KeyHandler for GlobalKeys {
                 && !key.mods.meta
                 && text.chars().all(|c| !c.is_control())
             {
-                editor.self_insert(text);
+                if editor.self_insert(text) {
+                    return true;
+                }
+                if editor.complete(text) {
+                    return true;
+                }
                 return true;
             }
         }
@@ -53,7 +58,7 @@ impl KeyHandler for GlobalKeys {
             return true;
         }
         if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
-            editor.complete();
+            editor.complete("");
             return true;
         }
 

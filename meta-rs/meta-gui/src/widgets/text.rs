@@ -5,16 +5,19 @@ use druid_shell::kurbo::{Point, Size};
 use druid_shell::piet::{Color, Piet, RenderContext, Text as PietText, TextLayout};
 
 #[derive(Debug)]
-pub struct Text<'a> {
-    text: &'a str,
+pub struct Text<'a, T> {
+    text: T,
     font_name: &'a str,
     font_size: f64,
     color: Color,
     width: f64,
 }
 
-impl<'a> Text<'a> {
-    pub fn new(text: &'a str) -> Self {
+impl<'a, T> Text<'a, T>
+where
+    T: AsRef<str>,
+{
+    pub fn new(text: T) -> Self {
         Text {
             text,
             font_name: "Roboto",
@@ -49,11 +52,14 @@ impl<'a> Text<'a> {
     {
         let font = ctx.new_font_by_name(self.font_name, self.font_size)?;
 
-        ctx.new_text_layout(&font, self.text, Some(self.width))
+        ctx.new_text_layout(&font, self.text.as_ref(), Some(self.width))
     }
 }
 
-impl Layout for Text<'_> {
+impl<T> Layout for Text<'_, T>
+where
+    T: AsRef<str>,
+{
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         self.width = constraint.max.width;
 
@@ -77,7 +83,7 @@ impl Layout for Text<'_> {
             .unwrap();
         let text_brush = ctx.solid_brush(self.color.clone());
         let mut x_offset = 0.0;
-        for c in self.text.chars() {
+        for c in self.text.as_ref().chars() {
             let layout = ctx.new_text_layout(&font, &c.to_string(), None).unwrap();
             let point = Point::new(x_offset, text_baseline);
             ctx.draw_text(&layout, point, &text_brush);

@@ -229,7 +229,7 @@ impl Editor {
         GlobalKeys.handle_key(key, self);
     }
 
-    pub fn self_insert(&mut self, text: &str) {
+    pub fn self_insert(&mut self, text: &str) -> bool {
         let edited = self.edit_datom(|datom, offset| {
             let grapheme_offset = datom
                 .value
@@ -249,6 +249,8 @@ impl Editor {
         if edited {
             self.move_cursor(0, 1);
         }
+
+        edited
     }
 
     pub fn backspace(&mut self) {
@@ -320,7 +322,8 @@ impl Editor {
         false
     }
 
-    pub fn complete(&mut self) {
+    /// Returns `true` if current cell was a reference.
+    pub fn complete(&mut self, input: &str) -> bool {
         if let Some(CursorPosition::Inside {
             cell: sdoc,
             offset: _,
@@ -328,30 +331,7 @@ impl Editor {
         {
             if let SimpleDocKind::Cell(cell) = sdoc.kind() {
                 if let CellClass::Reference(datom, target, type_filter) = &cell.payload.class {
-                    let core = MetaCore::new(&self.store);
-                    let candidates: HashSet<Field> = match type_filter.filter() {
-                        None => core.store.entities().into_iter().cloned().collect(),
-                        Some(filter) => HashSet::unions(filter.iter().map(|type_| {
-                            core.of_type(&type_)
-                                .into_iter()
-                                .map(|datom| datom.entity)
-                                .collect()
-                        })),
-                    };
-
-                    let mut candidates = candidates
-                        .iter()
-                        .map(|id| {
-                            (
-                                id.clone(),
-                                core.identifier(&id)
-                                    .map_or(id, |datom| &datom.value)
-                                    .to_string(),
-                            )
-                        })
-                        .collect::<Vec<_>>();
-
-                    candidates.sort_unstable();
+                    let candidates = self.candidates(input);
 
                     let position = self
                         .positions
@@ -371,12 +351,62 @@ impl Editor {
                     let offset =
                         Self::cell_position_to_screen_offset(CellPosition { row: row + 1, col });
                     self.autocomplete = Some(Translate::new(
-                        Autocomplete::new(SubscriptionId::new(), candidates),
+                        Autocomplete::new(SubscriptionId::new(), candidates)
+                            .with_input(input.to_string()),
                         offset,
                     ));
+
+                    return true;
                 }
             }
         }
+
+        false
+    }
+
+    fn candidates(&self, input: &str) -> Vec<(Field, String)> {
+        if let Some(CursorPosition::Inside {
+            cell: sdoc,
+            offset: _,
+        }) = &self.cursor
+        {
+            if let SimpleDocKind::Cell(cell) = sdoc.kind() {
+                if let CellClass::Reference(_datom, _target, type_filter) = &cell.payload.class {
+                    let core = MetaCore::new(&self.store);
+                    let candidates: HashSet<Field> = match type_filter.filter() {
+                        None => core.store.entities().into_iter().cloned().collect(),
+                        Some(filter) => HashSet::unions(filter.iter().map(|type_| {
+                            core.of_type(&type_)
+                                .into_iter()
+                                .map(|datom| datom.entity)
+                                .collect()
+                        })),
+                    };
+
+                    let input = input.to_lowercase();
+
+                    let mut candidates = candidates
+                        .iter()
+                        .map(|id| {
+                            (
+                                id.clone(),
+                                core.identifier(&id)
+                                    .map_or(id, |datom| &datom.value)
+                                    .to_string(),
+                            )
+                        })
+                        .filter(|(i, s)| {
+                            i.as_ref().contains(&input) || s.to_lowercase().contains(&input)
+                        })
+                        .collect::<Vec<_>>();
+
+                    candidates.sort_unstable();
+                    return candidates;
+                }
+            }
+        }
+
+        Vec::new()
     }
 
     fn finish_completion(&mut self, selection: Field) {
@@ -459,15 +489,28 @@ impl Layout for Editor {
 
         if let Some(autocomplete) = &mut self.autocomplete {
             for e in autocomplete.child_mut().events() {
-                let AutocompleteEvent::Close(e) = e;
-                debug!("Autocomplete close with: {:?}", e);
+                match e {
+                    AutocompleteEvent::Close(e) => {
+                        debug!("Autocomplete close with: {:?}", e);
 
-                if let Some((selection, _)) = e {
-                    self.finish_completion(selection);
+                        if let Some((selection, _)) = e {
+                            self.finish_completion(selection);
+                        }
+
+                        self.close_complete();
+                        ctx.invalidate();
+                    }
+
+                    AutocompleteEvent::InputChanged(input) => {
+                        let candidates = self.candidates(&input);
+                        self.autocomplete
+                            .as_mut()
+                            .unwrap()
+                            .child_mut()
+                            .set_candidates(candidates);
+                        ctx.invalidate();
+                    }
                 }
-
-                self.close_complete();
-                ctx.invalidate();
             }
         }
 

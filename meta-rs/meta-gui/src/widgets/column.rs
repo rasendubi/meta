@@ -28,10 +28,11 @@ where
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         let mut size_left = constraint.max;
         let mut my_size = Size::ZERO;
+        let min_child_size = Size::new(constraint.min.width, 0.0);
         for child in self.children.iter_mut() {
             let x = ctx.with_save(|ctx| {
                 ctx.transform(Affine::translate(Vec2::new(0.0, my_size.height)));
-                child.layout(ctx, Constraint::loose(size_left))
+                child.layout(ctx, Constraint::new(min_child_size, size_left))
             });
 
             size_left.height -= x.height;

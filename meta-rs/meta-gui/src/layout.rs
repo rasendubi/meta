@@ -71,6 +71,21 @@ impl<'a> Layout for &'a mut dyn Layout {
     }
 }
 
+impl Layout for Box<dyn Layout> {
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+        (**self).layout(ctx, constraint)
+    }
+}
+
+impl<T> Layout for Box<T>
+where
+    T: Layout,
+{
+    fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
+        (**self).layout(ctx, constraint)
+    }
+}
+
 impl<T> Layout for Option<T>
 where
     T: Layout,
