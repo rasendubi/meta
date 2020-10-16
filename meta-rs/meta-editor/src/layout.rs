@@ -92,7 +92,7 @@ pub fn with_key_handler(key_handler: Box<dyn KeyHandler>, doc: RDoc) -> RDoc {
 }
 
 // Specialize and re-export
-pub fn concat(parts: Vec<RDoc>) -> RDoc {
+pub fn concat<I: IntoIterator<Item = RDoc>>(parts: I) -> RDoc {
     RichDoc::concat(parts)
 }
 pub fn empty() -> RDoc {

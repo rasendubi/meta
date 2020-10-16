@@ -156,8 +156,7 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
                         .sorted_by(|a, b| (&a.attribute, &a.id).cmp(&(&b.attribute, &b.id)))
                         .map(|datom| {
                             core_layout_attribute(&core, &datom).with_key(datom.id.to_string())
-                        })
-                        .collect(),
+                        }),
                 ),
             ),
             linebreak(),
@@ -172,8 +171,7 @@ pub fn core_layout_entities(core: &MetaCore) -> RDoc {
     concat(
         entities
             .map(|e| core_layout_entity(core, e))
-            .intersperse_with(|| concat(vec![linebreak(), linebreak()]))
-            .collect(),
+            .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
     )
 }
 
@@ -198,15 +196,13 @@ pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> RDoc {
 
 #[allow(dead_code)]
 pub fn core_layout_datoms(core: &MetaCore) -> RDoc {
-    let mut datoms: Vec<&Datom> = core.store.atoms().values().collect();
-    datoms.sort_by_key(|d| &d.id);
-
     concat(
-        datoms
-            .iter()
+        core.store
+            .atoms()
+            .values()
+            .sorted_by_key(|d| &d.id)
             .map(|d| core_layout_datom(core, d))
-            .intersperse_with(linebreak)
-            .collect(),
+            .intersperse_with(linebreak),
     )
 }
 
@@ -215,9 +211,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
     let entities = core
         .store
         .eav2(id, &language_entity_id)
-        .cloned()
-        .unwrap_or_else(HashSet::new);
-    let entities = order(core, entities.iter().collect());
+        .map_or_else(Vec::new, |e| order(core, e));
 
     with_key_handler(
         Box::new(LanguageKeys::new(id.clone())),
@@ -231,8 +225,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
                 entities
                     .iter()
                     .map(|e| core_layout_entity(core, &e.value).with_key(e.value.to_string()))
-                    .intersperse_with(|| concat(vec![linebreak(), linebreak()]))
-                    .collect(),
+                    .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
             ),
         ]),
     )
@@ -246,8 +239,7 @@ pub fn core_layout_languages(core: &MetaCore) -> RDoc {
         languages
             .iter()
             .map(|l| core_layout_language(core, &l.entity))
-            .intersperse_with(linebreak)
-            .collect(),
+            .intersperse_with(linebreak),
     )
 }
 
@@ -255,10 +247,10 @@ pub fn core_layout_languages(core: &MetaCore) -> RDoc {
 /// id.
 // Believe me or not, it's actually O(n + m*log(m)), where n is the total number of datoms and m is
 // the number of atoms without "after" attribute.
-fn order<'a>(core: &'a MetaCore, atoms: Vec<&'a Datom>) -> Vec<&'a Datom> {
+fn order<'a, I: IntoIterator<Item = &'a Datom>>(core: &'a MetaCore, atoms: I) -> Vec<&'a Datom> {
     let mut no_after = HashSet::new();
     let mut next = HashMap::<&Field, HashSet<&Datom>>::new();
-    for x in atoms.iter() {
+    for x in atoms.into_iter() {
         if let Some(a) = core.after(x) {
             next.entry(a).or_insert_with(HashSet::new).insert(x);
         } else {
@@ -306,13 +298,9 @@ mod tests {
         .unwrap();
         let core = MetaCore::new(&store);
 
-        let result = order(
-            &core,
-            store
-                .eav2(&"0".into(), &"1".into())
-                .map(|x| x.iter().collect())
-                .unwrap_or_else(Vec::new),
-        );
+        let result = store
+            .eav2(&"0".into(), &"1".into())
+            .map_or_else(Vec::new, |x| order(&core, x));
 
         assert_eq!(
             vec![
@@ -338,13 +326,9 @@ mod tests {
         .unwrap();
         let core = MetaCore::new(&store);
 
-        let result = order(
-            &core,
-            store
-                .eav2(&"0".into(), &"1".into())
-                .map(|x| x.iter().collect())
-                .unwrap_or_else(Vec::new),
-        );
+        let result = store
+            .eav2(&"0".into(), &"1".into())
+            .map_or_else(Vec::new, |x| order(&core, x));
 
         assert_eq!(
             vec![
@@ -372,13 +356,9 @@ mod tests {
         .unwrap();
         let core = MetaCore::new(&store);
 
-        let result = order(
-            &core,
-            store
-                .eav2(&"0".into(), &"1".into())
-                .map(|x| x.iter().collect())
-                .unwrap_or_else(Vec::new),
-        );
+        let result = store
+            .eav2(&"0".into(), &"1".into())
+            .map_or_else(Vec::new, |x| order(&core, x));
 
         // if loop is detected, prefer starting from the lowest id
         assert_eq!(
