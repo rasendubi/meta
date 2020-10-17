@@ -28,19 +28,27 @@ impl KeyHandler for GlobalKeys {
             }
         }
 
-        if HotKey::new(None, KeyCode::ArrowLeft).matches(key) {
+        if HotKey::new(None, KeyCode::ArrowLeft).matches(key)
+            || HotKey::new(RawMods::Ctrl, KeyCode::KeyH).matches(key)
+        {
             editor.move_cursor(0, -1);
             return true;
         }
-        if HotKey::new(None, KeyCode::ArrowUp).matches(key) {
+        if HotKey::new(None, KeyCode::ArrowUp).matches(key)
+            || HotKey::new(RawMods::Ctrl, KeyCode::KeyJ).matches(key)
+        {
             editor.move_cursor(-1, 0);
             return true;
         }
-        if HotKey::new(None, KeyCode::ArrowDown).matches(key) {
+        if HotKey::new(None, KeyCode::ArrowDown).matches(key)
+            || HotKey::new(RawMods::Ctrl, KeyCode::KeyK).matches(key)
+        {
             editor.move_cursor(1, 0);
             return true;
         }
-        if HotKey::new(None, KeyCode::ArrowRight).matches(key) {
+        if HotKey::new(None, KeyCode::ArrowRight).matches(key)
+            || HotKey::new(RawMods::Ctrl, KeyCode::KeyL).matches(key)
+        {
             editor.move_cursor(0, 1);
             return true;
         }
@@ -57,7 +65,9 @@ impl KeyHandler for GlobalKeys {
             editor.delete();
             return true;
         }
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
+        if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key)
+            || HotKey::new(None, KeyCode::Tab).matches(key)
+        {
             editor.complete("");
             return true;
         }

@@ -74,10 +74,12 @@ where
                         ));
                     } else if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key)
                         || HotKey::new(None, KeyCode::ArrowDown).matches(key)
+                        || HotKey::new(None, KeyCode::Tab).matches(key)
                     {
                         self.selection = (self.selection + 1) % self.candidates.len();
                     } else if HotKey::new(RawMods::Ctrl, KeyCode::KeyP).matches(key)
                         || HotKey::new(None, KeyCode::ArrowUp).matches(key)
+                        || HotKey::new(RawMods::Shift, KeyCode::Tab).matches(key)
                     {
                         self.selection = self.selection.saturating_sub(1);
                     } else if HotKey::new(None, KeyCode::Backspace).matches(key) {
@@ -101,6 +103,7 @@ where
 
                     // TODO: bubble up unknown keys?
                 }
+
                 Event::Focus(_) => {}
                 _ => panic!("Uknown event sent to Autocomplete, {:?}", e),
             }
