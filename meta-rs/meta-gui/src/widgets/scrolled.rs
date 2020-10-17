@@ -1,5 +1,7 @@
-use crate::{Constraint, GuiContext, Layout, Scrollable, Scrollbar};
 use druid_shell::kurbo::{Affine, Size, Vec2};
+
+use crate::widgets::{Scrollable, Scrollbar};
+use crate::{Constraint, GuiContext, Layout};
 
 /// A widget that scrolls its child according to the scrollable.
 ///

@@ -4,10 +4,8 @@ use druid_shell::{HotKey, KeyCode, RawMods};
 use log::trace;
 use unicode_segmentation::UnicodeSegmentation;
 
-use meta_gui::{
-    Background, Column, Constraint, Event, EventType, GuiContext, Inset, Layout, List,
-    SubscriptionId, Text,
-};
+use meta_gui::widgets::{Background, Column, Inset, List, Text};
+use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 
 pub struct Autocomplete<T> {
     id: SubscriptionId,
@@ -45,6 +43,7 @@ impl<T> Autocomplete<T> {
 
     pub fn set_candidates(&mut self, candidates: Vec<(T, String)>) {
         self.candidates = candidates;
+        // TODO: try to find the currently selected candidate in the new candidate list instead
         self.selection = self.selection.min(self.candidates.len().saturating_sub(1));
     }
 }

@@ -9,10 +9,8 @@ use log::{debug, trace};
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_core::MetaCore;
-use meta_gui::{
-    Constraint, Direction, Event, EventType, GuiContext, Inset, Layout, List, Scrollable, Scrolled,
-    Stack, SubscriptionId, Translate,
-};
+use meta_gui::widgets::{Direction, Inset, List, Scrollable, Scrolled, Stack, Translate};
+use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 use meta_pretty::{Path, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field, MetaStore};
 

@@ -4,7 +4,8 @@ use druid_shell::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use meta_gui::{Constraint, GuiContext, Layout, Text};
+use meta_gui::widgets::Text;
+use meta_gui::{Constraint, GuiContext, Layout};
 use meta_pretty::SimpleDocKind;
 
 use crate::editor::CursorPosition;

@@ -1,11 +1,9 @@
-use meta_gui::{
-    Button, Clickable, Column, Constraint, Gui, GuiContext, Inset, Layout, Row, SubscriptionId,
-    Text,
-};
-
 use druid_shell::kurbo::Insets;
 use druid_shell::piet::Color;
 use druid_shell::Application;
+
+use meta_gui::widgets::{Button, Clickable, Column, Inset, Row, Text};
+use meta_gui::{Constraint, Gui, GuiContext, Layout, SubscriptionId};
 
 fn main() {
     let app = Application::new().unwrap();
