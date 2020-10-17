@@ -4,7 +4,7 @@ use crate::widgets::clickable::Clickable;
 use crate::widgets::inset::Inset;
 use crate::widgets::text::Text;
 
-use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
+use druid_shell::kurbo::{Insets, Rect, Size};
 use druid_shell::piet::Color;
 
 pub struct Button<'a> {
@@ -63,7 +63,10 @@ impl<'a> Layout for Button<'a> {
 }
 
 fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: bool) {
-    let mut sh = |vo, blur, spread, color| shadow(ctx, bb, 0.0, vo, blur, spread, color);
+    let mut sh = |vo, blur, spread, color| {
+        let brush = ctx.solid_brush(color);
+        ctx.shadow(bb, (0.0, vo).into(), blur, spread, &brush);
+    };
 
     if is_active {
         sh(5.0, 5.0, -3.0, Color::rgba(0.0, 0.0, 0.0, 0.2));
@@ -78,18 +81,4 @@ fn button_shadows(ctx: &mut GuiContext, bb: Rect, is_hovered: bool, is_active: b
         sh(2.0, 2.0, 0.0, Color::rgba(0.0, 0.0, 0.0, 0.14));
         sh(1.0, 5.0, 0.0, Color::rgba(0.0, 0.0, 0.0, 0.12));
     }
-}
-
-fn shadow(
-    ctx: &mut GuiContext,
-    bb: Rect,
-    horizontal_offset: f64,
-    vertical_offset: f64,
-    blur_radius: f64,
-    spread: f64,
-    color: Color,
-) {
-    let brush = ctx.solid_brush(color);
-    let rect = bb.inflate(spread, spread) + Vec2::new(horizontal_offset, vertical_offset);
-    ctx.blurred_rect(rect, blur_radius, &brush);
 }

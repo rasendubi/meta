@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use log::{trace, warn};
 
-use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size};
+use druid_shell::kurbo::{Affine, Point, Rect, Shape, Size, Vec2};
 use druid_shell::piet::{
     Color, Error as PietError, FontBuilder, Piet, RenderContext, Text, TextLayoutBuilder,
 };
@@ -94,6 +94,18 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
     pub fn fill(&mut self, shape: impl Shape, brush: &<Piet as RenderContext>::Brush) {
         self.ops.push(Op::SetBrush(brush.clone()));
         self.ops.push(Op::Fill(ShapeBox::from_shape(shape)));
+    }
+
+    pub fn shadow(
+        &mut self,
+        rect: Rect,
+        offset: Vec2,
+        blur_radius: f64,
+        spread: f64,
+        brush: &<Piet as RenderContext>::Brush,
+    ) {
+        let rect = rect.inflate(spread, spread) + offset;
+        self.blurred_rect(rect, blur_radius, brush);
     }
 
     pub fn clip(&mut self, shape: impl Shape) {

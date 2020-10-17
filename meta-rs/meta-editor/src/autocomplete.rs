@@ -131,23 +131,35 @@ where
             )
         });
 
-        Column::new()
-            .with_child(&mut minput as &mut dyn Layout)
-            .with_child(&mut List::new(self.candidates.iter().enumerate().map(
-                |(i, s)| {
-                    let (background, foreground) = if i == self.selection {
-                        selection.clone()
-                    } else {
-                        tooltip.clone()
-                    };
+        let (size, ops) = ctx.capture(|ctx| {
+            Column::new()
+                .with_child(&mut minput as &mut dyn Layout)
+                .with_child(&mut List::new(self.candidates.iter().enumerate().map(
+                    |(i, s)| {
+                        let (background, foreground) = if i == self.selection {
+                            selection.clone()
+                        } else {
+                            tooltip.clone()
+                        };
 
-                    Background::new(Inset::new(
-                        Text::new(&s.1).with_font("Input").with_color(foreground),
-                        Insets::uniform_xy(0.0, 1.0),
-                    ))
-                    .with_color(background)
-                },
-            )))
-            .layout(ctx, Constraint::new(new_min, constraint.max))
+                        Background::new(Inset::new(
+                            Text::new(&s.1).with_font("Input").with_color(foreground),
+                            Insets::uniform_xy(0.0, 1.0),
+                        ))
+                        .with_color(background)
+                    },
+                )))
+                .layout(ctx, Constraint::new(new_min, constraint.max))
+        });
+
+        let shadow_brush = ctx.solid_brush(Color::rgba(0.0, 0.0, 0.0, 0.2));
+        ctx.shadow(size.to_rect(), (0.0, 2.0).into(), 2.0, 0.0, &shadow_brush);
+        // Each candidate draws its own background, but this produces small holes between some
+        // candidates (because of rounding errors?). Draw an extra background to fix that.
+        let background_brush = ctx.solid_brush(tooltip.0);
+        ctx.fill(size.to_rect(), &background_brush);
+
+        ctx.replay(ops);
+        size
     }
 }
