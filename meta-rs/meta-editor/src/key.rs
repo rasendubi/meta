@@ -2,6 +2,7 @@ use std::{fs::File, io::BufWriter};
 
 use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 
+use crate::core_layout::{core_layout_datoms, core_layout_entities, core_layout_languages};
 use crate::editor::Editor;
 
 pub trait KeyHandler {
@@ -79,6 +80,16 @@ impl KeyHandler for GlobalKeys {
             let f = File::create("store.meta").unwrap();
             let writer = BufWriter::new(f);
             serde_json::to_writer_pretty(writer, store).unwrap();
+        }
+
+        if HotKey::new(RawMods::Alt, KeyCode::Key1).matches(key) {
+            editor.set_layout_fn(core_layout_datoms);
+        }
+        if HotKey::new(RawMods::Alt, KeyCode::Key2).matches(key) {
+            editor.set_layout_fn(core_layout_entities);
+        }
+        if HotKey::new(RawMods::Alt, KeyCode::Key3).matches(key) {
+            editor.set_layout_fn(core_layout_languages);
         }
 
         false

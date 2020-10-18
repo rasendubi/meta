@@ -18,7 +18,7 @@ use crate::autocomplete::{Autocomplete, AutocompleteEvent};
 use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
 use crate::key::{GlobalKeys, KeyHandler};
-use crate::layout::{cmp_priority, CellClass, Doc, EditorCellPayload, SDoc};
+use crate::layout::{cmp_priority, CellClass, Doc, EditorCellPayload, RDoc, SDoc};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CursorPosition {
@@ -43,12 +43,13 @@ pub struct Editor {
     cursor: Option<CursorPosition>,
     scroll: Scrollable,
     autocomplete: Option<Translate<Autocomplete<Field>>>,
+    layout_fn: fn(&Store) -> RDoc,
 }
 
 impl Editor {
     pub fn new(id: SubscriptionId, store: Store) -> Self {
-        let core = MetaCore::new(&store);
-        let rich_doc: Doc = core_layout_languages(&core).into();
+        let layout_fn = core_layout_languages;
+        let rich_doc: Doc = layout_fn(&store).into();
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 
@@ -67,7 +68,18 @@ impl Editor {
             cursor,
             scroll: Scrollable::new(SubscriptionId::new()),
             autocomplete: None,
+            layout_fn,
         }
+    }
+
+    pub fn set_layout_fn(&mut self, f: fn(&Store) -> RDoc) {
+        self.layout_fn = f;
+        self.on_store_updated();
+        self.cursor = Editor::cell_position_to_cursor(
+            &self.positions,
+            &self.layout,
+            &CellPosition { row: 0, col: 0 },
+        );
     }
 
     pub fn current_position(&self) -> Option<CellPosition> {
@@ -84,8 +96,7 @@ impl Editor {
     }
 
     pub fn on_store_updated(&mut self) {
-        let core = MetaCore::new(&self.store);
-        let rich_doc: Doc = core_layout_languages(&core).into();
+        let rich_doc: Doc = (self.layout_fn)(&self.store).into();
         let paths = rich_doc.pathify();
         let sdoc = meta_pretty::layout(&rich_doc, 80);
 

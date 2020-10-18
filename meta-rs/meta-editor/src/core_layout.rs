@@ -1,18 +1,15 @@
 use std::collections::HashMap;
 
-use druid_shell::{HotKey, KeyCode, RawMods};
+use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 use im::HashSet;
 use itertools::Itertools;
 
 use meta_core::MetaCore;
-use meta_store::{Datom, Field};
+use meta_store::{Datom, Field, Store};
 
+use crate::editor::Editor;
 use crate::key::KeyHandler;
-use crate::layout::{
-    brackets, concat, datom_reference, datom_value, empty, field, group, line, linebreak, nest,
-    parentheses, punctuation, quotes, text, whitespace, with_key_handler, RDoc, ReferenceTarget,
-    TypeFilter,
-};
+use crate::layout::*;
 
 struct EntityKeys {
     entity: Field,
@@ -25,7 +22,7 @@ impl EntityKeys {
 }
 
 impl KeyHandler for EntityKeys {
-    fn handle_key(&self, key: druid_shell::KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+    fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
             editor.with_store(|store| {
                 store.add_datom(&Datom::eav(self.entity.clone(), "".into(), "".into()));
@@ -48,7 +45,7 @@ impl LanguageKeys {
 }
 
 impl KeyHandler for LanguageKeys {
-    fn handle_key(&self, key: druid_shell::KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+    fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
             editor.with_store(|store| {
                 let entity = Field::new_id();
@@ -58,6 +55,36 @@ impl KeyHandler for LanguageKeys {
                     language_entity_id,
                     entity,
                 ));
+            });
+            return true;
+        }
+
+        false
+    }
+}
+
+struct EntitiesKeys;
+impl KeyHandler for EntitiesKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
+        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            editor.with_store(|store| {
+                let entity = Field::new_id();
+                store.add_datom(&Datom::eav(entity, "".into(), "".into()))
+            });
+            return true;
+        }
+
+        false
+    }
+}
+
+struct DatomsKeys;
+impl KeyHandler for DatomsKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
+        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            editor.with_store(|store| {
+                let id = Field::new_id();
+                store.add_datom(&Datom::new(id, "".into(), "".into(), "".into()))
             });
             return true;
         }
@@ -165,13 +192,16 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
     )
 }
 
-#[allow(dead_code)]
-pub fn core_layout_entities(core: &MetaCore) -> RDoc {
+pub fn core_layout_entities(store: &Store) -> RDoc {
+    let core = MetaCore::new(store);
     let entities = core.store.entities().into_iter().sorted();
-    concat(
-        entities
-            .map(|e| core_layout_entity(core, e))
-            .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
+    with_key_handler(
+        Box::new(EntitiesKeys),
+        concat(
+            entities
+                .map(|e| core_layout_entity(&core, e))
+                .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
+        ),
     )
 }
 
@@ -182,10 +212,10 @@ pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> RDoc {
             brackets(field(&datom.id)),
             line(),
             group(concat(vec![
-                annotate(core, &datom.entity),
+                reference(core, datom, ReferenceTarget::Entity),
                 punctuation("."),
                 linebreak(),
-                annotate(core, &datom.attribute),
+                reference(core, datom, ReferenceTarget::Attribute),
             ])),
             whitespace(" "),
             punctuation("="),
@@ -194,15 +224,18 @@ pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> RDoc {
     )
 }
 
-#[allow(dead_code)]
-pub fn core_layout_datoms(core: &MetaCore) -> RDoc {
-    concat(
-        core.store
-            .atoms()
-            .values()
-            .sorted_by_key(|d| &d.id)
-            .map(|d| core_layout_datom(core, d))
-            .intersperse_with(linebreak),
+pub fn core_layout_datoms(store: &Store) -> RDoc {
+    let core = MetaCore::new(store);
+    with_key_handler(
+        Box::new(DatomsKeys),
+        concat(
+            core.store
+                .atoms()
+                .values()
+                .sorted_by_key(|d| &d.id)
+                .map(|d| core_layout_datom(&core, d))
+                .intersperse_with(linebreak),
+        ),
     )
 }
 
@@ -231,14 +264,16 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
     )
 }
 
-pub fn core_layout_languages(core: &MetaCore) -> RDoc {
+pub fn core_layout_languages(store: &Store) -> RDoc {
+    let core = MetaCore::new(store);
+
     let language_id = "12".into();
     let languages = core.of_type(&language_id);
 
     concat(
         languages
             .iter()
-            .map(|l| core_layout_language(core, &l.entity))
+            .map(|l| core_layout_language(&core, &l.entity))
             .intersperse_with(linebreak),
     )
 }
