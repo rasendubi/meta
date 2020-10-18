@@ -10,22 +10,22 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 struct Index(HashMap<Field, HashMap<Field, HashSet<Datom>>>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct MetaStore {
+pub struct Store {
     atoms: HashMap<Field, Datom>,
     eav: Index,
     aev: Index,
     ave: Index,
 }
 
-impl Default for MetaStore {
+impl Default for Store {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MetaStore {
-    pub fn new() -> MetaStore {
-        MetaStore {
+impl Store {
+    pub fn new() -> Store {
+        Store {
             atoms: HashMap::new(),
             eav: Index::new(),
             aev: Index::new(),
@@ -33,11 +33,11 @@ impl MetaStore {
         }
     }
 
-    pub fn from_reader<R>(r: R) -> Result<MetaStore>
+    pub fn from_reader<R>(r: R) -> Result<Store>
     where
         R: std::io::BufRead,
     {
-        let mut store = MetaStore::new();
+        let mut store = Store::new();
 
         for line in r.lines() {
             let line = line?;
@@ -169,11 +169,11 @@ impl Index {
     }
 }
 
-impl std::str::FromStr for MetaStore {
+impl std::str::FromStr for Store {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<MetaStore> {
-        MetaStore::from_reader(std::io::Cursor::new(s))
+    fn from_str(s: &str) -> Result<Store> {
+        Store::from_reader(std::io::Cursor::new(s))
     }
 }
 
@@ -224,13 +224,13 @@ mod tests {
 
     #[test]
     fn store_from_buf() {
-        let _store = MetaStore::from_reader(std::io::Cursor::new(TEST)).unwrap();
+        let _store = Store::from_reader(std::io::Cursor::new(TEST)).unwrap();
     }
 
     #[test]
     fn store_parse_trailing_comment() {
         let store =
-            MetaStore::from_str(r#"["2", "0", "0", "identifier"] ;; trailing comment"#).unwrap();
+            Store::from_str(r#"["2", "0", "0", "identifier"] ;; trailing comment"#).unwrap();
         assert_eq!(
             Some(&hashset! {("2", "0", "0", "identifier").into()}),
             store.eav2(&Field::from("0"), &Field::from("0"))
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn get_by_entity_attribute() {
-        let store = MetaStore::from_str(TEST).unwrap();
+        let store = Store::from_str(TEST).unwrap();
 
         assert_eq!(
             Some(&hashset! {("-1", "0", "0", "identifier").into()}),
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn get_entity() {
-        let store = MetaStore::from_str(TEST).unwrap();
+        let store = Store::from_str(TEST).unwrap();
 
         assert_eq!(
             Some(&hashmap! {
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn remove_datom() {
-        let mut store = MetaStore::from_str(TEST).unwrap();
+        let mut store = Store::from_str(TEST).unwrap();
         store.remove_datom(&("-2", "0", "1", "2").into());
         store.remove_datom(&("-9", "0", "4", "Additional comment").into());
         assert_eq!(

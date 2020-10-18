@@ -12,7 +12,7 @@ use meta_core::MetaCore;
 use meta_gui::widgets::{Direction, Inset, List, Scrollable, Scrolled, Stack, Translate};
 use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 use meta_pretty::{Path, SimpleDoc, SimpleDocKind};
-use meta_store::{Datom, Field, MetaStore};
+use meta_store::{Datom, Field, Store};
 
 use crate::autocomplete::{Autocomplete, AutocompleteEvent};
 use crate::cell_widget::CellWidget;
@@ -35,7 +35,7 @@ pub struct CellPosition {
 
 pub struct Editor {
     id: SubscriptionId,
-    store: MetaStore,
+    store: Store,
     doc: Doc,
     paths: HashMap<Doc, Path>,
     layout: Vec<Vec<SDoc>>,
@@ -46,7 +46,7 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(id: SubscriptionId, store: MetaStore) -> Self {
+    pub fn new(id: SubscriptionId, store: Store) -> Self {
         let core = MetaCore::new(&store);
         let rich_doc: Doc = core_layout_languages(&core).into();
         let paths = rich_doc.pathify();
@@ -451,7 +451,7 @@ impl Editor {
 
     pub fn with_store<F, R>(&mut self, f: F) -> R
     where
-        F: FnOnce(&mut MetaStore) -> R,
+        F: FnOnce(&mut Store) -> R,
     {
         let result = f(&mut self.store);
         self.on_store_updated();

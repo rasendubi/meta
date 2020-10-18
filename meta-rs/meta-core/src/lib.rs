@@ -1,15 +1,15 @@
 //! Some helpers for the meta.core language.
 use im::HashSet;
 
-use meta_store::{Datom, Field, MetaStore};
+use meta_store::{Datom, Field, Store};
 
 pub struct MetaCore<'a> {
-    pub store: &'a MetaStore,
+    pub store: &'a Store,
     // TODO: remove hard-code ids and cache them in struct
 }
 
 impl<'a> MetaCore<'a> {
-    pub fn new(store: &MetaStore) -> MetaCore {
+    pub fn new(store: &Store) -> MetaCore {
         MetaCore { store }
     }
 
@@ -50,14 +50,14 @@ impl<'a> MetaCore<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meta_store::{Field, MetaStore};
+    use meta_store::{Field, Store};
     use std::str::FromStr;
 
     static TEST: &'static str = include_str!("../../../core.meta");
 
     #[test]
     fn test_identifier() {
-        let store = MetaStore::from_str(TEST).unwrap();
+        let store = Store::from_str(TEST).unwrap();
         let core = MetaCore::new(&store);
 
         assert_eq!(
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_meta_type() {
-        let store = MetaStore::from_str(TEST).unwrap();
+        let store = Store::from_str(TEST).unwrap();
         let core = MetaCore::new(&store);
 
         let attribute = Field::from("7");
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_meta_attribute_type() {
-        let store = MetaStore::from_str(TEST).unwrap();
+        let store = Store::from_str(TEST).unwrap();
         let core = MetaCore::new(&store);
 
         let string = Field::from("2");

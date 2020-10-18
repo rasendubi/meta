@@ -283,12 +283,12 @@ fn order<'a, I: IntoIterator<Item = &'a Datom>>(core: &'a MetaCore, atoms: I) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meta_store::MetaStore;
+    use meta_store::Store;
     use std::str::FromStr;
 
     #[test]
     fn test_order_no_after() {
-        let store = MetaStore::from_str(
+        let store = Store::from_str(
             r#"
               ["10", "0", "1", "2"]
               ["11", "0", "1", "3"]
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_order_with_after() {
-        let store = MetaStore::from_str(
+        let store = Store::from_str(
             r#"
               ["10", "0", "1", "2"]
               ["11", "0", "1", "3"]
@@ -343,7 +343,7 @@ mod tests {
     #[test]
     #[ignore] // TODO: order silently drops all loops now (a after b, b after a)
     fn test_order_with_after_loop() {
-        let store = MetaStore::from_str(
+        let store = Store::from_str(
             r#"
               ["10", "0", "1", "2"]
               ["11", "0", "1", "3"]
