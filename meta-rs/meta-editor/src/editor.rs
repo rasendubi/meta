@@ -449,6 +449,10 @@ impl Editor {
         Vec2::new(x_offset, y_offset)
     }
 
+    pub fn store(&self) -> &Store {
+        &self.store
+    }
+
     pub fn with_store<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut Store) -> R,

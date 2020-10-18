@@ -734,6 +734,7 @@ dependencies = [
  "meta-editor",
  "meta-pretty",
  "meta-store",
+ "serde_json",
 ]
 
 [[package]]
@@ -756,6 +757,7 @@ dependencies = [
  "meta-gui",
  "meta-pretty",
  "meta-store",
+ "serde_json",
  "unicode-segmentation",
 ]
 

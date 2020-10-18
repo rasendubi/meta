@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::io::BufReader;
 
-use meta_store::{Result, Store};
+use meta_store::Result;
 
 fn main() -> Result<()> {
     env_logger::init();
 
-    let f = File::open("../core.meta")?;
-    let store = Store::from_reader(BufReader::new(&f))?;
+    let f = File::open("store.meta")?;
+    let store = serde_json::from_reader(BufReader::new(&f))?;
 
     meta_editor::main(store);
 

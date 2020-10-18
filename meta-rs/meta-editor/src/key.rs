@@ -1,3 +1,5 @@
+use std::{fs::File, io::BufWriter};
+
 use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 
 use crate::editor::Editor;
@@ -70,6 +72,13 @@ impl KeyHandler for GlobalKeys {
         {
             editor.complete("");
             return true;
+        }
+
+        if HotKey::new(RawMods::Ctrl, KeyCode::KeyS).matches(key) {
+            let store = editor.store();
+            let f = File::create("store.meta").unwrap();
+            let writer = BufWriter::new(f);
+            serde_json::to_writer_pretty(writer, store).unwrap();
         }
 
         false

@@ -1,26 +1,21 @@
 mod datom;
 
 use im::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
 
-pub use datom::*;
+pub use crate::datom::*;
 
-pub type Result<T> = ::std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct Index(HashMap<Field, HashMap<Field, HashSet<Datom>>>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Store {
-    atoms: HashMap<Field, Datom>,
+    atoms: HashMap</* id: */ Field, Datom>,
     eav: Index,
     aev: Index,
     ave: Index,
-}
-
-impl Default for Store {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Store {
@@ -127,6 +122,47 @@ impl Store {
     }
 }
 
+impl Serialize for Store {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut datoms = self.atoms.values().collect::<Vec<_>>();
+        datoms.sort();
+        serializer.serialize_newtype_struct("Store", &datoms)
+    }
+}
+
+impl<'de> Deserialize<'de> for Store {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let datoms = Vec::<Datom>::deserialize(deserializer)?;
+
+        let mut store = Self::new();
+        for datom in datoms {
+            store.add_datom(&datom);
+        }
+
+        Ok(store)
+    }
+}
+
+impl Default for Store {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::str::FromStr for Store {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Store> {
+        Store::from_reader(std::io::Cursor::new(s))
+    }
+}
+
 impl Index {
     pub fn new() -> Index {
         Index(HashMap::new())
@@ -166,14 +202,6 @@ impl Index {
     #[inline]
     pub fn get(&self, x: &Field) -> Option<&HashMap<Field, HashSet<Datom>>> {
         self.0.get(x)
-    }
-}
-
-impl std::str::FromStr for Store {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Store> {
-        Store::from_reader(std::io::Cursor::new(s))
     }
 }
 
