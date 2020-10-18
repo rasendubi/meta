@@ -104,29 +104,52 @@ impl Editor {
         let positions = enumerate(&layout);
 
         let cursor = if let Some(CursorPosition::Inside { cell, offset }) = &self.cursor {
-            match rich_doc
-                .follow_path(self.paths.get(cell.rich_doc()).unwrap())
-                .last()
-                .unwrap()
-            {
+            let path = self.paths.get(cell.rich_doc()).unwrap();
+            match rich_doc.follow_path(path).last().unwrap() {
                 Ok(cell) => {
+                    trace!("successfully resolved path {:?}", path);
                     sdoc.iter()
                         .find(|s| s.rich_doc() == cell)
                         .map(|cell| CursorPosition::Inside {
                             cell: cell.clone(),
                             offset: *offset,
                         })
+                        .or_else(|| {
+                            // TODO: think of a better strategy.
+                            //
+                            // This case means that the path is present in the new RichDoc but is
+                            // absent in SimpleDoc. This likely means that RichDoc is no longer a
+                            // cell (likely an Empty case)
+                            Editor::cell_position_to_cursor(
+                                &positions,
+                                &layout,
+                                &CellPosition { row: 0, col: 0 },
+                            )
+                        })
                 }
                 Err((_cell, _path)) => {
+                    trace!("unable to follow path: {:?} left {:?}", path, _path);
                     // TODO: The target cell has been deleted. Make cursor point to adjusted cell.
                     Editor::cell_position_to_cursor(
                         &positions,
                         &layout,
                         &self.current_position().unwrap(),
                     )
+                    .or_else(|| {
+                        // TODO: think of a better strategy.
+                        //
+                        // This case likely means that we have deleted the very last item and cursor
+                        // is now past the last row.
+                        Editor::cell_position_to_cursor(
+                            &positions,
+                            &layout,
+                            &CellPosition { row: 0, col: 0 },
+                        )
+                    })
                 }
             }
         } else {
+            trace!("no current cursor");
             Editor::cell_position_to_cursor(&positions, &layout, &self.current_position().unwrap())
         };
 

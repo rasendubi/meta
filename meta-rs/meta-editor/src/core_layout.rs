@@ -30,6 +30,17 @@ impl KeyHandler for EntityKeys {
             return true;
         }
 
+        if HotKey::new(RawMods::Ctrl, KeyCode::KeyD).matches(key) {
+            editor.with_store(|store| {
+                let datoms = store.eav1(&self.entity).map_or_else(HashSet::new, |attrs| {
+                    HashSet::unions(attrs.values().cloned())
+                });
+                for datom in datoms {
+                    store.remove_datom(&datom);
+                }
+            });
+        }
+
         false
     }
 }
@@ -93,6 +104,21 @@ impl KeyHandler for DatomsKeys {
     }
 }
 
+struct DatomKeys(Field);
+impl KeyHandler for DatomKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
+        if HotKey::new(RawMods::Ctrl, KeyCode::KeyD).matches(key) {
+            editor.with_store(|store| {
+                if let Some(datom) = store.atoms().get(&self.0).cloned() {
+                    store.remove_datom(&datom);
+                }
+            });
+        }
+
+        false
+    }
+}
+
 fn annotate(core: &MetaCore, entity: &Field) -> RDoc {
     let identifier = core.identifier(entity).map_or(empty(), datom_value);
 
@@ -138,16 +164,19 @@ fn core_layout_value(core: &MetaCore, datom: &Datom) -> RDoc {
 }
 
 fn core_layout_attribute(core: &MetaCore, datom: &Datom) -> RDoc {
-    concat(vec![
-        linebreak(),
-        reference(core, datom, ReferenceTarget::Attribute),
-        whitespace(" "),
-        punctuation("="),
-        group(nest(
-            2,
-            concat(vec![line(), core_layout_value(core, datom)]),
-        )),
-    ])
+    with_key_handler(
+        Box::new(DatomKeys(datom.id.clone())),
+        concat(vec![
+            linebreak(),
+            reference(core, datom, ReferenceTarget::Attribute),
+            whitespace(" "),
+            punctuation("="),
+            group(nest(
+                2,
+                concat(vec![line(), core_layout_value(core, datom)]),
+            )),
+        ]),
+    )
 }
 
 pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
@@ -206,21 +235,24 @@ pub fn core_layout_entities(store: &Store) -> RDoc {
 }
 
 pub fn core_layout_datom(core: &MetaCore, datom: &Datom) -> RDoc {
-    nest(
-        2,
-        group(concat(vec![
-            brackets(field(&datom.id)),
-            line(),
+    with_key_handler(
+        Box::new(DatomKeys(datom.id.clone())),
+        nest(
+            2,
             group(concat(vec![
-                reference(core, datom, ReferenceTarget::Entity),
-                punctuation("."),
-                linebreak(),
-                reference(core, datom, ReferenceTarget::Attribute),
+                brackets(field(&datom.id)),
+                line(),
+                group(concat(vec![
+                    reference(core, datom, ReferenceTarget::Entity),
+                    punctuation("."),
+                    linebreak(),
+                    reference(core, datom, ReferenceTarget::Attribute),
+                ])),
+                whitespace(" "),
+                punctuation("="),
+                nest(2, concat(vec![line(), core_layout_value(core, datom)])),
             ])),
-            whitespace(" "),
-            punctuation("="),
-            nest(2, concat(vec![line(), core_layout_value(core, datom)])),
-        ])),
+        ),
     )
 }
 
