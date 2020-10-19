@@ -228,8 +228,9 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
                         .map(|datom| {
                             with_id(
                                 vec![datom.entity.clone(), datom.id.clone()],
-                                core_layout_attribute(&core, &datom).with_key(datom.id.to_string()),
+                                core_layout_attribute(&core, &datom),
                             )
+                            .with_key(datom.id.to_string())
                         }),
                 ),
             ),
@@ -310,8 +311,9 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
                     .map(|e| {
                         with_id(
                             vec![id.clone(), e.value.clone()],
-                            core_layout_entity(core, &e.value).with_key(e.value.to_string()),
+                            core_layout_entity(core, &e.value),
                         )
+                        .with_key(e.value.to_string())
                     })
                     .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
             ),
