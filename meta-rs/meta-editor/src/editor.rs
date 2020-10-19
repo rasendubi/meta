@@ -5,7 +5,7 @@ use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
 use druid_shell::piet::Color;
 use druid_shell::KeyEvent;
 use im::HashSet;
-use log::{debug, trace};
+use log::{debug, log_enabled, trace, Level};
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_core::MetaCore;
@@ -25,6 +25,15 @@ pub enum CursorPosition {
     Inside { cell: SDoc, offset: usize },
     // TODO: drop Between as it is virtually never used
     Between(SDoc, SDoc),
+}
+
+impl CursorPosition {
+    pub fn sdoc(&self) -> &SDoc {
+        match self {
+            CursorPosition::Inside { cell, offset: _ } => cell,
+            CursorPosition::Between(cell, _) => cell,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -81,17 +90,25 @@ impl Editor {
     }
 
     pub fn set_cursor(&mut self, cursor: Option<CursorPosition>) {
+        if log_enabled!(Level::Trace) {
+            trace!(
+                "set_cursor to path {:?}",
+                cursor
+                    .as_ref()
+                    .and_then(|cursor| self.paths.get(cursor.sdoc().rich_doc()))
+            );
+        }
         self.cursor = cursor;
     }
 
     pub fn set_layout_fn(&mut self, f: fn(&Store) -> RDoc) {
         self.layout_fn = f;
         self.on_store_updated();
-        self.cursor = Editor::cell_position_to_cursor(
+        self.set_cursor(Editor::cell_position_to_cursor(
             &self.positions,
             &self.layout,
             &CellPosition { row: 0, col: 0 },
-        );
+        ));
     }
 
     pub fn current_position(&self) -> Option<CellPosition> {
@@ -168,7 +185,7 @@ impl Editor {
         self.paths = paths;
         self.doc = rich_doc;
         self.layout = layout;
-        self.cursor = cursor;
+        self.set_cursor(cursor);
         self.positions = positions;
     }
 
@@ -181,7 +198,7 @@ impl Editor {
         let cursor = Self::cell_position_to_cursor(&self.positions, &self.layout, &pos);
 
         if cursor.is_some() {
-            self.cursor = cursor;
+            self.set_cursor(cursor);
         }
     }
 
