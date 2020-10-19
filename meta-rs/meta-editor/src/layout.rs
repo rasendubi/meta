@@ -1,14 +1,47 @@
 use im::HashSet;
+use log::warn;
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_pretty::{Cell, RichDoc, RichDocRef, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
+use crate::editor::{CursorPosition, Editor};
 use crate::key::KeyHandler;
 
-pub type Doc = RichDocRef<EditorCellPayload, Box<dyn KeyHandler>>;
-pub type RDoc = RichDoc<EditorCellPayload, Box<dyn KeyHandler>>;
-pub type SDoc = SimpleDoc<EditorCellPayload, Box<dyn KeyHandler>>;
+pub enum DocMeta {
+    Id(Vec<Field>),
+    KeyHandler(Box<dyn KeyHandler>),
+}
+
+impl DocMeta {
+    pub fn with_id(id: Vec<Field>) -> Self {
+        Self::Id(id)
+    }
+
+    pub fn with_key_handler(key_handler: Box<dyn KeyHandler>) -> Self {
+        Self::KeyHandler(key_handler)
+    }
+
+    pub fn id(&self) -> Option<&Vec<Field>> {
+        if let Self::Id(id) = self {
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    pub fn key_handler(&self) -> Option<&Box<dyn KeyHandler>> {
+        if let Self::KeyHandler(key_handler) = self {
+            Some(key_handler)
+        } else {
+            None
+        }
+    }
+}
+
+pub type Doc = RichDocRef<EditorCellPayload, DocMeta>;
+pub type RDoc = RichDoc<EditorCellPayload, DocMeta>;
+pub type SDoc = SimpleDoc<EditorCellPayload, DocMeta>;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub struct TypeFilter(Option<HashSet<Field>>);
@@ -88,7 +121,11 @@ pub enum CellText {
 }
 
 pub fn with_key_handler(key_handler: Box<dyn KeyHandler>, doc: RDoc) -> RDoc {
-    RichDoc::meta(key_handler, doc)
+    RichDoc::meta(DocMeta::with_key_handler(key_handler), doc)
+}
+
+pub fn with_id(id: Vec<Field>, doc: RDoc) -> RDoc {
+    RichDoc::meta(DocMeta::with_id(id), doc)
 }
 
 // Specialize and re-export
@@ -209,6 +246,92 @@ pub fn cmp_priority<M>(
         (Linebreak { .. }, Cell(..)) => Ordering::Less,
         (Cell(..), Linebreak { .. }) => Ordering::Greater,
         (Cell(left), Cell(right)) => left.payload.class.cmp(&right.payload.class),
+    }
+}
+
+/// Find meta node with id `id`.
+pub fn find_id<'a, 'b>(doc: &'a Doc, id: &'b [Field]) -> Option<&'a Doc> {
+    match doc.kind() {
+        meta_pretty::RichDocKind::Empty => None,
+        meta_pretty::RichDocKind::Cell(_) => None,
+        meta_pretty::RichDocKind::Line { alt: _ } => None,
+        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_id(doc, id),
+        meta_pretty::RichDocKind::Concat { parts } => parts
+            .iter()
+            .fold(None, |acc, doc| acc.or_else(|| find_id(doc, id))),
+        meta_pretty::RichDocKind::Group { doc } => find_id(doc, id),
+        meta_pretty::RichDocKind::Meta {
+            doc: nested_doc,
+            meta,
+        } => {
+            if meta.id().map_or(false, |i| i.as_slice() == id) {
+                Some(doc)
+            } else {
+                find_id(nested_doc, id)
+            }
+        }
+    }
+}
+
+/// Find first cell matching the predicate in the doc.
+pub fn find_cell<'a, T, M, F>(
+    doc: &'a RichDocRef<T, M>,
+    pred: &'_ mut F,
+) -> Option<&'a RichDocRef<T, M>>
+where
+    F: FnMut(&Cell<T>) -> bool,
+{
+    match doc.kind() {
+        meta_pretty::RichDocKind::Empty => None,
+        meta_pretty::RichDocKind::Cell(cell) => {
+            if pred(cell) {
+                Some(doc)
+            } else {
+                None
+            }
+        }
+        meta_pretty::RichDocKind::Line { alt: _ } => None,
+        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_cell(doc, pred),
+        meta_pretty::RichDocKind::Concat { parts } => parts
+            .iter()
+            .fold(None, |acc, doc| acc.or_else(|| find_cell(doc, pred))),
+        meta_pretty::RichDocKind::Group { doc } => find_cell(doc, pred),
+        meta_pretty::RichDocKind::Meta { doc, meta: _ } => find_cell(doc, pred),
+    }
+}
+
+fn find_sdoc_cell<T, M>(
+    sdoc: &[Vec<SimpleDoc<T, M>>],
+    rdoc: &RichDocRef<T, M>,
+) -> Option<SimpleDoc<T, M>> {
+    for row in sdoc {
+        for cell in row {
+            if cell.rich_doc() == rdoc {
+                return Some(cell.clone());
+            }
+        }
+    }
+
+    None
+}
+
+pub fn goto_cell_id(editor: &mut Editor, id: &[Field]) {
+    if let Some(doc) = find_id(editor.doc(), id).and_then(|doc| {
+        find_cell(
+            doc,
+            &mut |cell: &Cell<EditorCellPayload>| match &cell.payload.class {
+                CellClass::Reference(_, _, _) | CellClass::Editable(_) | CellClass::NonEditable => {
+                    true
+                }
+                _ => false,
+            },
+        )
+    }) {
+        if let Some(cell) = find_sdoc_cell(editor.sdoc(), doc) {
+            editor.set_cursor(Some(CursorPosition::Inside { cell, offset: 0 }));
+        }
+    } else {
+        warn!("cell with id {:?} not found", id);
     }
 }
 

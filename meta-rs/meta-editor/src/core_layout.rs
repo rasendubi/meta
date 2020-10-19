@@ -24,9 +24,17 @@ impl EntityKeys {
 impl KeyHandler for EntityKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            let id = Field::new_id();
             editor.with_store(|store| {
-                store.add_datom(&Datom::eav(self.entity.clone(), "".into(), "".into()));
+                store.add_datom(&Datom::new(
+                    id.clone(),
+                    self.entity.clone(),
+                    "".into(),
+                    "".into(),
+                ));
             });
+
+            goto_cell_id(editor, &[self.entity.clone(), id]);
             return true;
         }
 
@@ -58,15 +66,18 @@ impl LanguageKeys {
 impl KeyHandler for LanguageKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            let entity = Field::new_id();
+
             editor.with_store(|store| {
-                let entity = Field::new_id();
                 let language_entity_id = "13".into();
                 store.add_datom(&Datom::eav(
                     self.language.clone(),
                     language_entity_id,
-                    entity,
+                    entity.clone(),
                 ));
             });
+
+            goto_cell_id(editor, &[self.language.clone(), entity]);
             return true;
         }
 
@@ -78,10 +89,12 @@ struct EntitiesKeys;
 impl KeyHandler for EntitiesKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            let entity = Field::new_id();
             editor.with_store(|store| {
-                let entity = Field::new_id();
-                store.add_datom(&Datom::eav(entity, "".into(), "".into()))
+                store.add_datom(&Datom::eav(entity.clone(), "".into(), "".into()))
             });
+
+            goto_cell_id(editor, &[entity]);
             return true;
         }
 
@@ -93,10 +106,12 @@ struct DatomsKeys;
 impl KeyHandler for DatomsKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+            let id = Field::new_id();
             editor.with_store(|store| {
-                let id = Field::new_id();
-                store.add_datom(&Datom::new(id, "".into(), "".into(), "".into()))
+                store.add_datom(&Datom::new(id.clone(), "".into(), "".into(), "".into()))
             });
+
+            goto_cell_id(editor, &[id]);
             return true;
         }
 
@@ -211,7 +226,10 @@ pub fn core_layout_entity(core: &MetaCore, entity: &Field) -> RDoc {
                         .into_iter()
                         .sorted_by(|a, b| (&a.attribute, &a.id).cmp(&(&b.attribute, &b.id)))
                         .map(|datom| {
-                            core_layout_attribute(&core, &datom).with_key(datom.id.to_string())
+                            with_id(
+                                vec![datom.entity.clone(), datom.id.clone()],
+                                core_layout_attribute(&core, &datom).with_key(datom.id.to_string()),
+                            )
                         }),
                 ),
             ),
@@ -228,7 +246,7 @@ pub fn core_layout_entities(store: &Store) -> RDoc {
         Box::new(EntitiesKeys),
         concat(
             entities
-                .map(|e| core_layout_entity(&core, e))
+                .map(|e| with_id(vec![e.clone()], core_layout_entity(&core, e)))
                 .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
         ),
     )
@@ -265,7 +283,7 @@ pub fn core_layout_datoms(store: &Store) -> RDoc {
                 .atoms()
                 .values()
                 .sorted_by_key(|d| &d.id)
-                .map(|d| core_layout_datom(&core, d))
+                .map(|d| with_id(vec![d.id.clone()], core_layout_datom(&core, d)))
                 .intersperse_with(linebreak),
         ),
     )
@@ -289,7 +307,12 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
             concat(
                 entities
                     .iter()
-                    .map(|e| core_layout_entity(core, &e.value).with_key(e.value.to_string()))
+                    .map(|e| {
+                        with_id(
+                            vec![id.clone(), e.value.clone()],
+                            core_layout_entity(core, &e.value).with_key(e.value.to_string()),
+                        )
+                    })
                     .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
             ),
         ]),

@@ -72,6 +72,18 @@ impl Editor {
         }
     }
 
+    pub fn doc(&self) -> &Doc {
+        &self.doc
+    }
+
+    pub fn sdoc(&self) -> &Vec<Vec<SDoc>> {
+        &self.layout
+    }
+
+    pub fn set_cursor(&mut self, cursor: Option<CursorPosition>) {
+        self.cursor = cursor;
+    }
+
     pub fn set_layout_fn(&mut self, f: fn(&Store) -> RDoc) {
         self.layout_fn = f;
         self.on_store_updated();
@@ -251,7 +263,7 @@ impl Editor {
         let handlers = doc
             .follow_path(path)
             .filter_map(|x| x.ok())
-            .filter_map(|x| x.as_meta())
+            .filter_map(|x| x.as_meta().and_then(|m| m.key_handler()))
             .collect::<Vec<_>>();
         for h in handlers.into_iter().rev() {
             if h.handle_key(key, self) {
