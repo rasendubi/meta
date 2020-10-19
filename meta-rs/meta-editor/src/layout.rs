@@ -30,9 +30,9 @@ impl DocMeta {
         }
     }
 
-    pub fn key_handler(&self) -> Option<&Box<dyn KeyHandler>> {
+    pub fn key_handler(&self) -> Option<&dyn KeyHandler> {
         if let Self::KeyHandler(key_handler) = self {
-            Some(key_handler)
+            Some(&**key_handler)
         } else {
             None
         }
