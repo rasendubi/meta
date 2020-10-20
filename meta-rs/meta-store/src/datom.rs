@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{result::Result, fmt::Debug};
 
 use cuid::cuid;
 use serde::de::{Deserialize, Deserializer};
@@ -94,7 +94,7 @@ impl Datom {
 }
 
 impl Serialize for Datom {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -108,7 +108,7 @@ impl Serialize for Datom {
 }
 
 impl<'de> Deserialize<'de> for Datom {
-    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Datom, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Datom, D::Error>
     where
         D: Deserializer<'de>,
     {

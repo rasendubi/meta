@@ -215,21 +215,21 @@ impl Index {
 
 #[derive(Debug)]
 pub enum Error {
-    IoError(::std::io::Error),
+    IoError(std::io::Error),
     JsonError(serde_json::Error),
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        match *self {
-            Error::IoError(ref e) => Display::fmt(&e, f),
-            Error::JsonError(ref e) => Display::fmt(&e, f),
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::IoError(e) => Display::fmt(e, f),
+            Error::JsonError(e) => Display::fmt(e, f),
         }
     }
 }
 
-impl From<::std::io::Error> for Error {
-    fn from(err: ::std::io::Error) -> Error {
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Error {
         Error::IoError(err)
     }
 }
