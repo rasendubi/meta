@@ -3,6 +3,7 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Insets, Size, Vec2};
 
+#[derive(Debug)]
 pub struct Inset<T> {
     child: T,
     insets: Insets,

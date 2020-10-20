@@ -7,6 +7,7 @@ use druid_shell::kurbo::{Size, Vec2};
 /// to scroll its child and add decorations, etc.
 ///
 /// Takes as little space as possible.
+#[derive(Debug)]
 pub struct Scrollable {
     id: SubscriptionId,
     offset: Vec2,

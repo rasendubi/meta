@@ -3,6 +3,7 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Size, Vec2};
 
+#[derive(Debug)]
 pub struct Column<T> {
     children: Vec<T>,
 }

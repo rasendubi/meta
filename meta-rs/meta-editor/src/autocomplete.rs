@@ -7,6 +7,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use meta_gui::widgets::{Background, Column, Inset, List, Text};
 use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 
+#[derive(Debug)]
 pub struct Autocomplete<T> {
     id: SubscriptionId,
     candidates: Vec<(T, String)>,
@@ -15,6 +16,7 @@ pub struct Autocomplete<T> {
     input: String,
 }
 
+#[derive(Debug)]
 pub enum AutocompleteEvent<T> {
     Close(Option<(T, String)>),
     InputChanged(String),

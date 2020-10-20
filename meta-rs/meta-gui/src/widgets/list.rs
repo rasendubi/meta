@@ -9,6 +9,7 @@ pub enum Direction {
     Vertical,
 }
 
+#[derive(Debug)]
 pub struct List<I> {
     iter: I,
     direction: Direction,

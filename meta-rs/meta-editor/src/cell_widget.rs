@@ -51,7 +51,7 @@ impl<'a> Layout for CellWidget<'a> {
         let size = Size::new(text_size.width, text_size.height.max(min_height));
 
         match &self.1 {
-            Some(CursorPosition::Inside { cell, offset }) if cell == self.0 => {
+            Some(CursorPosition { sdoc, offset }) if sdoc == self.0 => {
                 let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
                 ctx.fill(size.to_rect(), &b);
 
@@ -67,13 +67,6 @@ impl<'a> Layout for CellWidget<'a> {
                     .point
                     .x;
                 Cursor(x, size.height).layout(ctx, constraint);
-            }
-            Some(CursorPosition::Between(_after, before)) if before == self.0 => {
-                let b = ctx.solid_brush(Color::rgba8(0, 0, 0, 20));
-                ctx.fill(size.to_rect(), &b);
-
-                ctx.replay(text_ops);
-                Cursor(0.0, size.height).layout(ctx, constraint);
             }
             _ => {
                 ctx.replay(text_ops);

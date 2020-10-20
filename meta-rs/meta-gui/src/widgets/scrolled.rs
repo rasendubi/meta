@@ -7,6 +7,7 @@ use crate::{Constraint, GuiContext, Layout};
 ///
 /// Takes at most as much space as needed for the child. Does not allow scrolling past the edges of
 /// child.
+#[derive(Debug)]
 pub struct Scrolled<'a, T> {
     scrollable: &'a mut Scrollable,
     child: T,

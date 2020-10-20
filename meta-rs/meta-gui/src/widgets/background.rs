@@ -3,6 +3,7 @@ use crate::layout::*;
 
 use druid_shell::{kurbo::Size, piet::Color};
 
+#[derive(Debug)]
 pub struct Background<T> {
     color: Color,
     child: T,

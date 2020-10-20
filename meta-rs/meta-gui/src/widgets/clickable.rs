@@ -1,17 +1,17 @@
 use crate::events::{Event, EventType};
 use crate::gui::GuiContext;
-use crate::{
-    layout::{Constraint, Layout},
-    SubscriptionId,
-};
+use crate::layout::{Constraint, Layout};
+use crate::SubscriptionId;
 
 use druid_shell::kurbo::Size;
 
-pub struct Click();
+#[derive(Debug)]
+pub struct Click;
 
 /// Stateful widget that implements clickable behavior.
 ///
 /// Takes as little space as possible.
+#[derive(Debug)]
 pub struct Clickable {
     id: SubscriptionId,
     pressed: bool,
@@ -57,7 +57,7 @@ impl Layout for Clickable {
                 }
                 Event::MouseUp(..) => {
                     if self.pressed && self.hovered {
-                        self.clicks.push(Click());
+                        self.clicks.push(Click);
                     }
                     self.pressed = false;
                 }

@@ -1,5 +1,7 @@
 mod datom;
 
+use std::fmt::{Debug, Display};
+
 use im::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +12,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct Index(HashMap<Field, HashMap<Field, HashSet<Datom>>>);
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Store {
     atoms: HashMap</* id: */ Field, Datom>,
     eav: Index,
@@ -149,6 +151,12 @@ impl<'de> Deserialize<'de> for Store {
     }
 }
 
+impl Debug for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Store").field("atoms", &self.atoms).finish()
+    }
+}
+
 impl Default for Store {
     fn default() -> Self {
         Self::new()
@@ -211,11 +219,11 @@ pub enum Error {
     JsonError(serde_json::Error),
 }
 
-impl ::std::fmt::Display for Error {
+impl Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Error::IoError(ref e) => e.fmt(f),
-            Error::JsonError(ref e) => e.fmt(f),
+            Error::IoError(ref e) => Display::fmt(&e, f),
+            Error::JsonError(ref e) => Display::fmt(&e, f),
         }
     }
 }

@@ -750,6 +750,7 @@ name = "meta-editor"
 version = "0.1.0"
 dependencies = [
  "druid-shell",
+ "either",
  "im",
  "itertools",
  "log",

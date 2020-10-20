@@ -3,6 +3,7 @@ use crate::layout::{Constraint, Layout};
 
 use druid_shell::kurbo::{Affine, Size, Vec2};
 
+#[derive(Debug)]
 pub struct Translate<T> {
     child: T,
     offset: Vec2,

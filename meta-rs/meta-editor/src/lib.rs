@@ -1,6 +1,7 @@
 mod autocomplete;
 mod cell_widget;
 mod core_layout;
+mod doc_view;
 mod editor;
 mod key;
 mod layout;

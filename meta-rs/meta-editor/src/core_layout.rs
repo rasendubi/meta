@@ -11,16 +11,15 @@ use crate::editor::Editor;
 use crate::key::KeyHandler;
 use crate::layout::*;
 
+#[derive(Debug)]
 struct EntityKeys {
     entity: Field,
 }
-
 impl EntityKeys {
     fn new(entity: Field) -> Self {
         Self { entity }
     }
 }
-
 impl KeyHandler for EntityKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
@@ -53,16 +52,15 @@ impl KeyHandler for EntityKeys {
     }
 }
 
+#[derive(Debug)]
 struct LanguageKeys {
     language: Field,
 }
-
 impl LanguageKeys {
     fn new(language: Field) -> Self {
         Self { language }
     }
 }
-
 impl KeyHandler for LanguageKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
         if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
@@ -85,6 +83,7 @@ impl KeyHandler for LanguageKeys {
     }
 }
 
+#[derive(Debug)]
 struct EntitiesKeys;
 impl KeyHandler for EntitiesKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
@@ -102,6 +101,7 @@ impl KeyHandler for EntitiesKeys {
     }
 }
 
+#[derive(Debug)]
 struct DatomsKeys;
 impl KeyHandler for DatomsKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
@@ -119,6 +119,7 @@ impl KeyHandler for DatomsKeys {
     }
 }
 
+#[derive(Debug)]
 struct DatomKeys(Field);
 impl KeyHandler for DatomKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {

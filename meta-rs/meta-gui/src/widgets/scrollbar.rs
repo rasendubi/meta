@@ -7,6 +7,7 @@ use druid_shell::{
 /// Vertical scrollbar.
 ///
 /// Takes as little space as allowed.
+#[derive(Debug)]
 pub struct Scrollbar {
     offset: f64,
     height: f64,

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use im::HashSet;
 use log::warn;
 use unicode_segmentation::UnicodeSegmentation;
@@ -8,6 +10,7 @@ use meta_store::{Datom, Field};
 use crate::editor::{CursorPosition, Editor};
 use crate::key::KeyHandler;
 
+#[derive(Debug)]
 pub enum DocMeta {
     Id(Vec<Field>),
     KeyHandler(Box<dyn KeyHandler>),
@@ -300,21 +303,6 @@ where
     }
 }
 
-fn find_sdoc_cell<T, M>(
-    sdoc: &[Vec<SimpleDoc<T, M>>],
-    rdoc: &RichDocRef<T, M>,
-) -> Option<SimpleDoc<T, M>> {
-    for row in sdoc {
-        for cell in row {
-            if cell.rich_doc() == rdoc {
-                return Some(cell.clone());
-            }
-        }
-    }
-
-    None
-}
-
 pub fn goto_cell_id(editor: &mut Editor, id: &[Field]) {
     if let Some(doc) = find_id(editor.doc(), id).and_then(|doc| {
         find_cell(
@@ -327,8 +315,8 @@ pub fn goto_cell_id(editor: &mut Editor, id: &[Field]) {
             },
         )
     }) {
-        if let Some(cell) = find_sdoc_cell(editor.sdoc(), doc) {
-            editor.set_cursor(Some(CursorPosition::Inside { cell, offset: 0 }));
+        if let Some(sdoc) = editor.rdoc_to_sdoc(doc).cloned() {
+            editor.set_cursor(Some(CursorPosition { sdoc, offset: 0 }));
         }
     } else {
         warn!("cell with id {:?} not found", id);

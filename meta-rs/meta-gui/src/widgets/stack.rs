@@ -6,6 +6,7 @@ use druid_shell::kurbo::Size;
 /// Stack layout.
 ///
 /// Draws children on top of each other. Has the size of the largest child.
+#[derive(Debug)]
 pub struct Stack<I> {
     iter: I,
 }

@@ -3,6 +3,7 @@ use crate::layout::*;
 
 use druid_shell::kurbo::{Affine, Size};
 
+#[derive(Debug)]
 pub struct Center<T> {
     child: T,
 }

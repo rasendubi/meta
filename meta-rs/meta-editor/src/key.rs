@@ -1,11 +1,13 @@
-use std::{fs::File, io::BufWriter};
+use std::{fmt::Debug, fs::File, io::BufWriter};
 
 use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
 
 use crate::core_layout::{core_layout_datoms, core_layout_entities, core_layout_languages};
 use crate::editor::Editor;
 
-pub trait KeyHandler {
+// TODO: we use KeyHandler as Box<dyn KeyHandler> in the rest of the editor. The Rust does not allow
+// multiple traits (e.g., Box<dyn KeyHandler + Debug>), so we stick Debug in here.
+pub trait KeyHandler: Debug {
     /// Return `true` if key was successfully handled.
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool;
 }
@@ -56,10 +58,6 @@ impl KeyHandler for GlobalKeys {
             return true;
         }
 
-        if HotKey::new(None, KeyCode::Escape).matches(key) {
-            editor.escape();
-            return true;
-        }
         if HotKey::new(None, KeyCode::Backspace).matches(key) {
             editor.backspace();
             return true;
