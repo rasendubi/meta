@@ -331,8 +331,9 @@ pub fn core_layout_languages(store: &Store) -> RDoc {
     concat(
         languages
             .iter()
+            .sorted()
             .map(|l| core_layout_language(&core, &l.entity))
-            .intersperse_with(linebreak),
+            .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
     )
 }
 
