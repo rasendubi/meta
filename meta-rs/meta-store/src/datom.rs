@@ -1,4 +1,4 @@
-use std::{result::Result, fmt::Debug};
+use std::{fmt::Debug, result::Result};
 
 use cuid::cuid;
 use serde::de::{Deserialize, Deserializer};
