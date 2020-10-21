@@ -46,6 +46,7 @@ impl KeyHandler for EntityKeys {
                     store.remove_datom(&datom);
                 }
             });
+            return true;
         }
 
         false
@@ -129,6 +130,7 @@ impl KeyHandler for DatomKeys {
                     store.remove_datom(&datom);
                 }
             });
+            return true;
         }
 
         false

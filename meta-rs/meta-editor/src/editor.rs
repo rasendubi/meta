@@ -180,20 +180,23 @@ impl Editor {
         };
 
         let doc = self.doc().clone();
-        let handlers = doc
-            .follow_path(path)
-            .filter_map(|x| x.ok())
-            .filter_map(|x| x.as_meta().and_then(|m| m.key_handler()))
-            .collect::<Vec<_>>();
+
+        let global_keys = GlobalKeys;
+        let mut handlers = vec![&global_keys as &dyn KeyHandler];
+        handlers.extend(
+            doc.follow_path(path)
+                .filter_map(|x| x.ok())
+                .filter_map(|x| x.as_meta().and_then(|m| m.key_handler())),
+        );
+        let handlers = handlers;
+
+        trace!(target: "keys", "handlers: {:?}", handlers);
         for h in handlers.into_iter().rev() {
             if h.handle_key(key, self) {
+                trace!(target: "keys", "found key in {:?}", h);
                 self.try_adjust_scroll = true;
                 return;
             }
-        }
-
-        if GlobalKeys.handle_key(key, self) {
-            self.try_adjust_scroll = true;
         }
     }
 
