@@ -42,6 +42,7 @@ pub struct Editor {
     store: Store,
     doc_view: DocView,
     cursor: Option<CursorPosition>,
+    try_adjust_scroll: bool,
     scroll: Scrollable,
     autocomplete: Option<Translate<Autocomplete<Field>>>,
     layout_fn: fn(&Store) -> RDoc,
@@ -58,6 +59,7 @@ impl Editor {
             store,
             doc_view,
             cursor,
+            try_adjust_scroll: true,
             scroll: Scrollable::new(SubscriptionId::new()),
             autocomplete: None,
             layout_fn,
@@ -92,6 +94,7 @@ impl Editor {
             );
         }
         self.cursor = cursor;
+        self.try_adjust_scroll = true;
     }
 
     pub fn set_layout_fn(&mut self, f: fn(&Store) -> RDoc) {
@@ -184,11 +187,14 @@ impl Editor {
             .collect::<Vec<_>>();
         for h in handlers.into_iter().rev() {
             if h.handle_key(key, self) {
+                self.try_adjust_scroll = true;
                 return;
             }
         }
 
-        GlobalKeys.handle_key(key, self);
+        if GlobalKeys.handle_key(key, self) {
+            self.try_adjust_scroll = true;
+        }
     }
 
     pub fn self_insert(&mut self, text: &str) -> bool {
@@ -412,6 +418,47 @@ impl Editor {
 impl Layout for Editor {
     fn layout(&mut self, ctx: &mut GuiContext, constraint: Constraint) -> Size {
         ctx.clear(Color::WHITE);
+
+        if self.try_adjust_scroll {
+            trace!(target: "scroll", "adjusting scroll");
+            if let Some(CursorPosition { sdoc, offset: _ }) = &self.cursor {
+                if let Some(pos) = self.current_position() {
+                    let scrolloff = 24.0;
+
+                    let offset: Vec2 =
+                        Self::cell_position_to_screen_offset(pos) + Vec2::new(10.0, 10.0);
+                    let cell_rect = Rect::from_origin_size(
+                        offset.to_point(),
+                        Size::new(6.0 * sdoc.width() as f64, 12.0),
+                    )
+                    .inset(scrolloff);
+
+                    let scroll_offset = self.scroll.offset();
+                    let screen_rect =
+                        Rect::from_origin_size(scroll_offset.to_point(), ctx.window_size());
+
+                    let mut target_rect = screen_rect;
+                    if cell_rect.x1 > target_rect.x1 {
+                        target_rect = target_rect + Vec2::new(cell_rect.x1 - target_rect.x1, 0.0);
+                    }
+                    if cell_rect.x0 < target_rect.x0 {
+                        target_rect = target_rect - Vec2::new(target_rect.x0 - cell_rect.x0, 0.0);
+                    }
+                    if cell_rect.y1 > target_rect.y1 {
+                        target_rect = target_rect + Vec2::new(0.0, cell_rect.y1 - target_rect.y1);
+                    }
+                    if cell_rect.y0 < target_rect.y0 {
+                        target_rect = target_rect - Vec2::new(0.0, target_rect.y0 - cell_rect.y0);
+                    }
+
+                    let target_scroll = target_rect.origin().to_vec2();
+                    trace!(target: "scroll", "current scroll: {:?}, target scroll: {:?}", scroll_offset, target_scroll);
+                    self.scroll.set_offset(target_scroll);
+                }
+            }
+
+            self.try_adjust_scroll = false;
+        }
 
         let cursor = &self.cursor;
         let scroll = &mut self.scroll;

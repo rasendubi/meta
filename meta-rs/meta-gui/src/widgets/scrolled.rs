@@ -50,6 +50,14 @@ where
             );
         });
 
+        if offset.x < 0.0 {
+            self.scrollable.set_offset(Vec2::new(0.0, offset.y));
+            ctx.invalidate();
+        } else if size.height - offset.x < widget_size.width {
+            self.scrollable
+                .set_offset(Vec2::new(size.width - widget_size.width, offset.y));
+            ctx.invalidate();
+        }
         if offset.y < 0.0 {
             self.scrollable.set_offset(Vec2::new(offset.x, 0.0));
             ctx.invalidate();
