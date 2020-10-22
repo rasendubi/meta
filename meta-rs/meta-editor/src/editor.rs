@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use druid_shell::kurbo::{Insets, Rect, Size, Vec2};
+use druid_shell::kurbo::{Insets, Point, Rect, Size, Vec2};
 use druid_shell::piet::Color;
-use druid_shell::KeyEvent;
+use druid_shell::{KeyEvent, MouseEvent};
 use im::HashSet;
 use log::{debug, log_enabled, trace, Level};
 use unicode_segmentation::UnicodeSegmentation;
@@ -198,6 +198,13 @@ impl Editor {
                 return;
             }
         }
+    }
+
+    fn handle_mouse(&mut self, mouse: MouseEvent) {
+        let inset: Vec2 = (10.0, 10.0).into();
+        let pos = Self::screen_offset_to_position(mouse.pos - inset + self.scroll.offset());
+        let cursor = self.cell_position_to_cursor(pos);
+        self.set_cursor(cursor);
     }
 
     pub fn self_insert(&mut self, text: &str) -> bool {
@@ -404,6 +411,16 @@ impl Editor {
         Vec2::new(x_offset, y_offset)
     }
 
+    fn screen_offset_to_position(point: Point) -> CellPosition {
+        let Point { x, y } = point;
+        let char_width = 6.0;
+        let char_height = 12.0;
+        CellPosition::new(
+            (y / char_height) as usize,
+            (x / char_width).round() as usize,
+        )
+    }
+
     pub fn store(&self) -> &Store {
         &self.store
     }
@@ -515,8 +532,8 @@ impl Layout for Editor {
         ctx.grab_focus(self.id);
         ctx.subscribe(
             self.id,
-            Rect::ZERO,
-            EventType::FOCUS | EventType::KEY_DOWN,
+            ctx.window_size().to_rect(),
+            EventType::FOCUS | EventType::KEY_DOWN | EventType::MOUSE_DOWN,
             false,
         );
 
@@ -525,6 +542,7 @@ impl Layout for Editor {
             #[allow(clippy::single_match)]
             match x {
                 Event::KeyDown(key) => self.handle_key(key),
+                Event::MouseDown(mouse) => self.handle_mouse(mouse),
                 _ => {}
             }
             ctx.invalidate();
