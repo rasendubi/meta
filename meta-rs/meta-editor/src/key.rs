@@ -66,9 +66,7 @@ impl KeyHandler for GlobalKeys {
             editor.delete();
             return true;
         }
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key)
-            || HotKey::new(None, KeyCode::Tab).matches(key)
-        {
+        if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
             editor.complete("");
             return true;
         }
@@ -78,16 +76,20 @@ impl KeyHandler for GlobalKeys {
             let f = File::create("store.meta").unwrap();
             let writer = BufWriter::new(f);
             serde_json::to_writer_pretty(writer, store).unwrap();
+            return true;
         }
 
         if HotKey::new(RawMods::Alt, KeyCode::Key1).matches(key) {
             editor.set_layout_fn(core_layout_datoms);
+            return true;
         }
         if HotKey::new(RawMods::Alt, KeyCode::Key2).matches(key) {
             editor.set_layout_fn(core_layout_entities);
+            return true;
         }
         if HotKey::new(RawMods::Alt, KeyCode::Key3).matches(key) {
             editor.set_layout_fn(core_layout_languages);
+            return true;
         }
 
         false
