@@ -1,6 +1,6 @@
 use druid_shell::kurbo::{Insets, Size};
 use druid_shell::piet::Color;
-use druid_shell::{HotKey, KeyCode, RawMods};
+use druid_shell::{HotKey, KeyCode, SysMods};
 use log::trace;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -73,14 +73,14 @@ where
                         self.events.push(AutocompleteEvent::Close(
                             self.candidates.get(self.selection).cloned(),
                         ));
-                    } else if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key)
+                    } else if HotKey::new(SysMods::Cmd, KeyCode::KeyN).matches(key)
                         || HotKey::new(None, KeyCode::ArrowDown).matches(key)
                         || HotKey::new(None, KeyCode::Tab).matches(key)
                     {
                         self.selection = (self.selection + 1) % self.candidates.len();
-                    } else if HotKey::new(RawMods::Ctrl, KeyCode::KeyP).matches(key)
+                    } else if HotKey::new(SysMods::Cmd, KeyCode::KeyP).matches(key)
                         || HotKey::new(None, KeyCode::ArrowUp).matches(key)
-                        || HotKey::new(RawMods::Shift, KeyCode::Tab).matches(key)
+                        || HotKey::new(SysMods::Shift, KeyCode::Tab).matches(key)
                     {
                         self.selection = self.selection.saturating_sub(1);
                     } else if HotKey::new(None, KeyCode::Backspace).matches(key) {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
+use druid_shell::{HotKey, KeyCode, KeyEvent, SysMods};
 use im::HashSet;
 use itertools::Itertools;
 
@@ -22,7 +22,7 @@ impl EntityKeys {
 }
 impl KeyHandler for EntityKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
-        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
             let id = Field::new_id();
             editor.with_store(|store| {
                 store.add_datom(&Datom::new(
@@ -37,7 +37,7 @@ impl KeyHandler for EntityKeys {
             return true;
         }
 
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyD).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::KeyD).matches(key) {
             editor.with_store(|store| {
                 let datoms = store.eav1(&self.entity).map_or_else(HashSet::new, |attrs| {
                     HashSet::unions(attrs.values().cloned())
@@ -64,7 +64,7 @@ impl LanguageKeys {
 }
 impl KeyHandler for LanguageKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
-        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
             let entity = Field::new_id();
 
             editor.with_store(|store| {
@@ -88,7 +88,7 @@ impl KeyHandler for LanguageKeys {
 struct EntitiesKeys;
 impl KeyHandler for EntitiesKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
-        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
             let entity = Field::new_id();
             editor.with_store(|store| {
                 store.add_datom(&Datom::eav(entity.clone(), "".into(), "".into()))
@@ -106,7 +106,7 @@ impl KeyHandler for EntitiesKeys {
 struct DatomsKeys;
 impl KeyHandler for DatomsKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
-        if HotKey::new(RawMods::Ctrl, KeyCode::Return).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
             let id = Field::new_id();
             editor.with_store(|store| {
                 store.add_datom(&Datom::new(id.clone(), "".into(), "".into(), "".into()))
@@ -124,7 +124,7 @@ impl KeyHandler for DatomsKeys {
 struct DatomKeys(Field);
 impl KeyHandler for DatomKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut Editor) -> bool {
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyD).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::KeyD).matches(key) {
             editor.with_store(|store| {
                 if let Some(datom) = store.atoms().get(&self.0).cloned() {
                     store.remove_datom(&datom);

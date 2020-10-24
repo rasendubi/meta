@@ -1,6 +1,6 @@
 use std::{fmt::Debug, fs::File, io::BufWriter};
 
-use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods};
+use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods, SysMods};
 
 use crate::core_layout::{core_layout_datoms, core_layout_entities, core_layout_languages};
 use crate::editor::Editor;
@@ -34,25 +34,25 @@ impl KeyHandler for GlobalKeys {
         }
 
         if HotKey::new(None, KeyCode::ArrowLeft).matches(key)
-            || HotKey::new(RawMods::Ctrl, KeyCode::KeyH).matches(key)
+            || HotKey::new(SysMods::Cmd, KeyCode::KeyH).matches(key)
         {
             editor.move_cursor(0, -1);
             return true;
         }
         if HotKey::new(None, KeyCode::ArrowUp).matches(key)
-            || HotKey::new(RawMods::Ctrl, KeyCode::KeyJ).matches(key)
+            || HotKey::new(SysMods::Cmd, KeyCode::KeyJ).matches(key)
         {
             editor.move_cursor(-1, 0);
             return true;
         }
         if HotKey::new(None, KeyCode::ArrowDown).matches(key)
-            || HotKey::new(RawMods::Ctrl, KeyCode::KeyK).matches(key)
+            || HotKey::new(SysMods::Cmd, KeyCode::KeyK).matches(key)
         {
             editor.move_cursor(1, 0);
             return true;
         }
         if HotKey::new(None, KeyCode::ArrowRight).matches(key)
-            || HotKey::new(RawMods::Ctrl, KeyCode::KeyL).matches(key)
+            || HotKey::new(SysMods::Cmd, KeyCode::KeyL).matches(key)
         {
             editor.move_cursor(0, 1);
             return true;
@@ -66,12 +66,12 @@ impl KeyHandler for GlobalKeys {
             editor.delete();
             return true;
         }
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyN).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::KeyN).matches(key) {
             editor.complete("");
             return true;
         }
 
-        if HotKey::new(RawMods::Ctrl, KeyCode::KeyS).matches(key) {
+        if HotKey::new(SysMods::Cmd, KeyCode::KeyS).matches(key) {
             let store = editor.store();
             let f = File::create("store.meta").unwrap();
             let writer = BufWriter::new(f);
