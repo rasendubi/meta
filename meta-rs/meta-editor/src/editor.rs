@@ -4,6 +4,7 @@ use druid_shell::kurbo::{Insets, Point, Rect, Size, Vec2};
 use druid_shell::piet::Color;
 use druid_shell::{KeyEvent, MouseEvent};
 use im::HashSet;
+use itertools::Itertools;
 use log::{debug, log_enabled, trace, Level};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -355,7 +356,7 @@ impl Editor {
 
                     let input = input.to_lowercase();
 
-                    let mut candidates = candidates
+                    let candidates = candidates
                         .iter()
                         .map(|id| {
                             (
@@ -365,12 +366,11 @@ impl Editor {
                                     .to_string(),
                             )
                         })
-                        .filter(|(i, s)| {
-                            i.as_ref().contains(&input) || s.to_lowercase().contains(&input)
-                        })
+                        .filter_map(|(id, s)| s.to_lowercase().find(&input).map(|i| (i, s, id)))
+                        .sorted()
+                        .map(|(_i, s, id)| (id, s))
                         .collect::<Vec<_>>();
 
-                    candidates.sort_unstable();
                     return candidates;
                 }
             }
