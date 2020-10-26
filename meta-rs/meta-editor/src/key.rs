@@ -58,6 +58,15 @@ impl KeyHandler for GlobalKeys {
             return true;
         }
 
+        if HotKey::new(None, KeyCode::Tab).matches(key) {
+            editor.goto_next_editable_cell();
+            return true;
+        }
+        if HotKey::new(SysMods::Shift, KeyCode::Tab).matches(key) {
+            editor.goto_prev_editable_cell();
+            return true;
+        }
+
         if HotKey::new(None, KeyCode::Backspace).matches(key) {
             editor.backspace();
             return true;

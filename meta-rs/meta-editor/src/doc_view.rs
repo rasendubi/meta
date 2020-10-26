@@ -65,6 +65,18 @@ impl DocView {
         self.positions.get(sdoc)
     }
 
+    pub fn find_sdoc(&self, sdoc: &SDoc) -> Option<(usize, usize)> {
+        for (i, row) in self.layout.iter().enumerate() {
+            for (j, s) in row.iter().enumerate() {
+                if s == sdoc {
+                    return Some((i, j));
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn cell_position_to_cursor(&self, pos: CellPosition) -> Option<CursorPosition> {
         let CellPosition { row, col } = pos;
         self.layout.get(row).and_then(|r| {

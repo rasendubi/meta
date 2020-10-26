@@ -73,6 +73,13 @@ impl<T, M> SimpleDoc<T, M> {
             rich_doc,
         })
     }
+
+    pub fn as_cell(&self) -> Option<&Cell<T>> {
+        match self.kind() {
+            SimpleDocKind::Cell(cell) => Some(cell),
+            SimpleDocKind::Linebreak { indent_width: _ } => None,
+        }
+    }
 }
 
 impl<T, M> PartialEq for SimpleDoc<T, M> {
