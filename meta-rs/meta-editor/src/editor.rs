@@ -177,11 +177,10 @@ impl Editor {
                 .find_map(|(row_id, row)| {
                     let row = if row_id == 0 { &row[i + 1..] } else { &row[..] };
                     row.iter().find(|sdoc| {
-                        sdoc.as_cell()
-                            .map_or(false, |cell| match cell.payload.class {
-                                CellClass::Reference(_, _, _) | CellClass::Editable(_) => true,
-                                _ => false,
-                            })
+                        sdoc.as_cell().map_or(false, |cell| {
+                            matches!(cell.payload.class,
+                                CellClass::Reference(_, _, _) | CellClass::Editable(_))
+                        })
                     })
                 });
 
@@ -206,11 +205,10 @@ impl Editor {
                 .find_map(|(row_id, row)| {
                     let row = if row_id == 0 { &row[..i] } else { &row[..] };
                     row.iter().rev().find(|sdoc| {
-                        sdoc.as_cell()
-                            .map_or(false, |cell| match cell.payload.class {
-                                CellClass::Reference(_, _, _) | CellClass::Editable(_) => true,
-                                _ => false,
-                            })
+                        sdoc.as_cell().map_or(false, |cell| {
+                            matches!(cell.payload.class,
+                                CellClass::Reference(_, _, _) | CellClass::Editable(_))
+                        })
                     })
                 });
 
