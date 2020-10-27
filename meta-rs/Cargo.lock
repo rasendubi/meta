@@ -769,6 +769,7 @@ dependencies = [
  "im",
  "meta-core",
  "meta-store",
+ "serde_json",
 ]
 
 [[package]]

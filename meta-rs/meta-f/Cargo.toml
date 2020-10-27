@@ -11,3 +11,6 @@ im = "15.0.0"
 
 meta-store = { path = "../meta-store" }
 meta-core = { path = "../meta-core" }
+
+[dev-dependencies]
+serde_json = "1.0.57"
