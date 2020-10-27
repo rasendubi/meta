@@ -763,6 +763,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "meta-f"
+version = "0.1.0"
+dependencies = [
+ "im",
+ "meta-core",
+ "meta-store",
+]
+
+[[package]]
 name = "meta-gui"
 version = "0.1.0"
 dependencies = [

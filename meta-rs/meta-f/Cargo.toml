@@ -1,0 +1,13 @@
+[package]
+name = "meta-f"
+version = "0.1.0"
+authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+im = "15.0.0"
+
+meta-store = { path = "../meta-store" }
+meta-core = { path = "../meta-core" }
