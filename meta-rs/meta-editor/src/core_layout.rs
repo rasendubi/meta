@@ -250,8 +250,13 @@ pub fn core_layout_entities(store: &Store) -> RDoc {
         Box::new(EntitiesKeys),
         concat(
             entities
-                .map(|e| with_id(vec![e.clone()], core_layout_entity(&core, e)))
-                .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
+                .map(|e| {
+                    concat(vec![
+                        with_id(vec![e.clone()], core_layout_entity(&core, e)),
+                        linebreak(),
+                    ])
+                })
+                .intersperse_with(linebreak),
         ),
     )
 }
@@ -287,8 +292,12 @@ pub fn core_layout_datoms(store: &Store) -> RDoc {
                 .atoms()
                 .values()
                 .sorted_by_key(|d| &d.id)
-                .map(|d| with_id(vec![d.id.clone()], core_layout_datom(&core, d)))
-                .intersperse_with(linebreak),
+                .map(|d| {
+                    concat(vec![
+                        with_id(vec![d.id.clone()], core_layout_datom(&core, d)),
+                        linebreak(),
+                    ])
+                }),
         ),
     )
 }
@@ -312,13 +321,16 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
                 entities
                     .iter()
                     .map(|e| {
-                        with_id(
-                            vec![id.clone(), e.value.clone()],
-                            core_layout_entity(core, &e.value),
-                        )
-                        .with_key(e.value.to_string())
+                        concat(vec![
+                            with_id(
+                                vec![id.clone(), e.value.clone()],
+                                core_layout_entity(core, &e.value),
+                            )
+                            .with_key(e.value.to_string()),
+                            linebreak(),
+                        ])
                     })
-                    .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
+                    .intersperse_with(linebreak),
             ),
         ]),
     )
@@ -335,7 +347,7 @@ pub fn core_layout_languages(store: &Store) -> RDoc {
             .iter()
             .sorted()
             .map(|l| core_layout_language(&core, &l.entity))
-            .intersperse_with(|| concat(vec![linebreak(), linebreak()])),
+            .intersperse_with(linebreak),
     )
 }
 
