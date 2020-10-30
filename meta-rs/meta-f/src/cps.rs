@@ -114,7 +114,7 @@ pub(crate) fn free_variables(exp: &Exp) -> HashSet<Var> {
 }
 
 pub(crate) fn alpha_convert(map: &HashMap<Var, Var>, exp: &Rc<Exp>) -> Rc<Exp> {
-    fn alpha_convert_es(map: &HashMap<Var, Var>, es: &Box<[Rc<Exp>]>) -> Box<[Rc<Exp>]> {
+    fn alpha_convert_es(map: &HashMap<Var, Var>, es: &[Rc<Exp>]) -> Box<[Rc<Exp>]> {
         es.iter().map(|x| alpha_convert(map, x)).collect()
     }
     fn alpha_convert_var(map: &HashMap<Var, Var>, var: Var) -> Var {

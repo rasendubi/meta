@@ -130,20 +130,24 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
             Rc::new(Exp::App(Value::Label(lifted_fn.0), args)),
             |exp, (arg, arg_var)| {
                 Rc::new(if let Some(w) = fn_to_wrapper.get(arg) {
-                    let offset = closure_format.iter().position(|v| v == w).expect(&format!(
-                        "can't find function {:?} in closure {:?}",
-                        w, closure_format
-                    )) as isize
+                    let offset = closure_format
+                        .iter()
+                        .position(|v| v == w)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "can't find function {:?} in closure {:?}",
+                                w, closure_format
+                            )
+                        }) as isize
                         - my_offset;
                     Exp::Offset(offset, Value::Var(closure_var), arg_var, exp)
                 } else {
                     let offset = closure_format
                         .iter()
                         .position(|v| v == arg)
-                        .expect(&format!(
-                            "can't find var {:?} in closure {:?}",
-                            arg, closure_format
-                        )) as isize
+                        .unwrap_or_else(|| {
+                            panic!("can't find var {:?} in closure {:?}", arg, closure_format)
+                        }) as isize
                         - my_offset;
                     Exp::Select(offset, Value::Var(closure_var), arg_var, exp)
                 })
@@ -204,9 +208,7 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
     let mut map = HashMap::new();
     lift_functions(gen, &mut fns, &mut map, exp);
 
-    let result = Rc::new(Exp::Fix(fns.into_boxed_slice(), patch_exp(gen, &map, &exp)));
-
-    result
+    Rc::new(Exp::Fix(fns.into_boxed_slice(), patch_exp(gen, &map, &exp)))
 }
 
 #[cfg(test)]
