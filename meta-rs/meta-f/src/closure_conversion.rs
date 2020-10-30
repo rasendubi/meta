@@ -7,14 +7,21 @@ use crate::cps::*;
 pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
     fn lift_functions(
         gen: &mut VarGen,
-        result: &mut Vec<FnDef>,
-        result_map: &mut HashMap<Var, Rc<[Value]>>,
+        lifted_fns: &mut Vec<FnDef>,
+        wrapper_fns: &mut Vec<FnDef>,
+        closure_formats: &mut HashMap<Var, Rc<[Value]>>,
         exp: &Exp,
     ) {
         match exp {
-            Exp::Record(_vals, _var, e) => lift_functions(gen, result, result_map, e),
-            Exp::Select(_i, _val, _var, e) => lift_functions(gen, result, result_map, e),
-            Exp::Offset(_i, _val, _var, e) => lift_functions(gen, result, result_map, e),
+            Exp::Record(_vals, _var, e) => {
+                lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)
+            }
+            Exp::Select(_i, _val, _var, e) => {
+                lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)
+            }
+            Exp::Offset(_i, _val, _var, e) => {
+                lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)
+            }
             Exp::App(_f, _vals) => {}
             Exp::Fix(fns, e) => {
                 let fn_vars = fns.iter().map(|f| f.0).collect::<Vec<Var>>();
@@ -55,20 +62,20 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
                         &*extra_args,
                     );
 
-                    result.push(lifted_fn);
-                    result.push(wrapper_fn);
+                    lifted_fns.push(lifted_fn);
+                    wrapper_fns.push(wrapper_fn);
 
-                    result_map.insert(f.0, closure_build_format.clone());
+                    closure_formats.insert(f.0, closure_build_format.clone());
                 }
 
-                lift_functions(gen, result, result_map, e);
+                lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e);
             }
             Exp::Switch(_val, es) => es
                 .iter()
-                .for_each(|e| lift_functions(gen, result, result_map, e)),
+                .for_each(|e| lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)),
             Exp::Primop(_op, _ins, _outs, es) => es
                 .iter()
-                .for_each(|e| lift_functions(gen, result, result_map, e)),
+                .for_each(|e| lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)),
         }
     }
 
@@ -157,8 +164,12 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
         FnDef(var, my_params, body)
     }
 
-    fn patch_exp(gen: &mut VarGen, result_map: &HashMap<Var, Rc<[Value]>>, e: &Exp) -> Rc<Exp> {
-        let mut patch = |e: &Rc<Exp>| patch_exp(gen, result_map, e);
+    fn patch_exp(
+        gen: &mut VarGen,
+        closure_formats: &HashMap<Var, Rc<[Value]>>,
+        e: &Exp,
+    ) -> Rc<Exp> {
+        let mut patch = |e: &Rc<Exp>| patch_exp(gen, closure_formats, e);
         Rc::new(match e {
             Exp::Record(vals, var, e) => Exp::Record(vals.clone(), *var, patch(e)),
             Exp::Select(i, val, var, e) => Exp::Select(*i, val.clone(), *var, patch(e)),
@@ -178,7 +189,7 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
             Exp::Fix(fns, e) => {
                 let next_e = patch(e);
                 if let Some(f) = fns.first() {
-                    let closure_format = result_map
+                    let closure_format = closure_formats
                         .get(&f.0)
                         .expect("can't find closure format for function");
 
@@ -204,9 +215,17 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
         })
     }
 
-    let mut fns = Vec::new();
+    let mut lifted_fns = Vec::new();
+    let mut wrapper_fns = Vec::new();
     let mut map = HashMap::new();
-    lift_functions(gen, &mut fns, &mut map, exp);
+    lift_functions(gen, &mut lifted_fns, &mut wrapper_fns, &mut map, exp);
+
+    let mut fns = lifted_fns
+        .into_iter()
+        .map(|FnDef(f, params, e)| FnDef(f, params, patch_exp(gen, &map, &e)))
+        .collect::<Vec<_>>();
+    // wrapper functions don't need patching as they always call known functions.
+    fns.extend(wrapper_fns);
 
     Rc::new(Exp::Fix(fns.into_boxed_slice(), patch_exp(gen, &map, &exp)))
 }
