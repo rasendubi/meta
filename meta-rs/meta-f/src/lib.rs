@@ -1,5 +1,7 @@
 mod bytecode;
+mod closure_conversion;
 mod compile;
+mod cps;
 mod interpret;
 mod value;
 mod vm;
