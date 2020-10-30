@@ -130,7 +130,7 @@ impl Serialize for Store {
         S: serde::Serializer,
     {
         let mut datoms = self.atoms.values().collect::<Vec<_>>();
-        datoms.sort();
+        datoms.sort_unstable();
         serializer.serialize_newtype_struct("Store", &datoms)
     }
 }

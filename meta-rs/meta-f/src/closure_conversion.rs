@@ -80,7 +80,7 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
             free_vars.remove(p);
         }
         let mut free_vars = free_vars.into_iter().collect::<Vec<_>>();
-        free_vars.sort();
+        free_vars.sort_unstable();
         let free_vars = free_vars.into_boxed_slice();
 
         let extra_vars = free_vars
