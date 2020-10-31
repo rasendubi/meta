@@ -113,7 +113,7 @@ impl Compilation {
                     let op1 = self.register_of(*op1);
                     self.chunk.write(&Instruction::Constant {
                         result: reg,
-                        constant: *i as u64,
+                        constant: (*i * 8) as u64,
                     })?;
                     self.chunk.write(&Instruction::Add {
                         result: reg,

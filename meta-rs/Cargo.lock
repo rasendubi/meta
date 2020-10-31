@@ -767,6 +767,7 @@ name = "meta-f"
 version = "0.1.0"
 dependencies = [
  "im",
+ "log",
  "meta-core",
  "meta-store",
  "serde_json",

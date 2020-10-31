@@ -6,6 +6,7 @@ mod closure_conversion;
 mod cps;
 // mod interpret;
 mod cps_to_bytecode;
+mod memory;
 mod vm;
 
 // pub use interpret::interpret;
