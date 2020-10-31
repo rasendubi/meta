@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::rc::Rc;
 
 use im::{HashMap, HashSet};
@@ -31,6 +29,7 @@ pub(crate) enum Value {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub(crate) enum Primop {
+    Halt,
     Plus,
 }
 

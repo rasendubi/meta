@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use crate::cps::*;
 
-#[allow(dead_code)]
 pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
     fn lift_functions(
         gen: &mut VarGen,
