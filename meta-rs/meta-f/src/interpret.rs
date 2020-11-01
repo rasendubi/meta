@@ -1,3 +1,5 @@
+use log::trace;
+
 use meta_core::MetaCore;
 use meta_store::{Field, Store};
 
@@ -13,7 +15,9 @@ pub enum Error {
 
 pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
     let core = MetaCore::new(store);
-    let _expr = parse(&core, entry);
+    let expr = parse(&core, entry)?;
+
+    trace!("parsed: {:?}", expr);
 
     // TODO: compile
     let mut chunk = Chunk::new();

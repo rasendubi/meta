@@ -15,3 +15,5 @@ meta-core = { path = "../meta-core" }
 
 [dev-dependencies]
 serde_json = "1.0.57"
+test-env-log = "0.2.2"
+env_logger = "^0.7.1"

@@ -16,6 +16,7 @@ pub use interpret::Error;
 mod tests {
     use super::*;
     use std::io::Cursor;
+    use test_env_log::test;
 
     static STORE: &str = include_str!("../../store.meta");
 
