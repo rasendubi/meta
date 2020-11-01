@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use druid_shell::{HotKey, KeyCode, KeyEvent, SysMods};
 use im::HashSet;
 use itertools::Itertools;
@@ -307,7 +305,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
     let entities = core
         .store
         .eav2(id, &language_entity_id)
-        .map_or_else(Vec::new, |e| order(core, e));
+        .map_or_else(Vec::new, |e| core.order_datoms(e));
 
     with_key_handler(
         Box::new(LanguageKeys::new(id.clone())),
@@ -349,133 +347,4 @@ pub fn core_layout_languages(store: &Store) -> RDoc {
             .map(|l| core_layout_language(&core, &l.entity))
             .intersperse_with(linebreak),
     )
-}
-
-/// Order atoms in order determines by `after` attribute. If `after` is not specified, order by atom
-/// id.
-// Believe me or not, it's actually O(n + m*log(m)), where n is the total number of datoms and m is
-// the number of atoms without "after" attribute.
-fn order<'a, I: IntoIterator<Item = &'a Datom>>(core: &'a MetaCore, atoms: I) -> Vec<&'a Datom> {
-    let mut no_after = HashSet::new();
-    let mut next = HashMap::<&Field, HashSet<&Datom>>::new();
-    for x in atoms.into_iter() {
-        if let Some(a) = core.after(x) {
-            next.entry(a).or_insert_with(HashSet::new).insert(x);
-        } else {
-            no_after.insert(x);
-        }
-    }
-
-    // it would be much easier if Rust allowed recursive closures
-    fn traverse_atom<'a>(
-        x: &'a Datom,
-        result: &'_ mut Vec<&'a Datom>,
-        next: &HashMap<&'a Field, HashSet<&'a Datom>>,
-    ) {
-        result.push(x);
-        if let Some(next_atoms) = next.get(&x.id) {
-            for a in next_atoms.iter() {
-                traverse_atom(a, result, next);
-            }
-        }
-    }
-
-    let mut result = Vec::new();
-    for a in no_after.iter().sorted_by_key(|x| &x.id) {
-        traverse_atom(a, &mut result, &next);
-    }
-
-    result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use meta_store::Store;
-    use std::str::FromStr;
-
-    #[test]
-    fn test_order_no_after() {
-        let store = Store::from_str(
-            r#"
-              ["10", "0", "1", "2"]
-              ["11", "0", "1", "3"]
-              ["12", "0", "1", "4"]
-            "#,
-        )
-        .unwrap();
-        let core = MetaCore::new(&store);
-
-        let result = store
-            .eav2(&"0".into(), &"1".into())
-            .map_or_else(Vec::new, |x| order(&core, x));
-
-        assert_eq!(
-            vec![
-                &("10", "0", "1", "2").into(),
-                &("11", "0", "1", "3").into(),
-                &("12", "0", "1", "4").into(),
-            ] as Vec<&Datom>,
-            result
-        );
-    }
-
-    #[test]
-    fn test_order_with_after() {
-        let store = Store::from_str(
-            r#"
-              ["10", "0", "1", "2"]
-              ["11", "0", "1", "3"]
-              ["12", "0", "1", "4"]
-              ["13", "12", "16", "10"]
-              ["14", "11", "16", "12"]
-            "#,
-        )
-        .unwrap();
-        let core = MetaCore::new(&store);
-
-        let result = store
-            .eav2(&"0".into(), &"1".into())
-            .map_or_else(Vec::new, |x| order(&core, x));
-
-        assert_eq!(
-            vec![
-                &("10", "0", "1", "2").into(),
-                &("12", "0", "1", "4").into(),
-                &("11", "0", "1", "3").into(),
-            ] as Vec<&Datom>,
-            result
-        );
-    }
-
-    #[test]
-    #[ignore] // TODO: order silently drops all loops now (a after b, b after a)
-    fn test_order_with_after_loop() {
-        let store = Store::from_str(
-            r#"
-              ["10", "0", "1", "2"]
-              ["11", "0", "1", "3"]
-              ["12", "0", "1", "4"]
-              ["13", "12", "16", "10"]
-              ["14", "11", "16", "12"]
-              ["15", "10", "16", "11"]
-            "#,
-        )
-        .unwrap();
-        let core = MetaCore::new(&store);
-
-        let result = store
-            .eav2(&"0".into(), &"1".into())
-            .map_or_else(Vec::new, |x| order(&core, x));
-
-        // if loop is detected, prefer starting from the lowest id
-        assert_eq!(
-            vec![
-                &("10", "0", "1", "2").into(),
-                &("12", "0", "1", "4").into(),
-                &("11", "0", "1", "3").into(),
-            ] as Vec<&Datom>,
-            result
-        );
-    }
 }
