@@ -1,16 +1,23 @@
+use meta_core::MetaCore;
 use meta_store::{Field, Store};
 
-use crate::compile::{compile, Error as CompileError};
+use crate::bytecode::{Chunk, Instruction};
+use crate::parser::{parse, Error as ParseError};
 use crate::vm::{Error as VmError, Vm};
 
 #[derive(Debug)]
 pub enum Error {
-    CompileError(CompileError),
+    ParseError(ParseError),
     InterpretError(VmError),
 }
 
 pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
-    let chunk = compile(store, entry)?;
+    let core = MetaCore::new(store);
+    let _expr = parse(&core, entry);
+
+    // TODO: compile
+    let mut chunk = Chunk::new();
+    chunk.write(&Instruction::Halt).unwrap();
 
     let mut vm = Vm::new(chunk);
     let () = vm.run()?;
@@ -18,9 +25,9 @@ pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
     Ok(())
 }
 
-impl From<CompileError> for Error {
-    fn from(e: CompileError) -> Self {
-        Error::CompileError(e)
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Error::ParseError(e)
     }
 }
 
