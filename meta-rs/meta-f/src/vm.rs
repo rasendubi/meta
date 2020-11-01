@@ -90,7 +90,7 @@ impl Vm {
         Self {
             chunk,
             registers: Registers::new(),
-            memory: Memory::new(1024 * 1024), // 1Mb
+            memory: Memory::new(1024 * 1024 / std::mem::size_of::<Value>()), // 1Mb
         }
     }
 
@@ -311,5 +311,23 @@ mod tests {
 
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
+    }
+
+    #[test]
+    fn value_align_u64() {
+        assert_eq!(std::mem::align_of::<Value>(), std::mem::align_of::<u64>());
+    }
+
+    #[test]
+    fn value_align_f64() {
+        assert_eq!(std::mem::align_of::<Value>(), std::mem::align_of::<f64>());
+    }
+
+    #[test]
+    fn value_align_ptr() {
+        assert_eq!(
+            std::mem::align_of::<Value>(),
+            std::mem::align_of::<*mut u64>()
+        );
     }
 }

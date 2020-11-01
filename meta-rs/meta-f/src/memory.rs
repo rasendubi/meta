@@ -1,43 +1,47 @@
 use std::alloc::Layout;
+use std::mem::{align_of, size_of};
 
 use crate::vm::Value;
 
 pub(crate) struct Memory {
-    memory: *mut u8,
-    next: *mut u8,
-    limit: *mut u8,
-    size: usize,
+    memory: *mut Value,
+    next: *mut Value,
+    limit: *mut Value,
+    count: usize,
 }
 
 impl Memory {
-    pub fn new(size: usize) -> Self {
+    pub fn new(count: usize) -> Self {
         unsafe {
-            let buf = std::alloc::alloc(Layout::from_size_align(size, 8).unwrap());
+            #[allow(clippy::cast_ptr_alignment)]
+            let buf = std::alloc::alloc(Self::layout(count)) as *mut Value;
             Self {
                 memory: buf,
                 next: buf,
-                limit: buf.add(size),
-                size,
+                limit: buf.add(count),
+                count,
             }
         }
     }
 
-    pub fn allocate(&mut self, size: usize) -> *mut u64 {
-        #[allow(clippy::cast_ptr_alignment)]
-        let ptr = self.next as *mut u64;
-        self.next = unsafe { self.next.add(size) };
+    pub fn allocate_cells(&mut self, n_cells: u64) -> *mut Value {
+        let ptr = self.next;
+        self.next = unsafe { self.next.add(n_cells as usize) };
         ptr
     }
 
-    pub fn allocate_cells(&mut self, n_cells: u64) -> *mut Value {
-        self.allocate((n_cells as usize) * std::mem::size_of::<u64>()) as *mut Value
+    fn layout(count: usize) -> Layout {
+        unsafe {
+            // Layout::repeat() is nightly-only
+            Layout::from_size_align_unchecked(size_of::<Value>() * count, align_of::<Value>())
+        }
     }
 }
 
 impl Drop for Memory {
     fn drop(&mut self) {
         unsafe {
-            std::alloc::dealloc(self.memory, Layout::from_size_align(self.size, 8).unwrap());
+            std::alloc::dealloc(self.memory as *mut u8, Self::layout(self.count));
         }
     }
 }
