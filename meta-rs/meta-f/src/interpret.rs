@@ -9,7 +9,7 @@ use crate::vm::{Error as VmError, Vm};
 
 #[derive(Debug)]
 pub enum Error {
-    ParseError(ParseError),
+    ParseError(Vec<ParseError>),
     InterpretError(VmError),
 }
 
@@ -29,8 +29,8 @@ pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
     Ok(())
 }
 
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
+impl From<Vec<ParseError>> for Error {
+    fn from(e: Vec<ParseError>) -> Self {
         Error::ParseError(e)
     }
 }
