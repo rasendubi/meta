@@ -1,5 +1,7 @@
-use im::HashMap;
 use std::rc::Rc;
+
+use im::HashMap;
+use log::trace;
 
 use crate::cps::*;
 
@@ -65,6 +67,8 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
                     wrapper_fns.push(wrapper_fn);
 
                     closure_formats.insert(f.0, closure_build_format.clone());
+
+                    lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, &f.2);
                 }
 
                 lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e);
@@ -188,9 +192,9 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
             Exp::Fix(fns, e) => {
                 let next_e = patch(e);
                 if let Some(f) = fns.first() {
-                    let closure_format = closure_formats
-                        .get(&f.0)
-                        .expect("can't find closure format for function");
+                    let closure_format = closure_formats.get(&f.0).unwrap_or_else(|| {
+                        panic!("can't find closure format for function {:?}", f.0)
+                    });
 
                     let closure_var = gen.next();
                     Exp::Record(
@@ -216,17 +220,26 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
 
     let mut lifted_fns = Vec::new();
     let mut wrapper_fns = Vec::new();
-    let mut map = HashMap::new();
-    lift_functions(gen, &mut lifted_fns, &mut wrapper_fns, &mut map, exp);
+    let mut closure_formats = HashMap::new();
+    lift_functions(
+        gen,
+        &mut lifted_fns,
+        &mut wrapper_fns,
+        &mut closure_formats,
+        exp,
+    );
 
     let mut fns = lifted_fns
         .into_iter()
-        .map(|FnDef(f, params, e)| FnDef(f, params, patch_exp(gen, &map, &e)))
+        .map(|FnDef(f, params, e)| FnDef(f, params, patch_exp(gen, &closure_formats, &e)))
         .collect::<Vec<_>>();
     // wrapper functions don't need patching as they always call known functions.
     fns.extend(wrapper_fns);
 
-    Rc::new(Exp::Fix(fns.into_boxed_slice(), patch_exp(gen, &map, &exp)))
+    Rc::new(Exp::Fix(
+        fns.into_boxed_slice(),
+        patch_exp(gen, &closure_formats, &exp),
+    ))
 }
 
 #[cfg(test)]
