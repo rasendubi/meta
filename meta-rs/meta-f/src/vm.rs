@@ -1,13 +1,18 @@
-use std::{fmt::Debug, io::Cursor};
+use std::fmt::Debug;
+use std::io::Cursor;
+use std::ops::{Index, IndexMut};
 
 use log::{log_enabled, trace, Level};
 
 use crate::bytecode::{Chunk, Instruction, Reg};
 use crate::memory::Memory;
 
+#[derive(Debug)]
+pub enum Error {}
+
 pub(crate) struct Vm {
     chunk: Chunk,
-    registers: [u64; 256],
+    registers: Registers,
     memory: Memory,
 }
 
@@ -15,19 +20,76 @@ impl Debug for Vm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Vm")
             .field("chunk", &self.chunk)
-            .field("registers", &self.registers.as_ref())
+            .field("registers", &self.registers)
             .finish()
     }
 }
 
-#[derive(Debug)]
-pub enum Error {}
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub(crate) struct Value(u64);
+impl Value {
+    fn from_u64(v: u64) -> Self {
+        Self(v)
+    }
+
+    fn from_i64(v: i64) -> Self {
+        Self(v as u64)
+    }
+
+    fn from_ptr(ptr: *mut Value) -> Self {
+        Self(ptr as u64)
+    }
+
+    fn as_u64(&self) -> u64 {
+        self.0
+    }
+
+    fn as_i64(&self) -> i64 {
+        self.0 as i64
+    }
+
+    fn as_ptr(&self) -> *mut Value {
+        self.0 as *mut Value
+    }
+}
+
+struct Registers([Value; 256]);
+
+impl Registers {
+    pub fn new() -> Self {
+        Self([Value(0); 256])
+    }
+
+    pub fn swap(&mut self, reg1: Reg, reg2: Reg) {
+        self.0.swap(reg1.0 as usize, reg2.0 as usize);
+    }
+}
+
+impl Index<Reg> for Registers {
+    type Output = Value;
+
+    fn index(&self, reg: Reg) -> &Self::Output {
+        &self.0[reg.0 as usize]
+    }
+}
+
+impl IndexMut<Reg> for Registers {
+    fn index_mut(&mut self, reg: Reg) -> &mut Self::Output {
+        &mut self.0[reg.0 as usize]
+    }
+}
+
+impl Debug for Registers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self.0.as_ref(), f)
+    }
+}
 
 impl Vm {
     pub fn new(chunk: Chunk) -> Self {
         Self {
             chunk,
-            registers: [0; 256],
+            registers: Registers::new(),
             memory: Memory::new(1024 * 1024), // 1Mb
         }
     }
@@ -39,7 +101,7 @@ impl Vm {
 
         let mut cursor = Cursor::new(self.chunk.code());
         loop {
-            trace!(target: "vm::registers", "{:?}", &self.registers.as_ref());
+            trace!(target: "vm::registers", "{:?}", &self.registers);
             let position = cursor.position();
             trace!(target: "vm", "Position: {}", position);
             let instruction = Instruction::read(&mut cursor).unwrap();
@@ -53,52 +115,52 @@ impl Vm {
                     result,
                     cells_to_allocate,
                 } => {
-                    let ptr = self.memory.allocate((cells_to_allocate * 8) as usize);
-                    self.registers[result.0 as usize] = ptr as u64;
+                    let ptr = self.memory.allocate_cells(cells_to_allocate);
+                    self.registers[result] = Value::from_ptr(ptr);
                 }
                 Instruction::AllocReg {
                     result,
                     cells_to_allocate,
                 } => {
-                    let cells_to_allocate = self.registers[cells_to_allocate.0 as usize];
-                    let ptr = self.memory.allocate((cells_to_allocate * 8) as usize);
-                    self.registers[result.0 as usize] = ptr as u64;
+                    let cells_to_allocate = self.registers[cells_to_allocate].as_u64();
+                    let ptr = self.memory.allocate_cells(cells_to_allocate);
+                    self.registers[result] = Value::from_ptr(ptr);
                 }
                 Instruction::Store {
                     addr,
                     offset,
                     reg_to_store,
                 } => unsafe {
-                    let addr = self.registers[addr.0 as usize] as *mut u64;
+                    let addr = self.registers[addr].as_ptr();
                     let addr = addr.offset(offset as isize);
-                    *addr = self.registers[reg_to_store.0 as usize];
+                    *addr = self.registers[reg_to_store];
                 },
                 Instruction::StoreConst {
                     addr,
                     offset,
                     constant,
                 } => unsafe {
-                    let addr = self.registers[addr.0 as usize] as *mut u64;
+                    let addr = self.registers[addr].as_ptr();
                     let addr = addr.offset(offset as isize);
-                    *addr = constant;
+                    *addr = Value::from_u64(constant);
                 },
                 Instruction::Load {
                     result,
                     addr,
                     offset,
                 } => unsafe {
-                    let addr = self.registers[addr.0 as usize] as *const u64;
+                    let addr = self.registers[addr].as_ptr();
                     let addr = addr.offset(offset as isize);
-                    self.registers[result.0 as usize] = *addr;
+                    self.registers[result] = *addr;
                 },
                 Instruction::Constant { result, constant } => {
-                    self.registers[result.0 as usize] = constant;
+                    self.registers[result] = Value::from_u64(constant);
                 }
                 Instruction::Switch { reg: _, offsets: _ } => {
                     todo!();
                 }
                 Instruction::JumpReg { reg } => {
-                    let addr = self.registers[reg.0 as usize];
+                    let addr = self.registers[reg].as_u64();
                     cursor.set_position(addr);
                 }
                 Instruction::JumpConst { offset } => {
@@ -106,15 +168,15 @@ impl Vm {
                     cursor.set_position(addr as u64);
                 }
                 Instruction::Add { result, op1, op2 } => {
-                    self.registers[result.0 as usize] = ((self.registers[op1.0 as usize] as i64)
-                        + (self.registers[op2.0 as usize] as i64))
-                        as u64;
+                    self.registers[result] = Value::from_i64(
+                        self.registers[op1].as_i64() + self.registers[op2].as_i64(),
+                    );
                 }
                 Instruction::Move { result, from } => {
-                    self.registers[result.0 as usize] = self.registers[from.0 as usize];
+                    self.registers[result] = self.registers[from];
                 }
                 Instruction::Swap { from, to } => {
-                    self.registers.swap(from.0 as usize, to.0 as usize);
+                    self.registers.swap(from, to);
                 }
             }
         }
@@ -122,14 +184,15 @@ impl Vm {
         Ok(())
     }
 
-    fn register(&self, reg: Reg) -> u64 {
-        self.registers[reg.0 as usize]
+    fn register(&self, reg: Reg) -> Value {
+        self.registers[reg]
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cps::Value;
     use crate::{closure_conversion::closure_conversion, cps::*, cps_to_bytecode::compile};
     use std::rc::Rc;
 
@@ -162,7 +225,7 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(42, vm.register(Reg(0)));
+        assert_eq!(Value(42), vm.register(Reg(0)));
     }
 
     #[test]
@@ -193,7 +256,7 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(3, vm.register(Reg(3)));
+        assert_eq!(Value(3), vm.register(Reg(3)));
     }
 
     #[test]
