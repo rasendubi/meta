@@ -87,8 +87,12 @@ impl Compilation {
                                 constant: *v as u64,
                             })?;
                         }
-                        Value::Float(_) => {}
-                        Value::String(_) => {}
+                        Value::Float(_) => {
+                            todo!("Floats are not supported");
+                        }
+                        Value::String(_) => {
+                            todo!("Strings are not supported");
+                        }
                     }
                 }
                 self.compile_exp(e)?;
@@ -125,7 +129,33 @@ impl Compilation {
                 }
                 self.compile_exp(e)?;
             }
+
             Exp::App(f, vals) => {
+                if let Value::Var(v) = f {
+                    let reg = self.register_of(*v);
+
+                    if (reg.0 as usize) < vals.len() {
+                        // save address register from arguments
+
+                        let target = Reg(vals.len() as u8);
+                        if let Some(prev_var) = self.registers[target.0 as usize] {
+                            self.chunk.write(&Instruction::Swap {
+                                from: reg,
+                                to: target,
+                            })?;
+                            self.registers[reg.0 as usize] = Some(prev_var);
+                        } else {
+                            self.chunk.write(&Instruction::Move {
+                                result: target,
+                                from: reg,
+                            })?;
+                            self.registers[reg.0 as usize] = None;
+                        }
+
+                        self.registers[target.0 as usize] = Some(*v);
+                    }
+                }
+
                 for (reg, var) in vals.iter().enumerate().filter_map(|(i, val)| {
                     if let Value::Var(var) = val {
                         Some((Reg(i as u8), var))
@@ -146,9 +176,39 @@ impl Compilation {
                                 result: reg,
                                 from: reg_from,
                             })?;
+                            self.registers[reg_from.0 as usize] = None;
                         }
 
                         self.registers[reg.0 as usize] = Some(*var);
+                    }
+                }
+                for (reg, val) in vals
+                    .iter()
+                    .enumerate()
+                    .filter(|(_i, val)| !matches!(val, Value::Var(_)))
+                {
+                    let reg = Reg(reg as u8);
+                    match val {
+                        Value::Var(_) => panic!(),
+                        Value::Label(label) => {
+                            let pos = self.chunk.write(&Instruction::Constant {
+                                result: reg,
+                                constant: 100000 + label.0,
+                            })?;
+                            self.to_patch.insert(pos, *label);
+                        }
+                        Value::Int(i) => {
+                            self.chunk.write(&Instruction::Constant {
+                                result: reg,
+                                constant: *i as u64,
+                            })?;
+                        }
+                        Value::Float(_) => {
+                            todo!("Floats is not supported");
+                        }
+                        Value::String(_) => {
+                            todo!("Strings are not supported");
+                        }
                     }
                 }
 
