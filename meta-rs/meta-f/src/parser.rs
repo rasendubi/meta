@@ -17,28 +17,30 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub(crate) struct EntryPoint(Expr);
+pub(crate) struct EntryPoint {
+    pub expr: Expr,
+}
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub(crate) struct Identifier {
-    entry: Field,
+    pub entry: Field,
 }
 
 #[derive(Debug)]
 pub(crate) struct Binding {
-    identifier: Identifier,
-    value: Expr,
+    pub identifier: Identifier,
+    pub value: Expr,
 }
 
 #[derive(Debug)]
 pub(crate) struct FunctionParameter {
-    id: Identifier,
+    pub id: Identifier,
 }
 
 #[derive(Debug)]
 pub(crate) struct Function {
-    parameters: Vec<FunctionParameter>,
-    body: Expr,
+    pub parameters: Vec<FunctionParameter>,
+    pub body: Expr,
 }
 
 #[derive(Debug)]
@@ -128,7 +130,9 @@ impl<'a> Parser<'a> {
         self.expect_type(entry, &hashset! {entry_point})?;
 
         let expr = self.required_attribute(&entry, &entry_point_expr)?;
-        Ok(EntryPoint(self.parse_expr(&expr)?))
+        Ok(EntryPoint {
+            expr: self.parse_expr(&expr)?,
+        })
     }
 
     fn parse_expr(&mut self, entry: &Field) -> Result<Expr, ()> {

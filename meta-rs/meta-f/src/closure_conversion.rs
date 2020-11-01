@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use im::HashMap;
-use log::trace;
 
 use crate::cps::*;
 
@@ -23,7 +22,9 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
             Exp::Offset(_i, _val, _var, e) => {
                 lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e)
             }
-            Exp::App(_f, _vals) => {}
+            Exp::App(_f, _vals) => {
+                // both f and vals are atomic
+            }
             Exp::Fix(fns, e) => {
                 let fn_vars = fns.iter().map(|f| f.0).collect::<Vec<Var>>();
                 let wrappers = fns.iter().map(|_| (gen.next())).collect::<Vec<Var>>();

@@ -2,6 +2,7 @@
 
 mod bytecode;
 mod closure_conversion;
+mod compiler;
 mod cps;
 mod cps_to_bytecode;
 mod interpret;
@@ -31,11 +32,23 @@ mod tests {
         Ok(())
     }
 
+    #[ignore] // strings are not currently supported
     #[test]
     fn test_hello_world() -> std::io::Result<()> {
         let store = serde_json::from_reader(Cursor::new(STORE))?;
 
         let meta_f_test = "ckgrnm5bt000ixamakqelhqwg".into();
+
+        interpret(&store, &meta_f_test).unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_functions() -> std::io::Result<()> {
+        let store = serde_json::from_reader(Cursor::new(STORE))?;
+
+        let meta_f_test = "ckgzjkf8r0001cjmazi6gmb8x".into();
 
         interpret(&store, &meta_f_test).unwrap();
 

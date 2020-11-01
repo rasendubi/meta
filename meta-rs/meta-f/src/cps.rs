@@ -11,6 +11,10 @@ pub(crate) struct VarGen {
 }
 
 impl VarGen {
+    pub fn new(next_var: u64) -> Self {
+        Self { next_var }
+    }
+
     pub fn next(&mut self) -> Var {
         let result = Var(self.next_var);
         self.next_var += 1;
