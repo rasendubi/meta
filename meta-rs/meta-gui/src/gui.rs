@@ -213,8 +213,15 @@ impl WinHandler for Gui {
     fn paint(&mut self, piet: &mut Piet, _invalid_rect: Rect) -> bool {
         let start = Instant::now();
 
+        let mut iterations = 0;
         let mut invalid = true;
         while invalid {
+            iterations += 1;
+            if iterations > 1000 {
+                warn!("Infinite invalidation loop detected");
+                break;
+            }
+
             let iteration_start = Instant::now();
 
             let mut ctx = GuiContext::new(piet, &mut self.event_queue, self.window_size);
