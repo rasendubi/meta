@@ -568,6 +568,7 @@ impl Layout for Editor {
                         }
 
                         self.close_complete();
+                        trace!("invalidate!");
                         ctx.invalidate();
                     }
 
@@ -578,6 +579,7 @@ impl Layout for Editor {
                             .unwrap()
                             .child_mut()
                             .set_candidates(candidates);
+                        trace!("invalidate!");
                         ctx.invalidate();
                     }
                 }
@@ -600,6 +602,7 @@ impl Layout for Editor {
                 Event::MouseDown(mouse) => self.handle_mouse(mouse),
                 _ => {}
             }
+            trace!("invalidate!");
             ctx.invalidate();
         }
 

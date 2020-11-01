@@ -1,4 +1,5 @@
 use druid_shell::kurbo::{Affine, Size, Vec2};
+use log::trace;
 
 use crate::widgets::{Scrollable, Scrollbar};
 use crate::{Constraint, GuiContext, Layout};
@@ -50,20 +51,22 @@ where
             );
         });
 
-        if offset.x < 0.0 {
-            self.scrollable.set_offset(Vec2::new(0.0, offset.y));
-            ctx.invalidate();
-        } else if size.height - offset.x < widget_size.width {
-            self.scrollable
-                .set_offset(Vec2::new(size.width - widget_size.width, offset.y));
-            ctx.invalidate();
-        }
-        if offset.y < 0.0 {
-            self.scrollable.set_offset(Vec2::new(offset.x, 0.0));
-            ctx.invalidate();
-        } else if size.height - offset.y < widget_size.height {
-            self.scrollable
-                .set_offset(Vec2::new(offset.x, size.height - widget_size.height));
+        let max_x_offset = size.width - widget_size.width;
+        let max_y_offset = size.height - widget_size.height;
+        let next_offset = Vec2::new(
+            offset.x.max(0.0).min(max_x_offset),
+            offset.y.max(0.0).min(max_y_offset),
+        );
+        trace!(
+            "size: {:?}, widget_size: {:?}, offset: {:?}, next_offset: {:?}",
+            size,
+            widget_size,
+            offset,
+            next_offset
+        );
+        if next_offset != offset {
+            self.scrollable.set_offset(next_offset);
+            trace!("invalidate!");
             ctx.invalidate();
         }
 

@@ -158,6 +158,7 @@ impl<'a, 'b: 'a> GuiContext<'a, 'b> {
     /// Useful for situations when other widgets might react to the recent changes introduced by the
     /// widget.
     pub fn invalidate(&mut self) {
+        trace!("invalidate()");
         self.ops.push(Op::Invalidate);
     }
 }

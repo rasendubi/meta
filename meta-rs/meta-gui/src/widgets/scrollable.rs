@@ -1,5 +1,7 @@
-use crate::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 use druid_shell::kurbo::{Size, Vec2};
+use log::trace;
+
+use crate::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 
 /// Scrollable is a stateful widget behavior to allow scrolling other widgets and areas.
 ///
@@ -26,6 +28,7 @@ impl Scrollable {
     }
 
     pub fn set_offset(&mut self, offset: Vec2) {
+        trace!("set_offset({:?})", offset);
         self.offset = offset;
     }
 }
@@ -39,6 +42,7 @@ impl Layout for Scrollable {
                 let delta = mouse.wheel_delta;
                 self.offset += delta / 3.0;
 
+                trace!("invalidate!");
                 ctx.invalidate();
             }
         }
