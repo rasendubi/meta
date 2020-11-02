@@ -5,6 +5,7 @@ mod closure_conversion;
 mod compiler;
 mod cps;
 mod cps_to_bytecode;
+pub mod ids;
 mod interpret;
 mod memory;
 mod parser;

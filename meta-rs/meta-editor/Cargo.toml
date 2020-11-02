@@ -12,8 +12,10 @@ im = "15.0.0"
 unicode-segmentation = "1.3.0"
 serde_json = "1.0.57"
 either = "1.6.0"
+lazy_static = "1.4.0"
 
 meta-store = { path = "../meta-store" }
 meta-core = { path = "../meta-core" }
 meta-pretty = { path = "../meta-pretty" }
 meta-gui = { path = "../meta-gui" }
+meta-f = { path = "../meta-f" }

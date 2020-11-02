@@ -4,6 +4,7 @@ use druid_shell::{HotKey, KeyCode, KeyEvent, RawMods, SysMods};
 
 use crate::core_layout::{core_layout_datoms, core_layout_entities, core_layout_languages};
 use crate::editor::Editor;
+use crate::f_layout::f_layout_entries;
 
 // TODO: we use KeyHandler as Box<dyn KeyHandler> in the rest of the editor. The Rust does not allow
 // multiple traits (e.g., Box<dyn KeyHandler + Debug>), so we stick Debug in here.
@@ -98,6 +99,10 @@ impl KeyHandler for GlobalKeys {
         }
         if HotKey::new(RawMods::Alt, KeyCode::Key3).matches(key) {
             editor.set_layout_fn(core_layout_languages);
+            return true;
+        }
+        if HotKey::new(RawMods::Alt, KeyCode::Key4).matches(key) {
+            editor.set_layout_fn(f_layout_entries);
             return true;
         }
 

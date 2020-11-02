@@ -225,6 +225,10 @@ pub fn brackets(doc: RDoc) -> RDoc {
     surround(punctuation("["), punctuation("]"), doc)
 }
 
+pub fn braces(doc: RDoc) -> RDoc {
+    surround(punctuation("{"), punctuation("}"), doc)
+}
+
 pub fn quotes(doc: RDoc) -> RDoc {
     surround(punctuation("\""), punctuation("\""), doc)
 }

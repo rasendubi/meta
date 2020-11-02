@@ -3,6 +3,7 @@ mod cell_widget;
 mod core_layout;
 mod doc_view;
 mod editor;
+mod f_layout;
 mod key;
 mod layout;
 
