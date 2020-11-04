@@ -4,15 +4,15 @@ use im::HashMap;
 
 use crate::cps::Exp as CExp;
 use crate::cps::*;
-use crate::parser::{Binding, EntryPoint, Expr, Function, Identifier, Statement};
+use crate::parser::{Binding, Expr, Function, Identifier, RunTest, Statement};
 
-pub(crate) fn entry_to_cps(gen: &mut VarGen, e: &EntryPoint) -> CExp {
+pub(crate) fn entry_to_cps(gen: &mut VarGen, e: &RunTest) -> CExp {
     compile_expr(
         gen,
         HashMap::new(),
         &e.expr,
-        Box::new(|_gen: &mut _, _v| {
-            CExp::Primop(Primop::Halt, Box::new([]), Box::new([]), Box::new([]))
+        Box::new(|_gen: &mut _, v| {
+            CExp::Primop(Primop::Halt, Box::new([v]), Box::new([]), Box::new([]))
         }),
     )
 }

@@ -257,6 +257,15 @@ impl Compilation {
                 (Primop::Halt, [], [], []) => {
                     self.chunk.write(&Instruction::Halt)?;
                 }
+                (Primop::Halt, [Value::Var(v)], [], []) => {
+                    let reg = self.register_of(*v);
+                    self.chunk.write(&Instruction::HaltReg { reg })?;
+                }
+                (Primop::Halt, [Value::Int(constant)], [], []) => {
+                    self.chunk.write(&Instruction::HaltConst {
+                        constant: *constant as u64,
+                    })?;
+                }
                 (Primop::Plus, [Value::Var(op1), Value::Var(op2)], [res], [e]) => {
                     let result = self.register_for(*res);
                     self.chunk.write(&Instruction::Add {

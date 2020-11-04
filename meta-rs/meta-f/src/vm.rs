@@ -28,27 +28,27 @@ impl Debug for Vm {
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub(crate) struct Value(u64);
 impl Value {
-    fn from_u64(v: u64) -> Self {
+    pub fn from_u64(v: u64) -> Self {
         Self(v)
     }
 
-    fn from_i64(v: i64) -> Self {
+    pub fn from_i64(v: i64) -> Self {
         Self(v as u64)
     }
 
-    fn from_ptr(ptr: *mut Value) -> Self {
+    pub fn from_ptr(ptr: *mut Value) -> Self {
         Self(ptr as u64)
     }
 
-    fn as_u64(&self) -> u64 {
+    pub fn as_u64(&self) -> u64 {
         self.0
     }
 
-    fn as_i64(&self) -> i64 {
+    pub fn as_i64(&self) -> i64 {
         self.0 as i64
     }
 
-    fn as_ptr(&self) -> *mut Value {
+    pub fn as_ptr(&self) -> *mut Value {
         self.0 as *mut Value
     }
 }
@@ -94,7 +94,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
+    pub fn run(&mut self) -> Result<Option<Value>, Error> {
         if log_enabled!(target: "vm", Level::Trace) {
             self.chunk.disassemble(&mut std::io::stderr()).unwrap();
         }
@@ -109,7 +109,13 @@ impl Vm {
 
             match instruction {
                 Instruction::Halt => {
-                    break;
+                    return Ok(None);
+                }
+                Instruction::HaltReg { reg } => {
+                    return Ok(Some(self.registers[reg]));
+                }
+                Instruction::HaltConst { constant } => {
+                    return Ok(Some(Value::from_u64(constant)));
                 }
                 Instruction::AllocConst {
                     result,
@@ -180,8 +186,6 @@ impl Vm {
                 }
             }
         }
-
-        Ok(())
     }
 
     fn register(&self, reg: Reg) -> Value {

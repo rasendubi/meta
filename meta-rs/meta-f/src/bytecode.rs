@@ -13,6 +13,10 @@ pub(crate) enum OpCode {
 
     // 1B opcode
     Halt,
+    // 1B opcode, 1B register
+    HaltReg,
+    // 1B opcode | 8B const
+    HaltConst,
 
     // 1B opcode, 1B result reg, 6B cells to allocate (constant)
     AllocConst,
@@ -51,6 +55,12 @@ pub(crate) enum OpCode {
 #[derive(Debug)]
 pub(crate) enum Instruction {
     Halt,
+    HaltReg {
+        reg: Reg,
+    },
+    HaltConst {
+        constant: u64,
+    },
     AllocConst {
         result: Reg,
         cells_to_allocate: u64,
@@ -112,6 +122,15 @@ impl Instruction {
             Instruction::Halt => {
                 let instruction: u64 = OpCode::Halt as u64;
                 w.write_all(&instruction.to_ne_bytes())
+            }
+            Instruction::HaltReg { reg } => {
+                let instruction: u64 = OpCode::HaltReg as u64 | ((reg.0 as u64) << 8);
+                w.write_all(&instruction.to_ne_bytes())
+            }
+            Instruction::HaltConst { constant } => {
+                let instruction: u64 = OpCode::HaltConst as u64;
+                w.write_all(&instruction.to_ne_bytes())?;
+                w.write_all(&constant.to_ne_bytes())
             }
             Instruction::AllocConst {
                 result,
@@ -224,6 +243,17 @@ impl Instruction {
         let opcode: OpCode = (instruction as u8).into();
         Ok(match opcode {
             OpCode::Halt => Instruction::Halt,
+            OpCode::HaltReg => {
+                let reg = Reg((instruction >> 8) as u8);
+                Instruction::HaltReg { reg }
+            }
+            OpCode::HaltConst => {
+                let mut constant = [0; 8];
+                r.read_exact(&mut constant)?;
+                let constant = u64::from_ne_bytes(constant);
+
+                Instruction::HaltConst { constant }
+            }
             OpCode::AllocConst => {
                 let result = Reg((instruction >> 8) as u8);
                 let cells_to_allocate = instruction >> 16;

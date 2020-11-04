@@ -18,7 +18,7 @@ pub enum Error {
     InterpretError(VmError),
 }
 
-pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
+pub fn interpret(store: &Store, entry: &Field) -> Result<Option<u64>, Error> {
     let core = MetaCore::new(store);
 
     let expr = parse(&core, entry)?;
@@ -35,9 +35,7 @@ pub fn interpret(store: &Store, entry: &Field) -> Result<(), Error> {
     let chunk = compile(&cps);
 
     let mut vm = Vm::new(chunk);
-    let () = vm.run()?;
-
-    Ok(())
+    Ok(vm.run()?.map(|r| r.as_u64()))
 }
 
 impl From<Vec<ParseError>> for Error {

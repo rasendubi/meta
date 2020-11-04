@@ -28,7 +28,9 @@ mod tests {
 
         let meta_f_test = "ckgrnl18v000cxama1mpves0c".into();
 
-        interpret(&store, &meta_f_test).unwrap();
+        let result = interpret(&store, &meta_f_test).unwrap();
+
+        assert_eq!(Some(42), result);
 
         Ok(())
     }
@@ -51,7 +53,9 @@ mod tests {
 
         let meta_f_test = "ckgzjkf8r0001cjmazi6gmb8x".into();
 
-        interpret(&store, &meta_f_test).unwrap();
+        let result = interpret(&store, &meta_f_test).unwrap();
+
+        assert_eq!(Some(43), result);
 
         Ok(())
     }

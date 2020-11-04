@@ -20,7 +20,7 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub(crate) struct EntryPoint {
+pub(crate) struct RunTest {
     pub expr: Expr,
 }
 
@@ -62,7 +62,7 @@ pub(crate) enum Expr {
     Block(Vec<Statement>),
 }
 
-pub(crate) fn parse(core: &MetaCore, entry: &Field) -> Result<EntryPoint, Vec<Error>> {
+pub(crate) fn parse(core: &MetaCore, entry: &Field) -> Result<RunTest, Vec<Error>> {
     Parser::new(core).parse(entry)
 }
 
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse(mut self, entry: &Field) -> Result<EntryPoint, Vec<Error>> {
+    fn parse(mut self, entry: &Field) -> Result<RunTest, Vec<Error>> {
         self.parse_entry(entry).map_err(|_| self.errors)
     }
 
@@ -114,10 +114,10 @@ impl<'a> Parser<'a> {
             })
     }
 
-    fn parse_entry(&mut self, entry: &Field) -> Result<EntryPoint, ()> {
-        self.expect_type(entry, &hashset! {ENTRY_POINT.clone()})?;
-        let expr = self.required_attribute(&entry, &ENTRY_POINT_EXPR)?;
-        Ok(EntryPoint {
+    fn parse_entry(&mut self, entry: &Field) -> Result<RunTest, ()> {
+        self.expect_type(entry, &hashset! {RUN_TEST.clone()})?;
+        let expr = self.required_attribute(&entry, &RUN_TEST_EXPR)?;
+        Ok(RunTest {
             expr: self.parse_expr(&expr)?,
         })
     }

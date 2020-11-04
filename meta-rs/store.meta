@@ -687,7 +687,7 @@
     "ckgrnb48c0002xamab978ivvg",
     "ckgrnb2q20000xamazg71jcf6",
     "0",
-    "EntryPoint"
+    "RunTest"
   ],
   [
     "ckgrnizou0004xamao5ac3y2v",
@@ -705,7 +705,7 @@
     "ckgrnjyxc0008xamazc7j786f",
     "ckgrnjxj30006xamalz6xvuk7",
     "0",
-    "EntryPoint.expr"
+    "RunTest.expr"
   ],
   [
     "ckgrnk7dr0009xamapns80fhn",
@@ -1360,5 +1360,53 @@
     "ckgzjl2lq0004cjmaqiqn7dza",
     "ckgz33vst00045omakt15dloc",
     "ckgzm8ld9000d4lmap5sn0jtb"
+  ],
+  [
+    "ckh3tvjl20001v7mahaog5d5f",
+    "ckgf6hacx0000wxmat8iho54v",
+    "13",
+    "ckh3tvjl20000v7mann2fufj8"
+  ],
+  [
+    "ckh3tvkwd0002v7mae1d2uo15",
+    "ckh3tvjl20000v7mann2fufj8",
+    "0",
+    "RunTest.expected-result"
+  ],
+  [
+    "ckh3tvrf30003v7masoxt9xha",
+    "ckh3tvjl20000v7mann2fufj8",
+    "5",
+    "7"
+  ],
+  [
+    "ckh3tvxbz0004v7manby6e15t",
+    "ckh3tvjl20000v7mann2fufj8",
+    "1",
+    "2"
+  ],
+  [
+    "ckh3tw5nd0005v7mauvtkxqre",
+    "ckgrnb2q20000xamazg71jcf6",
+    "15",
+    "ckh3tvjl20000v7mann2fufj8"
+  ],
+  [
+    "ckh3uua8n00007rmas6jlygtd",
+    "ckgzjkf8r0001cjmazi6gmb8x",
+    "ckh3tvjl20000v7mann2fufj8",
+    "43"
+  ],
+  [
+    "ckh3uuwb200017rmaxqbi7wa6",
+    "ckgrnl18v000cxama1mpves0c",
+    "ckh3tvjl20000v7mann2fufj8",
+    "42"
+  ],
+  [
+    "ckh3uv0sa00027rma1yvj7cxa",
+    "ckgrnm5bt000ixamakqelhqwg",
+    "ckh3tvjl20000v7mann2fufj8",
+    "\"Hello, world!\""
   ]
 ]

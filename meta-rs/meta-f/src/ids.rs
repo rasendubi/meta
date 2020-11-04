@@ -3,8 +3,9 @@ use lazy_static::lazy_static;
 use meta_store::Field;
 
 lazy_static! {
-    pub static ref ENTRY_POINT: Field = "ckgrnb2q20000xamazg71jcf6".into();
-    pub static ref ENTRY_POINT_EXPR: Field = "ckgrnjxj30006xamalz6xvuk7".into();
+    pub static ref RUN_TEST: Field = "ckgrnb2q20000xamazg71jcf6".into();
+    pub static ref RUN_TEST_EXPR: Field = "ckgrnjxj30006xamalz6xvuk7".into();
+    pub static ref RUN_TEST_EXPECTED_RESULT: Field = "ckh3tvjl20000v7mann2fufj8".into();
     pub static ref NUMBER_LITERAL: Field = "ckgkz9xrn0009q2ma3hyzyejp".into();
     pub static ref NUMBER_LITERAL_VALUE: Field = "ckgkzbdt1000fq2maaedmj0rd".into();
     pub static ref STRING_LITERAL: Field = "ckgkz6klf0000q2mas3dh1ms1".into();

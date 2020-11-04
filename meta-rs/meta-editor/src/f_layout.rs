@@ -11,7 +11,7 @@ use crate::layout::*;
 lazy_static! {
     static ref HANDLERS: HashMap<Field, fn(&MetaCore, &Field) -> RDoc> = {
         let mut m = HashMap::<Field, fn(&MetaCore, &Field) -> RDoc>::new();
-        m.insert(ids::ENTRY_POINT.clone(), layout_entry_point);
+        m.insert(ids::RUN_TEST.clone(), layout_run_test);
         m.insert(ids::NUMBER_LITERAL.clone(), layout_number_literal);
         m.insert(ids::STRING_LITERAL.clone(), layout_string_literal);
         m.insert(ids::IDENTIFIER.clone(), layout_identifier);
@@ -33,10 +33,39 @@ fn f_layout(core: &MetaCore, entity: &Field) -> RDoc {
     handler(core, entity)
 }
 
-fn layout_entry_point(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::ENTRY_POINT_EXPR)
-        .map_or_else(empty, |expr| f_layout(core, &expr.value))
+fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
+    concat(vec![
+        core.identifier(entity).map_or_else(empty, datom_value),
+        whitespace(" "),
+        group(braces(concat(vec![
+            nest(
+                2,
+                concat(vec![
+                    line(),
+                    text("expression"),
+                    whitespace(" "),
+                    punctuation("="),
+                    whitespace(" "),
+                    core.store
+                        .value(entity, &ids::RUN_TEST_EXPR)
+                        .map_or_else(empty, |expr| f_layout(core, &expr.value)),
+                    punctuation(";"),
+                    line(),
+                    text("expected result"),
+                    whitespace(" "),
+                    punctuation("="),
+                    whitespace(" "),
+                    brackets(
+                        core.store
+                            .value(entity, &ids::RUN_TEST_EXPECTED_RESULT)
+                            .map_or_else(empty, |expr| field(&expr.value)),
+                    ),
+                ]),
+            ),
+            line(),
+        ]))),
+        linebreak(),
+    ])
 }
 
 fn layout_number_literal(core: &MetaCore, entity: &Field) -> RDoc {
@@ -81,11 +110,9 @@ fn layout_application(core: &MetaCore, entity: &Field) -> RDoc {
     let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
 
     group(concat(vec![
-        parentheses(
-            core.store
-                .value(entity, &ids::APPLICATION_FN)
-                .map_or_else(empty, |d| f_layout(core, &d.value)),
-        ),
+        core.store
+            .value(entity, &ids::APPLICATION_FN)
+            .map_or_else(empty, |d| f_layout(core, &d.value)),
         parentheses(concat(
             args.iter()
                 .map(|d| f_layout(core, &d.value))
@@ -138,7 +165,7 @@ fn layout_empty(_core: &MetaCore, _entity: &Field) -> RDoc {
 pub fn f_layout_entries(store: &Store) -> RDoc {
     let core = MetaCore::new(store);
 
-    let entries = core.of_type(&ids::ENTRY_POINT);
+    let entries = core.of_type(&ids::RUN_TEST);
 
     concat(
         entries
