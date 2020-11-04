@@ -2,6 +2,7 @@ use druid_shell::{HotKey, KeyCode, KeyEvent, SysMods};
 use im::HashSet;
 use itertools::Itertools;
 
+use meta_core::ids;
 use meta_core::MetaCore;
 use meta_store::{Datom, Field, Store};
 
@@ -143,10 +144,7 @@ fn annotate(core: &MetaCore, entity: &Field) -> RDoc {
 
 fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> RDoc {
     let type_filter = match target {
-        ReferenceTarget::Attribute => {
-            let attribute_id = "7".into();
-            TypeFilter::from_type(attribute_id)
-        }
+        ReferenceTarget::Attribute => TypeFilter::from_type(ids::T_ATTRIBUTE.clone()),
         ReferenceTarget::Value => TypeFilter::new(
             core.meta_attribute_reference_type(&atom.attribute)
                 .map(|hs| hs.iter().map(|datom| datom.value.clone()).collect()),
@@ -170,8 +168,7 @@ fn reference(core: &MetaCore, atom: &Datom, target: ReferenceTarget) -> RDoc {
 
 fn core_layout_value(core: &MetaCore, datom: &Datom) -> RDoc {
     let attribute_type = core.meta_attribute_type(&datom.attribute).map(|d| &d.value);
-    let reference_type = "3".into();
-    if attribute_type == Some(&reference_type) {
+    if attribute_type == Some(&ids::V_REFERENCE) {
         reference(core, datom, ReferenceTarget::Value)
     } else {
         quotes(datom_value(datom))
@@ -301,11 +298,7 @@ pub fn core_layout_datoms(store: &Store) -> RDoc {
 }
 
 pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
-    let language_entity_id = "13".into();
-    let entities = core
-        .store
-        .eav2(id, &language_entity_id)
-        .map_or_else(Vec::new, |e| core.order_datoms(e));
+    let entities = core.ordered_values(id, &ids::A_LANGUAGE_ENTITY);
 
     with_key_handler(
         Box::new(LanguageKeys::new(id.clone())),
@@ -337,8 +330,7 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
 pub fn core_layout_languages(store: &Store) -> RDoc {
     let core = MetaCore::new(store);
 
-    let language_id = "12".into();
-    let languages = core.of_type(&language_id);
+    let languages = core.of_type(&ids::T_LANGUAGE);
 
     concat(
         languages

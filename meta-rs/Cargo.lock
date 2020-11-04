@@ -743,6 +743,7 @@ version = "0.1.0"
 dependencies = [
  "im",
  "itertools",
+ "lazy_static",
  "meta-store",
 ]
 
@@ -771,6 +772,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger",
  "im",
+ "itertools",
  "lazy_static",
  "log",
  "meta-core",

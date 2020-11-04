@@ -1,7 +1,8 @@
 use im::{hashset, HashSet};
+use itertools::Itertools;
 
 use meta_core::MetaCore;
-use meta_store::{Datom, Field};
+use meta_store::Field;
 
 use crate::ids::*;
 
@@ -113,18 +114,6 @@ impl<'a> Parser<'a> {
             })
     }
 
-    fn values(&self, entry: &Field, attr: &Field) -> Vec<Datom> {
-        if let Some(datoms) = self.core.store.values(entry, attr) {
-            self.core
-                .order_datoms(datoms.iter())
-                .into_iter()
-                .cloned()
-                .collect()
-        } else {
-            Vec::new()
-        }
-    }
-
     fn parse_entry(&mut self, entry: &Field) -> Result<EntryPoint, ()> {
         self.expect_type(entry, &hashset! {ENTRY_POINT.clone()})?;
         let expr = self.required_attribute(&entry, &ENTRY_POINT_EXPR)?;
@@ -163,39 +152,33 @@ impl<'a> Parser<'a> {
             let body = self.required_attribute(entry, &FUNCTION_BODY)?;
             let body = self.parse_expr(&body)?;
 
-            let param_entries = self.values(entry, &FUNCTION_PARAMETER);
-
-            let mut parameters = Vec::new();
-            for param in param_entries
+            let parameters = self
+                .core
+                .ordered_values(entry, &FUNCTION_PARAMETER)
                 .into_iter()
                 .map(|p| self.parse_parameter(&p.value))
-            {
-                parameters.push(param?);
-            }
+                .try_collect()?;
 
             Ok(Expr::Function(Box::new(Function { parameters, body })))
         } else if type_ == &APPLICATION as &Field {
             let f = self.required_attribute(entry, &APPLICATION_FN)?;
             let f = self.parse_expr(&f)?;
 
-            let arg_entries = self.values(entry, &APPLICATION_ARGUMENT);
-
-            let mut args = Vec::new();
-            for arg in arg_entries.into_iter().map(|e| self.parse_expr(&e.value)) {
-                args.push(arg?);
-            }
+            let args = self
+                .core
+                .ordered_values(entry, &APPLICATION_ARGUMENT)
+                .into_iter()
+                .map(|e| self.parse_expr(&e.value))
+                .try_collect()?;
 
             Ok(Expr::App(Box::new(f), args))
         } else if type_ == &BLOCK as &Field {
-            let stmt_entries = self.values(entry, &BLOCK_STATEMENT);
-
-            let mut stmts = Vec::new();
-            for stmt in stmt_entries
+            let stmts = self
+                .core
+                .ordered_values(entry, &BLOCK_STATEMENT)
                 .into_iter()
                 .map(|e| self.parse_statement(&e.value))
-            {
-                stmts.push(stmt?);
-            }
+                .try_collect()?;
 
             Ok(Expr::Block(stmts))
         } else {

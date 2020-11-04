@@ -1,8 +1,12 @@
 //! Some helpers for the meta.core language.
+pub mod ids;
+
 use im::{HashMap, HashSet};
 use itertools::Itertools;
 
 use meta_store::{Datom, Field, Store};
+
+use crate::ids::*;
 
 pub struct MetaCore<'a> {
     pub store: &'a Store,
@@ -15,34 +19,28 @@ impl<'a> MetaCore<'a> {
     }
 
     pub fn identifier(&self, entity: &Field) -> Option<&Datom> {
-        let identifier = Field::from("0");
-        self.store.value(entity, &identifier)
+        self.store.value(entity, &A_IDENTIFIER)
     }
 
     pub fn meta_type(&self, entity: &Field) -> Option<&Datom> {
-        let type_ = Field::from("5");
-        self.store.value(entity, &type_)
+        self.store.value(entity, &A_TYPE)
     }
 
     pub fn meta_attribute_type(&self, entity: &Field) -> Option<&Datom> {
-        let attribute_type = Field::from("1");
-        self.store.value(entity, &attribute_type)
+        self.store.value(entity, &A_ATTRIBUTE_VALUE_TYPE)
     }
 
     pub fn meta_attribute_reference_type(&self, entity: &Field) -> Option<&HashSet<Datom>> {
-        let attribute_reference_type = "10".into();
-        self.store.values(entity, &attribute_reference_type)
+        self.store.values(entity, &A_ATTRIBUTE_REFERENCE_TYPE)
     }
 
     pub fn after(&self, datom: &Datom) -> Option<&Field> {
-        let after_id = Field::from("16");
-        self.store.value(&datom.id, &after_id).map(|a| &a.value)
+        self.store.value(&datom.id, &A_AFTER).map(|a| &a.value)
     }
 
     pub fn of_type(&self, type_: &Field) -> HashSet<Datom> {
-        let type_id = "5".into();
         self.store
-            .ave2(&type_id, type_)
+            .ave2(&A_TYPE, type_)
             .cloned()
             .unwrap_or_else(HashSet::new)
     }
@@ -85,6 +83,12 @@ impl<'a> MetaCore<'a> {
         }
 
         result
+    }
+
+    pub fn ordered_values(&self, entry: &Field, attr: &Field) -> Vec<&Datom> {
+        self.store
+            .values(entry, attr)
+            .map_or_else(Vec::new, |datoms| self.order_datoms(datoms))
     }
 }
 

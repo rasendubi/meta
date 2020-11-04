@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 use meta_core::MetaCore;
 use meta_f::ids;
-use meta_store::{Datom, Field, Store};
+use meta_store::{Field, Store};
 
 use crate::layout::*;
 
@@ -58,15 +58,7 @@ fn layout_identifier(core: &MetaCore, entity: &Field) -> RDoc {
 }
 
 fn layout_function(core: &MetaCore, entity: &Field) -> RDoc {
-    let params: Vec<Datom> = core
-        .store
-        .values(entity, &ids::FUNCTION_PARAMETER)
-        .map_or_else(Vec::new, |datoms| {
-            core.order_datoms(datoms.iter())
-                .into_iter()
-                .cloned()
-                .collect()
-        });
+    let params = core.ordered_values(entity, &ids::FUNCTION_PARAMETER);
 
     group(concat(vec![
         text("fn"), // TODO: keyword
@@ -86,15 +78,7 @@ fn layout_function(core: &MetaCore, entity: &Field) -> RDoc {
 }
 
 fn layout_application(core: &MetaCore, entity: &Field) -> RDoc {
-    let args: Vec<Datom> = core
-        .store
-        .values(entity, &ids::APPLICATION_ARGUMENT)
-        .map_or_else(Vec::new, |datoms| {
-            core.order_datoms(datoms.iter())
-                .into_iter()
-                .cloned()
-                .collect()
-        });
+    let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
 
     group(concat(vec![
         parentheses(
@@ -111,15 +95,7 @@ fn layout_application(core: &MetaCore, entity: &Field) -> RDoc {
 }
 
 fn layout_block(core: &MetaCore, entity: &Field) -> RDoc {
-    let stmts: Vec<Datom> = core
-        .store
-        .values(entity, &ids::BLOCK_STATEMENT)
-        .map_or_else(Vec::new, |datoms| {
-            core.order_datoms(datoms.iter())
-                .into_iter()
-                .cloned()
-                .collect()
-        });
+    let stmts = core.ordered_values(entity, &ids::BLOCK_STATEMENT);
 
     group(braces(concat(vec![
         nest(

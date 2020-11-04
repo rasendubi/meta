@@ -8,13 +8,14 @@ edition = "2018"
 
 [dependencies]
 im = "15.0.0"
-log = "^0.4"
+itertools = "0.9.0"
 lazy_static = "1.4.0"
+log = "^0.4"
 
-meta-store = { path = "../meta-store" }
 meta-core = { path = "../meta-core" }
+meta-store = { path = "../meta-store" }
 
 [dev-dependencies]
+env_logger = "^0.7.1"
 serde_json = "1.0.57"
 test-env-log = "0.2.2"
-env_logger = "^0.7.1"
