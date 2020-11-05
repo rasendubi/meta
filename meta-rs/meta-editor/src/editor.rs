@@ -491,15 +491,12 @@ impl Editor {
 
     pub fn goto_cell_id(&mut self, id: &[Field]) {
         if let Some(doc) = find_id(self.doc(), id).and_then(|doc| {
-            find_cell(
-                doc,
-                &mut |cell: &Cell<EditorCellPayload>| match &cell.payload.class {
+            find_cell(doc, &mut |cell: &Cell<EditorCellPayload>| {
+                matches!(&cell.payload.class,
                     CellClass::Reference(_, _, _)
                     | CellClass::Editable(_)
-                    | CellClass::NonEditable => true,
-                    _ => false,
-                },
-            )
+                    | CellClass::NonEditable)
+            })
         }) {
             if let Some(sdoc) = self.rdoc_to_sdoc(doc).cloned() {
                 self.set_cursor(Some(CursorPosition { sdoc, offset: 0 }));
