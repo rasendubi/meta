@@ -18,6 +18,10 @@ lazy_static! {
         m.insert(ids::NUMBER_LITERAL.clone(), layout_number_literal);
         m.insert(ids::STRING_LITERAL.clone(), layout_string_literal);
         m.insert(ids::IDENTIFIER.clone(), layout_identifier);
+        m.insert(
+            ids::IDENTIFIER_REFERENCE.clone(),
+            layout_identifier_reference,
+        );
         m.insert(ids::FUNCTION.clone(), layout_function);
         m.insert(ids::PARAMETER.clone(), layout_parameter);
         m.insert(ids::APPLICATION.clone(), layout_application);
@@ -50,6 +54,9 @@ impl KeyHandler for FKeys {
                     ids::RUN_TEST_EXPECTED_RESULT.clone(),
                     "".into(),
                 ));
+
+                let expr = Field::new_id();
+                store.add_datom(&Datom::eav(test.clone(), ids::RUN_TEST_EXPR.clone(), expr));
 
                 test
             });
@@ -95,13 +102,142 @@ impl KeyHandler for RunTestKeys {
     }
 }
 
+#[derive(Debug)]
+struct HoleKeys(Field);
+impl KeyHandler for HoleKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let id = &self.0;
+        if HotKey::new(None, KeyCode::Key0).matches(key)
+            || HotKey::new(None, KeyCode::Key1).matches(key)
+            || HotKey::new(None, KeyCode::Key2).matches(key)
+            || HotKey::new(None, KeyCode::Key3).matches(key)
+            || HotKey::new(None, KeyCode::Key4).matches(key)
+            || HotKey::new(None, KeyCode::Key5).matches(key)
+            || HotKey::new(None, KeyCode::Key6).matches(key)
+            || HotKey::new(None, KeyCode::Key7).matches(key)
+            || HotKey::new(None, KeyCode::Key8).matches(key)
+            || HotKey::new(None, KeyCode::Key9).matches(key)
+        {
+            let digit = key.text().expect("digit key must yield text");
+
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::NUMBER_LITERAL.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::NUMBER_LITERAL_VALUE.clone(),
+                    Field::from(digit),
+                ));
+            });
+
+            return true;
+        }
+
+        if HotKey::new(None, KeyCode::Quote).matches(key)
+            || HotKey::new(SysMods::Shift, KeyCode::Quote).matches(key)
+        {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::STRING_LITERAL.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::STRING_LITERAL_VALUE.clone(),
+                    "".into(),
+                ));
+            });
+
+            return true;
+        }
+
+        // TODO: druid does not have an option to ignore shift modifier
+        if HotKey::new(None, "{").matches(key) || HotKey::new(SysMods::Shift, "{").matches(key) {
+            let expr = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::BLOCK.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::BLOCK_STATEMENT.clone(),
+                    expr.clone(),
+                ));
+            });
+
+            editor.goto_cell_id(&[expr]);
+
+            return true;
+        }
+
+        if HotKey::new(None, "f").matches(key) {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::FUNCTION.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::FUNCTION_BODY.clone(),
+                    Field::new_id(),
+                ));
+            });
+
+            return true;
+        }
+
+        if HotKey::new(None, "(").matches(key) || HotKey::new(SysMods::Shift, "(").matches(key) {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::APPLICATION.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::APPLICATION_FN.clone(),
+                    Field::new_id(),
+                ));
+            });
+
+            return true;
+        }
+
+        if HotKey::new(None, "&").matches(key) || HotKey::new(SysMods::Shift, "&").matches(key) {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER_REFERENCE.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::IDENTIFIER_REFERENCE_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+            });
+
+            return true;
+        }
+
+        false
+    }
+}
+
 fn f_layout(core: &MetaCore, entity: &Field) -> RDoc {
     let handler = core
         .meta_type(entity)
         .and_then(|type_| HANDLERS.get(&type_.value))
         .copied()
-        .unwrap_or(layout_empty);
-    handler(core, entity)
+        .unwrap_or(layout_hole);
+    with_id(vec![entity.clone()], handler(core, entity))
 }
 
 fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
@@ -172,6 +308,24 @@ fn layout_identifier(core: &MetaCore, entity: &Field) -> RDoc {
     core.store
         .value(entity, &ids::IDENTIFIER_IDENTIFIER)
         .map_or_else(empty, |d| datom_value(d))
+}
+
+fn layout_identifier_reference(core: &MetaCore, entity: &Field) -> RDoc {
+    core.store
+        .value(entity, &ids::IDENTIFIER_REFERENCE_IDENTIFIER)
+        .map_or_else(empty, |d| {
+            let empty = Field::from("");
+            let value = core
+                .store
+                .value(&d.value, &ids::IDENTIFIER_IDENTIFIER)
+                .map_or(&empty, |d| &d.value);
+            datom_reference(
+                d,
+                ReferenceTarget::Value,
+                TypeFilter::from_type(ids::IDENTIFIER.clone()),
+                value,
+            )
+        })
 }
 
 fn layout_function(core: &MetaCore, entity: &Field) -> RDoc {
@@ -246,8 +400,8 @@ fn layout_parameter(core: &MetaCore, entity: &Field) -> RDoc {
         .map_or_else(empty, |d| f_layout(core, &d.value))
 }
 
-fn layout_empty(_core: &MetaCore, _entity: &Field) -> RDoc {
-    empty()
+fn layout_hole(_core: &MetaCore, entity: &Field) -> RDoc {
+    with_key_handler(Box::new(HoleKeys(entity.clone())), text("_"))
 }
 
 pub fn f_layout_entries(store: &Store) -> RDoc {

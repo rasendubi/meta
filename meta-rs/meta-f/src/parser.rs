@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
             &hashset! {
                 NUMBER_LITERAL.clone(),
                 STRING_LITERAL.clone(),
-                IDENTIFIER.clone(),
+                IDENTIFIER_REFERENCE.clone(),
                 FUNCTION.clone(),
                 APPLICATION.clone(),
                 BLOCK.clone(),
@@ -146,8 +146,9 @@ impl<'a> Parser<'a> {
                 .to_string();
 
             Ok(Expr::StringLiteral(value))
-        } else if type_ == &IDENTIFIER as &Field {
-            Ok(Expr::Identifier(self.parse_identifier(entry)?))
+        } else if type_ == &IDENTIFIER_REFERENCE as &Field {
+            let identifier = self.required_attribute(entry, &IDENTIFIER_REFERENCE_IDENTIFIER)?;
+            Ok(Expr::Identifier(self.parse_identifier(&identifier)?))
         } else if type_ == &FUNCTION as &Field {
             let body = self.required_attribute(entry, &FUNCTION_BODY)?;
             let body = self.parse_expr(&body)?;
@@ -190,7 +191,7 @@ impl<'a> Parser<'a> {
         let allowed_types = hashset! {
             NUMBER_LITERAL.clone(), // useless as a statement
             STRING_LITERAL.clone(), // useless as a statement
-            IDENTIFIER.clone(), // useless as a statement
+            IDENTIFIER_REFERENCE.clone(), // useless as a statement
             FUNCTION.clone(), // useless as a statement
             APPLICATION.clone(),
             BLOCK.clone(),

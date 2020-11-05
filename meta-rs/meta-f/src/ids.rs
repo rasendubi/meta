@@ -23,6 +23,8 @@ lazy_static! {
     pub static ref BLOCK_STATEMENT: Field = "ckgz33vst00045omakt15dloc".into();
     pub static ref IDENTIFIER: Field = "ckgz4197i000h9hmazilan75h".into();
     pub static ref IDENTIFIER_IDENTIFIER: Field = "ckgz41sua000l9hma691bmbeh".into();
+    pub static ref IDENTIFIER_REFERENCE: Field = "ckh5cdqxv0000yhmacyhfswh6".into();
+    pub static ref IDENTIFIER_REFERENCE_IDENTIFIER: Field = "ckh5ce4nj0004yhma5kcyiuq7".into();
     pub static ref BINDING: Field = "ckgvali04000hwhmaw93ym25w".into();
     pub static ref BINDING_IDENTIFIER: Field = "ckgvaluy0000lwhmai73hadxb".into();
     pub static ref BINDING_VALUE: Field = "ckgvamn7n000rwhmaz95psjz9".into();
