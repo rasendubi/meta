@@ -17,7 +17,7 @@ lazy_static! {
     pub static ref V_INTEGER_NUMBER: Field = "11".into(); // IntegerNumber
     pub static ref T_LANGUAGE: Field = "12".into(); // Language
     pub static ref A_LANGUAGE_ENTITY: Field = "13".into(); // Language.entity
-    pub static ref A_TYPE__ATTRIBUTE: Field = "15".into(); // Type.attribute
+    pub static ref A_TYPE_ATTRIBUTE: Field = "15".into(); // Type.attribute
     pub static ref A_AFTER: Field = "16".into(); // after
     pub static ref META_CORE: Field = "14".into(); // meta.core
 }

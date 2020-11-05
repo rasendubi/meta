@@ -5,13 +5,13 @@ use druid_shell::piet::Color;
 use druid_shell::{KeyEvent, MouseEvent};
 use im::HashSet;
 use itertools::Itertools;
-use log::{debug, log_enabled, trace, Level};
+use log::{debug, log_enabled, trace, warn, Level};
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_core::MetaCore;
 use meta_gui::widgets::{Direction, Inset, List, Scrollable, Scrolled, Stack, Translate};
 use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
-use meta_pretty::{Path, SimpleDocKind};
+use meta_pretty::{Cell, Path, RichDocRef, SimpleDocKind};
 use meta_store::{Datom, Field, Store};
 
 use crate::autocomplete::{Autocomplete, AutocompleteEvent};
@@ -19,7 +19,7 @@ use crate::cell_widget::CellWidget;
 use crate::core_layout::core_layout_languages;
 use crate::doc_view::DocView;
 use crate::key::{GlobalKeys, KeyHandler};
-use crate::layout::{CellClass, Doc, RDoc, SDoc};
+use crate::layout::{CellClass, Doc, EditorCellPayload, RDoc, SDoc};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CursorPosition {
@@ -488,6 +488,26 @@ impl Editor {
         self.on_store_updated();
         result
     }
+
+    pub fn goto_cell_id(&mut self, id: &[Field]) {
+        if let Some(doc) = find_id(self.doc(), id).and_then(|doc| {
+            find_cell(
+                doc,
+                &mut |cell: &Cell<EditorCellPayload>| match &cell.payload.class {
+                    CellClass::Reference(_, _, _)
+                    | CellClass::Editable(_)
+                    | CellClass::NonEditable => true,
+                    _ => false,
+                },
+            )
+        }) {
+            if let Some(sdoc) = self.rdoc_to_sdoc(doc).cloned() {
+                self.set_cursor(Some(CursorPosition { sdoc, offset: 0 }));
+            }
+        } else {
+            warn!("cell with id {:?} not found", id);
+        }
+    }
 }
 
 impl Layout for Editor {
@@ -619,5 +639,56 @@ impl Debug for Editor {
             .field("scroll", &self.scroll)
             .field("autocomplete", &self.autocomplete)
             .finish()
+    }
+}
+
+/// Find meta node with id `id`.
+fn find_id<'a, 'b>(doc: &'a Doc, id: &'b [Field]) -> Option<&'a Doc> {
+    match doc.kind() {
+        meta_pretty::RichDocKind::Empty => None,
+        meta_pretty::RichDocKind::Cell(_) => None,
+        meta_pretty::RichDocKind::Line { alt: _ } => None,
+        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_id(doc, id),
+        meta_pretty::RichDocKind::Concat { parts } => parts
+            .iter()
+            .fold(None, |acc, doc| acc.or_else(|| find_id(doc, id))),
+        meta_pretty::RichDocKind::Group { doc } => find_id(doc, id),
+        meta_pretty::RichDocKind::Meta {
+            doc: nested_doc,
+            meta,
+        } => {
+            if meta.id().map_or(false, |i| i.as_slice() == id) {
+                Some(doc)
+            } else {
+                find_id(nested_doc, id)
+            }
+        }
+    }
+}
+
+/// Find first cell matching the predicate in the doc.
+fn find_cell<'a, T, M, F>(
+    doc: &'a RichDocRef<T, M>,
+    pred: &'_ mut F,
+) -> Option<&'a RichDocRef<T, M>>
+where
+    F: FnMut(&Cell<T>) -> bool,
+{
+    match doc.kind() {
+        meta_pretty::RichDocKind::Empty => None,
+        meta_pretty::RichDocKind::Cell(cell) => {
+            if pred(cell) {
+                Some(doc)
+            } else {
+                None
+            }
+        }
+        meta_pretty::RichDocKind::Line { alt: _ } => None,
+        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_cell(doc, pred),
+        meta_pretty::RichDocKind::Concat { parts } => parts
+            .iter()
+            .fold(None, |acc, doc| acc.or_else(|| find_cell(doc, pred))),
+        meta_pretty::RichDocKind::Group { doc } => find_cell(doc, pred),
+        meta_pretty::RichDocKind::Meta { doc, meta: _ } => find_cell(doc, pred),
     }
 }

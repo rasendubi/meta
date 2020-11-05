@@ -32,7 +32,7 @@ impl KeyHandler for EntityKeys {
                 ));
             });
 
-            goto_cell_id(editor, &[self.entity.clone(), id]);
+            editor.goto_cell_id(&[self.entity.clone(), id]);
             return true;
         }
 
@@ -75,7 +75,7 @@ impl KeyHandler for LanguageKeys {
                 ));
             });
 
-            goto_cell_id(editor, &[self.language.clone(), entity]);
+            editor.goto_cell_id(&[self.language.clone(), entity]);
             return true;
         }
 
@@ -93,7 +93,7 @@ impl KeyHandler for EntitiesKeys {
                 store.add_datom(&Datom::eav(entity.clone(), "".into(), "".into()))
             });
 
-            goto_cell_id(editor, &[entity]);
+            editor.goto_cell_id(&[entity]);
             return true;
         }
 
@@ -111,7 +111,7 @@ impl KeyHandler for DatomsKeys {
                 store.add_datom(&Datom::new(id.clone(), "".into(), "".into(), "".into()))
             });
 
-            goto_cell_id(editor, &[id]);
+            editor.goto_cell_id(&[id]);
             return true;
         }
 

@@ -1,13 +1,11 @@
 use std::fmt::Debug;
 
 use im::HashSet;
-use log::warn;
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_pretty::{Cell, RichDoc, RichDocRef, SimpleDoc, SimpleDocKind};
 use meta_store::{Datom, Field};
 
-use crate::editor::{CursorPosition, Editor};
 use crate::key::KeyHandler;
 
 #[derive(Debug)]
@@ -253,77 +251,6 @@ pub fn cmp_priority<M>(
         (Linebreak { .. }, Cell(..)) => Ordering::Less,
         (Cell(..), Linebreak { .. }) => Ordering::Greater,
         (Cell(left), Cell(right)) => left.payload.class.cmp(&right.payload.class),
-    }
-}
-
-/// Find meta node with id `id`.
-pub fn find_id<'a, 'b>(doc: &'a Doc, id: &'b [Field]) -> Option<&'a Doc> {
-    match doc.kind() {
-        meta_pretty::RichDocKind::Empty => None,
-        meta_pretty::RichDocKind::Cell(_) => None,
-        meta_pretty::RichDocKind::Line { alt: _ } => None,
-        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_id(doc, id),
-        meta_pretty::RichDocKind::Concat { parts } => parts
-            .iter()
-            .fold(None, |acc, doc| acc.or_else(|| find_id(doc, id))),
-        meta_pretty::RichDocKind::Group { doc } => find_id(doc, id),
-        meta_pretty::RichDocKind::Meta {
-            doc: nested_doc,
-            meta,
-        } => {
-            if meta.id().map_or(false, |i| i.as_slice() == id) {
-                Some(doc)
-            } else {
-                find_id(nested_doc, id)
-            }
-        }
-    }
-}
-
-/// Find first cell matching the predicate in the doc.
-pub fn find_cell<'a, T, M, F>(
-    doc: &'a RichDocRef<T, M>,
-    pred: &'_ mut F,
-) -> Option<&'a RichDocRef<T, M>>
-where
-    F: FnMut(&Cell<T>) -> bool,
-{
-    match doc.kind() {
-        meta_pretty::RichDocKind::Empty => None,
-        meta_pretty::RichDocKind::Cell(cell) => {
-            if pred(cell) {
-                Some(doc)
-            } else {
-                None
-            }
-        }
-        meta_pretty::RichDocKind::Line { alt: _ } => None,
-        meta_pretty::RichDocKind::Nest { nest_width: _, doc } => find_cell(doc, pred),
-        meta_pretty::RichDocKind::Concat { parts } => parts
-            .iter()
-            .fold(None, |acc, doc| acc.or_else(|| find_cell(doc, pred))),
-        meta_pretty::RichDocKind::Group { doc } => find_cell(doc, pred),
-        meta_pretty::RichDocKind::Meta { doc, meta: _ } => find_cell(doc, pred),
-    }
-}
-
-pub fn goto_cell_id(editor: &mut Editor, id: &[Field]) {
-    if let Some(doc) = find_id(editor.doc(), id).and_then(|doc| {
-        find_cell(
-            doc,
-            &mut |cell: &Cell<EditorCellPayload>| match &cell.payload.class {
-                CellClass::Reference(_, _, _) | CellClass::Editable(_) | CellClass::NonEditable => {
-                    true
-                }
-                _ => false,
-            },
-        )
-    }) {
-        if let Some(sdoc) = editor.rdoc_to_sdoc(doc).cloned() {
-            editor.set_cursor(Some(CursorPosition { sdoc, offset: 0 }));
-        }
-    } else {
-        warn!("cell with id {:?} not found", id);
     }
 }
 

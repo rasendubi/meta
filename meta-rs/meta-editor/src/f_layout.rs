@@ -1,8 +1,9 @@
-use druid_shell::{HotKey, KeyCode, KeyEvent};
+use druid_shell::{HotKey, KeyCode, KeyEvent, SysMods};
 use im::HashMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 
+use meta_core::ids as core;
 use meta_core::MetaCore;
 use meta_f::ids;
 use meta_store::{Datom, Field, Store};
@@ -24,6 +25,42 @@ lazy_static! {
         m.insert(ids::BINDING.clone(), layout_binding);
         m
     };
+}
+
+#[derive(Debug)]
+struct FKeys;
+impl KeyHandler for FKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let id = editor.with_store(|store| {
+                let test = Field::new_id();
+
+                store.add_datom(&Datom::eav(
+                    test.clone(),
+                    core::A_TYPE.clone(),
+                    ids::RUN_TEST.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    test.clone(),
+                    core::A_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+                store.add_datom(&Datom::eav(
+                    test.clone(),
+                    ids::RUN_TEST_EXPECTED_RESULT.clone(),
+                    "".into(),
+                ));
+
+                test
+            });
+
+            editor.goto_cell_id(&[id]);
+
+            return true;
+        }
+
+        false
+    }
 }
 
 #[derive(Debug)]
@@ -94,18 +131,22 @@ fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
                         brackets(
                             core.store
                                 .value(entity, &ids::RUN_TEST_EXPECTED_RESULT)
-                                .map_or_else(empty, |expr| field(&expr.value)),
+                                .map_or_else(empty, datom_value),
                         ),
-                        line(),
-                        text("actual result"),
-                        whitespace(" "),
-                        punctuation("="),
-                        whitespace(" "),
-                        brackets(
-                            core.store
-                                .value(entity, &ids::RUN_TEST_ACTUAL_RESULT)
-                                .map_or_else(empty, |expr| field(&expr.value)),
-                        ),
+                        punctuation(";"),
+                        core.store
+                            .value(entity, &ids::RUN_TEST_ACTUAL_RESULT)
+                            .map_or_else(empty, |expr| {
+                                concat(vec![
+                                    line(),
+                                    text("actual result"),
+                                    whitespace(" "),
+                                    punctuation("="),
+                                    whitespace(" "),
+                                    brackets(datom_value(expr)),
+                                    punctuation(";"),
+                                ])
+                            }),
                     ]),
                 ),
                 line(),
@@ -214,11 +255,17 @@ pub fn f_layout_entries(store: &Store) -> RDoc {
 
     let entries = core.of_type(&ids::RUN_TEST);
 
-    concat(
-        entries
-            .iter()
-            .sorted()
-            .map(|e| f_layout(&core, &e.entity))
-            .intersperse_with(linebreak),
+    with_key_handler(
+        Box::new(FKeys),
+        concat(
+            entries
+                .iter()
+                .sorted()
+                .map(|e| {
+                    with_id(vec![e.entity.clone()], f_layout(&core, &e.entity))
+                        .with_key(e.entity.to_string())
+                })
+                .intersperse_with(linebreak),
+        ),
     )
 }
