@@ -1,11 +1,13 @@
+use druid_shell::{HotKey, KeyCode, KeyEvent};
 use im::HashMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 
 use meta_core::MetaCore;
 use meta_f::ids;
-use meta_store::{Field, Store};
+use meta_store::{Datom, Field, Store};
 
+use crate::key::KeyHandler;
 use crate::layout::*;
 
 lazy_static! {
@@ -24,6 +26,38 @@ lazy_static! {
     };
 }
 
+#[derive(Debug)]
+struct RunTestKeys(Field);
+impl KeyHandler for RunTestKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        if HotKey::new(None, KeyCode::F3).matches(key) {
+            let test = &self.0;
+            let result = meta_f::interpret(editor.store(), test);
+
+            editor.with_store(|store| {
+                let id =
+                    if let Some(datom) = store.value(test, &ids::RUN_TEST_ACTUAL_RESULT).cloned() {
+                        store.remove_datom(&datom);
+                        datom.id
+                    } else {
+                        Field::new_id()
+                    };
+
+                store.add_datom(&Datom::new(
+                    id,
+                    test.clone(),
+                    ids::RUN_TEST_ACTUAL_RESULT.clone(),
+                    Field::from(format!("{:?}", result)),
+                ));
+            });
+
+            return true;
+        }
+
+        false
+    }
+}
+
 fn f_layout(core: &MetaCore, entity: &Field) -> RDoc {
     let handler = core
         .meta_type(entity)
@@ -34,38 +68,51 @@ fn f_layout(core: &MetaCore, entity: &Field) -> RDoc {
 }
 
 fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
-    concat(vec![
-        core.identifier(entity).map_or_else(empty, datom_value),
-        whitespace(" "),
-        group(braces(concat(vec![
-            nest(
-                2,
-                concat(vec![
-                    line(),
-                    text("expression"),
-                    whitespace(" "),
-                    punctuation("="),
-                    whitespace(" "),
-                    core.store
-                        .value(entity, &ids::RUN_TEST_EXPR)
-                        .map_or_else(empty, |expr| f_layout(core, &expr.value)),
-                    punctuation(";"),
-                    line(),
-                    text("expected result"),
-                    whitespace(" "),
-                    punctuation("="),
-                    whitespace(" "),
-                    brackets(
+    with_key_handler(
+        Box::new(RunTestKeys(entity.clone())),
+        concat(vec![
+            core.identifier(entity).map_or_else(empty, datom_value),
+            whitespace(" "),
+            group(braces(concat(vec![
+                nest(
+                    2,
+                    concat(vec![
+                        line(),
+                        text("expression"),
+                        whitespace(" "),
+                        punctuation("="),
+                        whitespace(" "),
                         core.store
-                            .value(entity, &ids::RUN_TEST_EXPECTED_RESULT)
-                            .map_or_else(empty, |expr| field(&expr.value)),
-                    ),
-                ]),
-            ),
-            line(),
-        ]))),
-        linebreak(),
-    ])
+                            .value(entity, &ids::RUN_TEST_EXPR)
+                            .map_or_else(empty, |expr| f_layout(core, &expr.value)),
+                        punctuation(";"),
+                        line(),
+                        text("expected result"),
+                        whitespace(" "),
+                        punctuation("="),
+                        whitespace(" "),
+                        brackets(
+                            core.store
+                                .value(entity, &ids::RUN_TEST_EXPECTED_RESULT)
+                                .map_or_else(empty, |expr| field(&expr.value)),
+                        ),
+                        line(),
+                        text("actual result"),
+                        whitespace(" "),
+                        punctuation("="),
+                        whitespace(" "),
+                        brackets(
+                            core.store
+                                .value(entity, &ids::RUN_TEST_ACTUAL_RESULT)
+                                .map_or_else(empty, |expr| field(&expr.value)),
+                        ),
+                    ]),
+                ),
+                line(),
+            ]))),
+            linebreak(),
+        ]),
+    )
 }
 
 fn layout_number_literal(core: &MetaCore, entity: &Field) -> RDoc {
