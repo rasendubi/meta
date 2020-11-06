@@ -6,6 +6,7 @@ use crate::vm::Value;
 pub(crate) struct Memory {
     memory: *mut Value,
     next: *mut Value,
+    #[allow(dead_code)]
     limit: *mut Value,
     count: usize,
 }
@@ -32,7 +33,7 @@ impl Memory {
 
     fn layout(count: usize) -> Layout {
         unsafe {
-            // Layout::repeat() is nightly-only
+            // Layout::repeat() would be helpful here, but it is nightly-only
             Layout::from_size_align_unchecked(size_of::<Value>() * count, align_of::<Value>())
         }
     }

@@ -87,9 +87,6 @@ impl Compilation {
                                 constant: *v as u64,
                             })?;
                         }
-                        Value::Float(_) => {
-                            todo!("Floats are not supported");
-                        }
                         Value::String(_) => {
                             todo!("Strings are not supported");
                         }
@@ -202,9 +199,6 @@ impl Compilation {
                                 result: reg,
                                 constant: *i as u64,
                             })?;
-                        }
-                        Value::Float(_) => {
-                            todo!("Floats is not supported");
                         }
                         Value::String(_) => {
                             todo!("Strings are not supported");

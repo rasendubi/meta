@@ -27,13 +27,13 @@ pub(crate) enum Value {
     Var(Var),
     Label(Var),
     Int(i64),
-    Float(String),
     String(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub(crate) enum Primop {
     Halt,
+    #[allow(dead_code)]
     Plus,
 }
 
@@ -47,6 +47,7 @@ pub(crate) enum Exp {
     Offset(isize, Value, Var, Rc<Exp>),
     App(Value, Box<[Value]>),
     Fix(Box<[FnDef]>, Rc<Exp>),
+    #[allow(dead_code)]
     Switch(Value, Box<[Rc<Exp>]>),
     Primop(Primop, Box<[Value]>, Box<[Var]>, Box<[Rc<Exp>]>),
 }

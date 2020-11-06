@@ -52,9 +52,7 @@ where
 {
     match e {
         Expr::NumberLiteral(i) => and_then(gen, Value::Int(*i)),
-        Expr::StringLiteral(_) => {
-            todo!();
-        }
+        Expr::StringLiteral(s) => and_then(gen, Value::String(s.clone())),
         Expr::Identifier(identifier) => {
             let val = env.get(identifier).unwrap();
             and_then(gen, val.clone())

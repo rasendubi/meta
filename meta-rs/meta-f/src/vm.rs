@@ -187,10 +187,6 @@ impl Vm {
             }
         }
     }
-
-    fn register(&self, reg: Reg) -> Value {
-        self.registers[reg]
-    }
 }
 
 #[cfg(test)]
@@ -229,7 +225,7 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(Value(42), vm.register(Reg(0)));
+        assert_eq!(Value(42), vm.registers[Reg(0)]);
     }
 
     #[test]
@@ -260,7 +256,7 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(Value(3), vm.register(Reg(3)));
+        assert_eq!(Value(3), vm.registers[Reg(3)]);
     }
 
     #[test]
