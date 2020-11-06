@@ -12,9 +12,8 @@ use crate::key::KeyHandler;
 use crate::layout::*;
 
 lazy_static! {
-    static ref HANDLERS: HashMap<Field, fn(&MetaCore, &Field) -> RDoc> = {
-        let mut m = HashMap::<Field, fn(&MetaCore, &Field) -> RDoc>::new();
-        m.insert(ids::RUN_TEST.clone(), layout_run_test);
+    static ref HANDLERS: HashMap<Field, fn(&MetaCore, &Datom) -> RDoc> = {
+        let mut m = HashMap::<Field, fn(&MetaCore, &Datom) -> RDoc>::new();
         m.insert(ids::NUMBER_LITERAL.clone(), layout_number_literal);
         m.insert(ids::STRING_LITERAL.clone(), layout_string_literal);
         m.insert(ids::IDENTIFIER.clone(), layout_identifier);
@@ -103,10 +102,107 @@ impl KeyHandler for RunTestKeys {
 }
 
 #[derive(Debug)]
-struct HoleKeys(Field);
+struct BlockKeys(Field);
+impl KeyHandler for BlockKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let block = &self.0;
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let id = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    block.clone(),
+                    ids::BLOCK_STATEMENT.clone(),
+                    id.clone(),
+                ));
+            });
+
+            editor.goto_cell_id(&[id]);
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
+struct FunctionParamsKeys(Field);
+impl KeyHandler for FunctionParamsKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let f = &self.0;
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let param = Field::new_id();
+            let identifier = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    f.clone(),
+                    ids::FUNCTION_PARAMETER.clone(),
+                    param.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    param.clone(),
+                    core::A_TYPE.clone(),
+                    ids::PARAMETER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    param.clone(),
+                    ids::PARAMETER_IDENTIFIER.clone(),
+                    identifier.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    ids::IDENTIFIER_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+            });
+
+            editor.goto_cell_id(&[identifier]);
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
+struct ApplicationArgsKeys(Field);
+impl KeyHandler for ApplicationArgsKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let f = &self.0;
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let arg = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    f.clone(),
+                    ids::APPLICATION_ARGUMENT.clone(),
+                    arg.clone(),
+                ));
+            });
+
+            editor.goto_cell_id(&[arg]);
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
+struct HoleKeys(Datom);
 impl KeyHandler for HoleKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
-        let id = &self.0;
+        let core = MetaCore::new(editor.store());
+        let parent = &self.0.entity;
+        let parent_type = core.meta_type(parent).map(|d| &d.value);
+
+        let id = &self.0.value;
         if HotKey::new(None, KeyCode::Key0).matches(key)
             || HotKey::new(None, KeyCode::Key1).matches(key)
             || HotKey::new(None, KeyCode::Key2).matches(key)
@@ -227,17 +323,184 @@ impl KeyHandler for HoleKeys {
             return true;
         }
 
+        if parent_type == Some(&ids::BLOCK as &Field)
+            && (HotKey::new(None, "=").matches(key)
+                || HotKey::new(SysMods::Shift, "=").matches(key))
+        {
+            let identifier = Field::new_id();
+
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::BINDING.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::BINDING_IDENTIFIER.clone(),
+                    identifier.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    ids::IDENTIFIER_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::BINDING_VALUE.clone(),
+                    Field::new_id(),
+                ));
+            });
+
+            editor.goto_cell_id(&[identifier]);
+
+            return true;
+        }
+
         false
     }
 }
 
-fn f_layout(core: &MetaCore, entity: &Field) -> RDoc {
+fn f_layout(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
     let handler = core
         .meta_type(entity)
         .and_then(|type_| HANDLERS.get(&type_.value))
         .copied()
         .unwrap_or(layout_hole);
-    with_id(vec![entity.clone()], handler(core, entity))
+    with_id(vec![entity.clone()], handler(core, datom))
+}
+
+fn layout_number_literal(core: &MetaCore, datom: &Datom) -> RDoc {
+    core.store
+        .value(&datom.value, &ids::NUMBER_LITERAL_VALUE)
+        .map_or_else(empty, |d| datom_value(d))
+}
+
+fn layout_string_literal(core: &MetaCore, datom: &Datom) -> RDoc {
+    core.store
+        .value(&datom.value, &ids::STRING_LITERAL_VALUE)
+        .map_or_else(empty, |d| quotes(datom_value(d)))
+}
+
+fn layout_identifier(core: &MetaCore, datom: &Datom) -> RDoc {
+    core.store
+        .value(&datom.value, &ids::IDENTIFIER_IDENTIFIER)
+        .map_or_else(empty, |d| datom_value(d))
+}
+
+fn layout_identifier_reference(core: &MetaCore, datom: &Datom) -> RDoc {
+    core.store
+        .value(&datom.value, &ids::IDENTIFIER_REFERENCE_IDENTIFIER)
+        .map_or_else(empty, |d| {
+            let empty = Field::from("");
+            let value = core
+                .store
+                .value(&d.value, &ids::IDENTIFIER_IDENTIFIER)
+                .map_or(&empty, |d| &d.value);
+            datom_reference(
+                d,
+                ReferenceTarget::Value,
+                TypeFilter::from_type(ids::IDENTIFIER.clone()),
+                value,
+            )
+        })
+}
+
+fn layout_function(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let params = core.ordered_values(entity, &ids::FUNCTION_PARAMETER);
+
+    group(concat(vec![
+        text("fn"), // TODO: keyword
+        with_key_handler(
+            Box::new(FunctionParamsKeys(entity.clone())),
+            parentheses(concat(
+                params
+                    .iter()
+                    .map(|d| f_layout(core, d))
+                    .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
+            )),
+        ),
+        whitespace(" "),
+        punctuation("->"),
+        line(),
+        core.store
+            .value(entity, &ids::FUNCTION_BODY)
+            .map_or_else(empty, |d| f_layout(core, d)),
+    ]))
+}
+
+fn layout_application(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
+
+    group(concat(vec![
+        parentheses(
+            core.store
+                .value(entity, &ids::APPLICATION_FN)
+                .map_or_else(empty, |d| f_layout(core, d)),
+        ),
+        with_key_handler(
+            Box::new(ApplicationArgsKeys(entity.clone())),
+            parentheses(concat(
+                args.iter()
+                    .map(|d| f_layout(core, d))
+                    .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
+            )),
+        ),
+    ]))
+}
+
+fn layout_block(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let stmts = core.ordered_values(entity, &ids::BLOCK_STATEMENT);
+
+    with_key_handler(
+        Box::new(BlockKeys(entity.clone())),
+        group(braces(concat(vec![
+            nest(
+                2,
+                concat(
+                    stmts
+                        .iter()
+                        .map(|stmt| concat(vec![line(), f_layout(core, stmt)]))
+                        .intersperse_with(|| punctuation(";")),
+                ),
+            ),
+            line(),
+        ]))),
+    )
+}
+
+fn layout_binding(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    group(concat(vec![
+        core.store
+            .value(entity, &ids::BINDING_IDENTIFIER)
+            .map_or_else(empty, |d| f_layout(core, d)),
+        whitespace(" "),
+        punctuation("="),
+        line(),
+        core.store
+            .value(entity, &ids::BINDING_VALUE)
+            .map_or_else(empty, |d| f_layout(core, d)),
+    ]))
+}
+
+fn layout_parameter(core: &MetaCore, datom: &Datom) -> RDoc {
+    core.store
+        .value(&datom.value, &ids::PARAMETER_IDENTIFIER)
+        .map_or_else(empty, |d| f_layout(core, d))
+}
+
+fn layout_hole(_core: &MetaCore, datom: &Datom) -> RDoc {
+    with_key_handler(Box::new(HoleKeys(datom.clone())), text("_"))
 }
 
 fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
@@ -257,7 +520,7 @@ fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
                         whitespace(" "),
                         core.store
                             .value(entity, &ids::RUN_TEST_EXPR)
-                            .map_or_else(empty, |expr| f_layout(core, &expr.value)),
+                            .map_or_else(empty, |expr| f_layout(core, expr)),
                         punctuation(";"),
                         line(),
                         text("expected result"),
@@ -292,118 +555,6 @@ fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
     )
 }
 
-fn layout_number_literal(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::NUMBER_LITERAL_VALUE)
-        .map_or_else(empty, |d| datom_value(d))
-}
-
-fn layout_string_literal(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::STRING_LITERAL_VALUE)
-        .map_or_else(empty, |d| quotes(datom_value(d)))
-}
-
-fn layout_identifier(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::IDENTIFIER_IDENTIFIER)
-        .map_or_else(empty, |d| datom_value(d))
-}
-
-fn layout_identifier_reference(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::IDENTIFIER_REFERENCE_IDENTIFIER)
-        .map_or_else(empty, |d| {
-            let empty = Field::from("");
-            let value = core
-                .store
-                .value(&d.value, &ids::IDENTIFIER_IDENTIFIER)
-                .map_or(&empty, |d| &d.value);
-            datom_reference(
-                d,
-                ReferenceTarget::Value,
-                TypeFilter::from_type(ids::IDENTIFIER.clone()),
-                value,
-            )
-        })
-}
-
-fn layout_function(core: &MetaCore, entity: &Field) -> RDoc {
-    let params = core.ordered_values(entity, &ids::FUNCTION_PARAMETER);
-
-    group(concat(vec![
-        text("fn"), // TODO: keyword
-        parentheses(concat(
-            params
-                .iter()
-                .map(|d| f_layout(core, &d.value))
-                .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
-        )),
-        whitespace(" "),
-        punctuation("->"),
-        line(),
-        core.store
-            .value(entity, &ids::FUNCTION_BODY)
-            .map_or_else(empty, |d| f_layout(core, &d.value)),
-    ]))
-}
-
-fn layout_application(core: &MetaCore, entity: &Field) -> RDoc {
-    let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
-
-    group(concat(vec![
-        core.store
-            .value(entity, &ids::APPLICATION_FN)
-            .map_or_else(empty, |d| f_layout(core, &d.value)),
-        parentheses(concat(
-            args.iter()
-                .map(|d| f_layout(core, &d.value))
-                .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
-        )),
-    ]))
-}
-
-fn layout_block(core: &MetaCore, entity: &Field) -> RDoc {
-    let stmts = core.ordered_values(entity, &ids::BLOCK_STATEMENT);
-
-    group(braces(concat(vec![
-        nest(
-            2,
-            concat(
-                stmts
-                    .iter()
-                    .map(|stmt| concat(vec![line(), f_layout(core, &stmt.value)]))
-                    .intersperse_with(|| punctuation(";")),
-            ),
-        ),
-        line(),
-    ])))
-}
-
-fn layout_binding(core: &MetaCore, entity: &Field) -> RDoc {
-    group(concat(vec![
-        core.store
-            .value(entity, &ids::BINDING_IDENTIFIER)
-            .map_or_else(empty, |d| f_layout(core, &d.value)),
-        whitespace(" "),
-        punctuation("="),
-        line(),
-        core.store
-            .value(entity, &ids::BINDING_VALUE)
-            .map_or_else(empty, |d| f_layout(core, &d.value)),
-    ]))
-}
-
-fn layout_parameter(core: &MetaCore, entity: &Field) -> RDoc {
-    core.store
-        .value(entity, &ids::PARAMETER_IDENTIFIER)
-        .map_or_else(empty, |d| f_layout(core, &d.value))
-}
-
-fn layout_hole(_core: &MetaCore, entity: &Field) -> RDoc {
-    with_key_handler(Box::new(HoleKeys(entity.clone())), text("_"))
-}
-
 pub fn f_layout_entries(store: &Store) -> RDoc {
     let core = MetaCore::new(store);
 
@@ -416,7 +567,7 @@ pub fn f_layout_entries(store: &Store) -> RDoc {
                 .iter()
                 .sorted()
                 .map(|e| {
-                    with_id(vec![e.entity.clone()], f_layout(&core, &e.entity))
+                    with_id(vec![e.entity.clone()], layout_run_test(&core, &e.entity))
                         .with_key(e.entity.to_string())
                 })
                 .intersperse_with(linebreak),
