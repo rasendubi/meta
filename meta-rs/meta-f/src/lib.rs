@@ -59,4 +59,43 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_argument_passing() -> std::io::Result<()> {
+        let store = serde_json::from_reader(Cursor::new(STORE))?;
+
+        let meta_f_test = "ckh62qzu500009gma6hh890nj".into();
+
+        let result = interpret(&store, &meta_f_test).unwrap();
+
+        assert_eq!(Some(31), result);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_variable_binding() -> std::io::Result<()> {
+        let store = serde_json::from_reader(Cursor::new(STORE))?;
+
+        let meta_f_test = "ckh62t1xz0000e8magvtomp2n".into();
+
+        let result = interpret(&store, &meta_f_test).unwrap();
+
+        assert_eq!(Some(100), result);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_escaping_functions() -> std::io::Result<()> {
+        let store = serde_json::from_reader(Cursor::new(STORE))?;
+
+        let meta_f_test = "ckh62yayg0000x9maiza5ybg2".into();
+
+        let result = interpret(&store, &meta_f_test).unwrap();
+
+        assert_eq!(Some(15), result);
+
+        Ok(())
+    }
 }

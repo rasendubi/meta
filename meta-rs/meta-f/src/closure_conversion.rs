@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use im::HashMap;
+use log::trace;
 
 use crate::cps::*;
 
@@ -64,12 +65,14 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
                         &*extra_args,
                     );
 
-                    lifted_fns.push(lifted_fn);
-                    wrapper_fns.push(wrapper_fn);
-
                     closure_formats.insert(f.0, closure_build_format.clone());
 
-                    lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, &f.2);
+                    // we lift the body of lifted function (not original) because it alpha-converted
+                    // all free variables to the names of parameters that are available in scope
+                    lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, &lifted_fn.2);
+
+                    lifted_fns.push(lifted_fn);
+                    wrapper_fns.push(wrapper_fn);
                 }
 
                 lift_functions(gen, lifted_fns, wrapper_fns, closure_formats, e);
@@ -229,6 +232,8 @@ pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
         &mut closure_formats,
         exp,
     );
+
+    trace!("closure_formats = {:?}", closure_formats);
 
     let mut fns = lifted_fns
         .into_iter()
