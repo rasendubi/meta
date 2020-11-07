@@ -4,7 +4,9 @@ use im::HashMap;
 
 use crate::cps::Exp as CExp;
 use crate::cps::*;
-use crate::parser::{Binding, Expr, Function, Identifier, RunTest, Statement};
+use crate::parser::{
+    Binding, Constructor, Expr, Function, Identifier, RunTest, Statement, TypeDef,
+};
 
 pub(crate) fn entry_to_cps(gen: &mut VarGen, e: &RunTest) -> CExp {
     compile_expr(
@@ -106,7 +108,23 @@ where
                 )),
             )
         }
-        Expr::TypeDef(_) => and_then(gen, Value::Int(0)),
+        Expr::TypeDef(TypeDef { constructors }) => {
+            let fndefs = constructors
+                .iter()
+                .map(|c| compile_constructor(gen, c))
+                .collect::<Box<[FnDef]>>();
+            let vars = fndefs
+                .iter()
+                .map(|f| Value::Var(f.0))
+                .collect::<Box<[Value]>>();
+
+            let r = gen.next();
+
+            CExp::Fix(
+                fndefs,
+                Rc::new(CExp::Record(vars, r, Rc::new(and_then(gen, Value::Var(r))))),
+            )
+        }
     }
 }
 
@@ -203,4 +221,29 @@ fn compile_fndef(
                 as Box<dyn FnOnce(&mut _, _) -> _>,
         )),
     )
+}
+
+fn compile_constructor(gen: &mut VarGen, constructor: &Constructor) -> FnDef {
+    let Constructor {
+        parameters,
+        identifier: _,
+    } = constructor;
+
+    let var = gen.next();
+
+    let parameters = parameters.iter().map(|_| gen.next()).collect::<Vec<_>>();
+
+    let mut all_params = parameters.clone();
+    let k = gen.next();
+    all_params.push(k);
+
+    let r = gen.next();
+
+    let body = CExp::Record(
+        parameters.iter().copied().map(Value::Var).collect(),
+        r,
+        Rc::new(CExp::App(Value::Var(k), Box::new([Value::Var(r)]))),
+    );
+
+    FnDef(var, all_params.into_boxed_slice(), Rc::new(body))
 }
