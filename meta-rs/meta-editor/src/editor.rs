@@ -414,12 +414,24 @@ impl Editor {
                     let candidates = candidates
                         .iter()
                         .map(|id| {
-                            (
-                                id.clone(),
-                                core.identifier(&id)
-                                    .map_or(id, |datom| &datom.value)
-                                    .to_string(),
-                            )
+                            let type_ = core.meta_type(id).map(|d| &d.value);
+
+                            let display = type_
+                                .and_then(|type_| {
+                                    // TODO: how to decouple type-specific display?
+                                    if type_ == &meta_f::ids::IDENTIFIER as &Field {
+                                        core.store
+                                            .value(id, &meta_f::ids::IDENTIFIER_IDENTIFIER)
+                                            .map(|d| &d.value)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .or_else(|| core.identifier(&id).map(|datom| &datom.value))
+                                .unwrap_or(id)
+                                .to_string();
+
+                            (id.clone(), display)
                         })
                         .filter_map(|(id, s)| s.to_lowercase().find(&input).map(|i| (i, s, id)))
                         .sorted()
