@@ -28,4 +28,9 @@ lazy_static! {
     pub static ref BINDING: Field = "ckgvali04000hwhmaw93ym25w".into();
     pub static ref BINDING_IDENTIFIER: Field = "ckgvaluy0000lwhmai73hadxb".into();
     pub static ref BINDING_VALUE: Field = "ckgvamn7n000rwhmaz95psjz9".into();
+    pub static ref TYPEDEF: Field = "ckh7x7jbt0000ofmam3vmnemu".into();
+    pub static ref TYPEDEF_CONSTRUCTOR: Field = "ckh7x81a60003ofma44po5ot4".into();
+    pub static ref CONSTRUCTOR: Field = "ckh7x9g1z0009ofmai870xqaw".into();
+    pub static ref CONSTRUCTOR_IDENTIFIER: Field = "ckh7xa4xw000dofmasgpx7a3f".into();
+    pub static ref CONSTRUCTOR_PARAMETER: Field = "ckh7xhisq000kofma47pr552r".into();
 }

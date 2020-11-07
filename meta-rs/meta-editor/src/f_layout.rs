@@ -26,6 +26,8 @@ lazy_static! {
         m.insert(ids::APPLICATION.clone(), layout_application);
         m.insert(ids::BLOCK.clone(), layout_block);
         m.insert(ids::BINDING.clone(), layout_binding);
+        m.insert(ids::TYPEDEF.clone(), layout_typedef);
+        m.insert(ids::CONSTRUCTOR.clone(), layout_constructor);
         m
     };
 }
@@ -126,6 +128,53 @@ impl KeyHandler for BlockKeys {
 }
 
 #[derive(Debug)]
+struct TypeDefKeys(Field);
+impl KeyHandler for TypeDefKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let typedef = &self.0;
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let id = Field::new_id();
+            let id_id = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    typedef.clone(),
+                    ids::TYPEDEF_CONSTRUCTOR.clone(),
+                    id.clone(),
+                ));
+
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::CONSTRUCTOR.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::CONSTRUCTOR_IDENTIFIER.clone(),
+                    id_id.clone(),
+                ));
+
+                store.add_datom(&Datom::eav(
+                    id_id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id_id.clone(),
+                    ids::IDENTIFIER_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+            });
+
+            editor.goto_cell_id(&[id_id]);
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
 struct FunctionParamsKeys(Field);
 impl KeyHandler for FunctionParamsKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
@@ -137,6 +186,51 @@ impl KeyHandler for FunctionParamsKeys {
                 store.add_datom(&Datom::eav(
                     f.clone(),
                     ids::FUNCTION_PARAMETER.clone(),
+                    param.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    param.clone(),
+                    core::A_TYPE.clone(),
+                    ids::PARAMETER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    param.clone(),
+                    ids::PARAMETER_IDENTIFIER.clone(),
+                    identifier.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    ids::IDENTIFIER_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+            });
+
+            editor.goto_cell_id(&[identifier]);
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
+struct ConstructorParamsKeys(Field);
+impl KeyHandler for ConstructorParamsKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let f = &self.0;
+        if HotKey::new(SysMods::Cmd, KeyCode::Return).matches(key) {
+            let param = Field::new_id();
+            let identifier = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    f.clone(),
+                    ids::CONSTRUCTOR_PARAMETER.clone(),
                     param.clone(),
                 ));
                 store.add_datom(&Datom::eav(
@@ -333,6 +427,18 @@ impl KeyHandler for HoleKeys {
                     id.clone(),
                     ids::FUNCTION_BODY.clone(),
                     Field::new_id(),
+                ));
+            });
+
+            return true;
+        }
+
+        if HotKey::new(None, "t").matches(key) {
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::TYPEDEF.clone(),
                 ));
             });
 
@@ -552,6 +658,60 @@ fn layout_parameter(core: &MetaCore, datom: &Datom) -> RDoc {
     core.store
         .value(&datom.value, &ids::PARAMETER_IDENTIFIER)
         .map_or_else(empty, |d| f_layout(core, d))
+}
+
+fn layout_typedef(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let constructors = core.ordered_values(entity, &ids::TYPEDEF_CONSTRUCTOR);
+
+    with_key_handler(
+        Box::new(TypeDefKeys(entity.clone())),
+        concat(vec![
+            text("type"),
+            whitespace(" "),
+            group(braces(concat(vec![
+                line(),
+                nest(
+                    2,
+                    concat(
+                        constructors
+                            .iter()
+                            .map(|c| f_layout(core, c).with_key(c.id.to_string()))
+                            .intersperse_with(|| {
+                                concat(vec![line(), punctuation("|"), whitespace(" ")])
+                            }),
+                    ),
+                ),
+                line(),
+            ]))),
+        ]),
+    )
+}
+
+fn layout_constructor(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let id = core
+        .store
+        .value(entity, &ids::CONSTRUCTOR_IDENTIFIER)
+        .map_or_else(empty, |i| f_layout(core, i));
+
+    let params = core.ordered_values(entity, &ids::CONSTRUCTOR_PARAMETER);
+
+    concat(vec![
+        id,
+        with_key_handler(
+            Box::new(ConstructorParamsKeys(entity.clone())),
+            parentheses(nest(
+                2,
+                concat(
+                    params
+                        .iter()
+                        .map(|p| f_layout(core, p))
+                        .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
+                ),
+            )),
+        ),
+    ])
 }
 
 fn layout_hole(_core: &MetaCore, datom: &Datom) -> RDoc {

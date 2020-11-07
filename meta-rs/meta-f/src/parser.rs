@@ -36,14 +36,25 @@ pub(crate) struct Binding {
 }
 
 #[derive(Debug)]
-pub(crate) struct FunctionParameter {
+pub(crate) struct Parameter {
     pub id: Identifier,
 }
 
 #[derive(Debug)]
 pub(crate) struct Function {
-    pub parameters: Vec<FunctionParameter>,
+    pub parameters: Vec<Parameter>,
     pub body: Expr,
+}
+
+#[derive(Debug)]
+pub(crate) struct TypeDef {
+    pub constructors: Vec<Constructor>,
+}
+
+#[derive(Debug)]
+pub(crate) struct Constructor {
+    pub identifier: Identifier,
+    pub parameters: Vec<Parameter>,
 }
 
 #[derive(Debug)]
@@ -60,6 +71,7 @@ pub(crate) enum Expr {
     App(Box<Expr>, Vec<Expr>),
     Function(Box<Function>),
     Block(Vec<Statement>),
+    TypeDef(TypeDef),
 }
 
 pub(crate) fn parse(core: &MetaCore, entry: &Field) -> Result<RunTest, Vec<Error>> {
@@ -132,6 +144,7 @@ impl<'a> Parser<'a> {
                 FUNCTION.clone(),
                 APPLICATION.clone(),
                 BLOCK.clone(),
+                TYPEDEF.clone(),
             },
         )?;
         if type_ == (&NUMBER_LITERAL as &Field) {
@@ -182,6 +195,15 @@ impl<'a> Parser<'a> {
                 .try_collect()?;
 
             Ok(Expr::Block(stmts))
+        } else if type_ == &TYPEDEF as &Field {
+            let constructors = self
+                .core
+                .ordered_values(entry, &TYPEDEF_CONSTRUCTOR)
+                .into_iter()
+                .map(|e| self.parse_constructor(&e.value))
+                .try_collect()?;
+
+            Ok(Expr::TypeDef(TypeDef { constructors }))
         } else {
             panic!("Type not covered: {:?}", type_);
         }
@@ -213,9 +235,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_parameter(&mut self, param: &Field) -> Result<FunctionParameter, ()> {
+    fn parse_parameter(&mut self, param: &Field) -> Result<Parameter, ()> {
         let identifier = self.required_attribute(param, &PARAMETER_IDENTIFIER)?;
-        Ok(FunctionParameter {
+        Ok(Parameter {
             id: self.parse_identifier(&identifier)?,
         })
     }
@@ -223,6 +245,22 @@ impl<'a> Parser<'a> {
     fn parse_identifier(&mut self, entry: &Field) -> Result<Identifier, ()> {
         Ok(Identifier {
             entry: entry.clone(),
+        })
+    }
+
+    fn parse_constructor(&mut self, entry: &Field) -> Result<Constructor, ()> {
+        let identifier = self.required_attribute(entry, &CONSTRUCTOR_IDENTIFIER)?;
+        let identifier = self.parse_identifier(&identifier)?;
+        let parameters = self
+            .core
+            .ordered_values(entry, &CONSTRUCTOR_PARAMETER)
+            .into_iter()
+            .map(|e| self.parse_parameter(&e.value))
+            .try_collect()?;
+
+        Ok(Constructor {
+            identifier,
+            parameters,
         })
     }
 }

@@ -106,6 +106,7 @@ where
                 )),
             )
         }
+        Expr::TypeDef(_) => and_then(gen, Value::Int(0)),
     }
 }
 
