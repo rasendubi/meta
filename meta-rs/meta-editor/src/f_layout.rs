@@ -637,11 +637,20 @@ fn layout_application(core: &MetaCore, datom: &Datom) -> RDoc {
     let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
 
     group(concat(vec![
-        parentheses(
-            core.store
-                .value(entity, &ids::APPLICATION_FN)
-                .map_or_else(empty, |d| f_layout(core, d)),
-        ),
+        core.store
+            .value(entity, &ids::APPLICATION_FN)
+            .map_or_else(empty, |d| {
+                let layout = f_layout(core, d);
+
+                let type_ = core.meta_type(&d.value).map(|d| &d.value);
+                if type_ == Some(&ids::FUNCTION) {
+                    // add parentheses to disambiguate
+                    // fn() -> 43() --> (fn() -> 43)()
+                    parentheses(layout)
+                } else {
+                    layout
+                }
+            }),
         with_key_handler(
             Box::new(ApplicationArgsKeys(entity.clone())),
             parentheses(concat(
