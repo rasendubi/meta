@@ -84,34 +84,9 @@ where
             )
         }
         Expr::Function(f) => {
-            let Function { parameters, body } = &**f;
-
-            let f = gen.next();
-            let k = gen.next();
-
-            let mut params = parameters.iter().map(|_| gen.next()).collect::<Vec<_>>();
-            params.push(k);
-            let params = params;
-
-            let mut next_env = env;
-            parameters.iter().zip(params.iter()).for_each(|(p, var)| {
-                next_env.insert(p.id.clone(), Value::Var(*var));
-            });
-
-            CExp::Fix(
-                Box::new([FnDef(
-                    f,
-                    params.into_boxed_slice(),
-                    Rc::new(compile_expr(
-                        gen,
-                        next_env,
-                        body,
-                        Box::new(|_gen: &mut _, res| CExp::App(Value::Var(k), Box::new([res])))
-                            as Box<dyn FnOnce(&mut _, _) -> _>,
-                    )),
-                )]),
-                Rc::new(and_then(gen, Value::Var(f))),
-            )
+            let f_var = gen.next();
+            let fndef = compile_fndef(gen, env, f, f_var);
+            CExp::Fix(Box::new([fndef]), Rc::new(and_then(gen, Value::Var(f_var))))
         }
         Expr::Block(stmts) => {
             let k = gen.next();
@@ -153,16 +128,32 @@ where
     match stmt {
         Statement::Binding(binding) => {
             let Binding { identifier, value } = binding;
-            let mut next_env = env.clone();
-            compile_expr(
-                gen,
-                env,
-                value,
-                Box::new(move |gen: &mut _, v| {
-                    next_env.insert(identifier.clone(), v);
-                    compile_block(gen, next_env, rest, and_then)
-                }) as Box<dyn FnOnce(&mut _, _) -> _>,
-            )
+            match value {
+                Expr::Function(f) => {
+                    let f_var = gen.next();
+
+                    let mut next_env = env;
+                    next_env.insert(identifier.clone(), Value::Var(f_var));
+
+                    let fndef = compile_fndef(gen, next_env.clone(), f, f_var);
+                    CExp::Fix(
+                        Box::new([fndef]),
+                        Rc::new(compile_block(gen, next_env, rest, and_then)),
+                    )
+                }
+                value => {
+                    let mut next_env = env.clone();
+                    compile_expr(
+                        gen,
+                        env,
+                        value,
+                        Box::new(move |gen: &mut _, v| {
+                            next_env.insert(identifier.clone(), v);
+                            compile_block(gen, next_env, rest, and_then)
+                        }) as Box<dyn FnOnce(&mut _, _) -> _>,
+                    )
+                }
+            }
         }
         Statement::Expr(expr) => {
             if rest.is_empty() {
@@ -179,4 +170,36 @@ where
             }
         }
     }
+}
+
+fn compile_fndef(
+    gen: &mut VarGen,
+    env: HashMap<Identifier, Value>,
+    f: &Function,
+    f_var: Var,
+) -> FnDef {
+    let Function { parameters, body } = f;
+
+    let mut params = parameters.iter().map(|_| gen.next()).collect::<Vec<_>>();
+
+    let k = gen.next(); // return continuation
+    params.push(k);
+    let params = params;
+
+    let mut next_env = env;
+    parameters.iter().zip(params.iter()).for_each(|(p, var)| {
+        next_env.insert(p.id.clone(), Value::Var(*var));
+    });
+
+    FnDef(
+        f_var,
+        params.into_boxed_slice(),
+        Rc::new(compile_expr(
+            gen,
+            next_env,
+            body,
+            Box::new(|_gen: &mut _, res| CExp::App(Value::Var(k), Box::new([res])))
+                as Box<dyn FnOnce(&mut _, _) -> _>,
+        )),
+    )
 }
