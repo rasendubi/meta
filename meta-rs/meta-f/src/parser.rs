@@ -72,6 +72,7 @@ pub(crate) enum Expr {
     Function(Box<Function>),
     Block(Vec<Statement>),
     TypeDef(TypeDef),
+    Access(Box<Expr>, Identifier),
 }
 
 pub(crate) fn parse(core: &MetaCore, entry: &Field) -> Result<RunTest, Vec<Error>> {
@@ -145,6 +146,7 @@ impl<'a> Parser<'a> {
                 APPLICATION.clone(),
                 BLOCK.clone(),
                 TYPEDEF.clone(),
+                ACCESS.clone(),
             },
         )?;
         if type_ == (&NUMBER_LITERAL as &Field) {
@@ -204,6 +206,14 @@ impl<'a> Parser<'a> {
                 .try_collect()?;
 
             Ok(Expr::TypeDef(TypeDef { constructors }))
+        } else if type_ == &ACCESS as &Field {
+            let object = self.required_attribute(entry, &ACCESS_OBJECT)?;
+            let object = self.parse_expr(&object)?;
+            let field = self.required_attribute(entry, &ACCESS_FIELD)?;
+            let identifier = self.required_attribute(&field, &IDENTIFIER_REFERENCE_IDENTIFIER)?;
+            let identifier = self.parse_identifier(&identifier)?;
+
+            Ok(Expr::Access(Box::new(object), identifier))
         } else {
             panic!("Type not covered: {:?}", type_);
         }
@@ -217,6 +227,8 @@ impl<'a> Parser<'a> {
             FUNCTION.clone(), // useless as a statement
             APPLICATION.clone(),
             BLOCK.clone(),
+            TYPEDEF.clone(),
+                ACCESS.clone(),
             BINDING.clone(),
         };
 

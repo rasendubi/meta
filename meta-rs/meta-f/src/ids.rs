@@ -33,4 +33,7 @@ lazy_static! {
     pub static ref CONSTRUCTOR: Field = "ckh7x9g1z0009ofmai870xqaw".into();
     pub static ref CONSTRUCTOR_IDENTIFIER: Field = "ckh7xa4xw000dofmasgpx7a3f".into();
     pub static ref CONSTRUCTOR_PARAMETER: Field = "ckh7xhisq000kofma47pr552r".into();
+    pub static ref ACCESS: Field = "ckh80o3mz0000bqmaiw3lr7pk".into();
+    pub static ref ACCESS_OBJECT: Field = "ckh80oq7u0004bqmafth0c4f4".into();
+    pub static ref ACCESS_FIELD: Field = "ckh80scjb000bbqmawe56ul0c".into();
 }

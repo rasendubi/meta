@@ -28,6 +28,7 @@ lazy_static! {
         m.insert(ids::BINDING.clone(), layout_binding);
         m.insert(ids::TYPEDEF.clone(), layout_typedef);
         m.insert(ids::CONSTRUCTOR.clone(), layout_constructor);
+        m.insert(ids::ACCESS.clone(), layout_access);
         m
     };
 }
@@ -462,6 +463,42 @@ impl KeyHandler for HoleKeys {
             return true;
         }
 
+        if HotKey::new(None, ".").matches(key) {
+            let object = Field::new_id();
+            let identifier = Field::new_id();
+            editor.with_store(|store| {
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    core::A_TYPE.clone(),
+                    ids::ACCESS.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::ACCESS_OBJECT.clone(),
+                    object.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    id.clone(),
+                    ids::ACCESS_FIELD.clone(),
+                    identifier.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    core::A_TYPE.clone(),
+                    ids::IDENTIFIER_REFERENCE.clone(),
+                ));
+                store.add_datom(&Datom::eav(
+                    identifier.clone(),
+                    ids::IDENTIFIER_REFERENCE_IDENTIFIER.clone(),
+                    "".into(),
+                ));
+            });
+
+            editor.goto_cell_id(&[object]);
+
+            return true;
+        }
+
         if HotKey::new(None, "&").matches(key) || HotKey::new(SysMods::Shift, "&").matches(key) {
             editor.with_store(|store| {
                 store.add_datom(&Datom::eav(
@@ -712,6 +749,20 @@ fn layout_constructor(core: &MetaCore, datom: &Datom) -> RDoc {
             )),
         ),
     ])
+}
+
+fn layout_access(core: &MetaCore, datom: &Datom) -> RDoc {
+    let entity = &datom.value;
+    let object = core
+        .store
+        .value(entity, &ids::ACCESS_OBJECT)
+        .map_or_else(empty, |d| f_layout(core, d));
+    let identifier = core
+        .store
+        .value(entity, &ids::ACCESS_FIELD)
+        .map_or_else(empty, |d| f_layout(core, d));
+
+    concat(vec![object, punctuation("."), identifier])
 }
 
 fn layout_hole(_core: &MetaCore, datom: &Datom) -> RDoc {
