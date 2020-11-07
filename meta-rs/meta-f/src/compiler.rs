@@ -9,9 +9,12 @@ use crate::parser::{
 };
 
 pub(crate) fn entry_to_cps(gen: &mut VarGen, e: &RunTest) -> CExp {
+    let mut fields = HashMap::new();
+    collect_fields(&mut fields, e);
+
     compile_expr(
         gen,
-        Env::new(),
+        Env::new(fields),
         &e.expr,
         Box::new(|_gen: &mut _, v| {
             CExp::Primop(Primop::Halt, Box::new([v]), Box::new([]), Box::new([]))
@@ -26,10 +29,10 @@ struct Env {
 }
 
 impl Env {
-    fn new() -> Self {
+    fn new(fields: HashMap<Identifier, usize>) -> Self {
         Self {
             variables: HashMap::new(),
-            fields: HashMap::new(),
+            fields,
         }
     }
 
@@ -43,10 +46,6 @@ impl Env {
 
     fn get_field(&self, id: &Identifier) -> Option<&usize> {
         self.fields.get(id)
-    }
-
-    fn add_field(&mut self, id: Identifier, offset: usize) {
-        self.fields.insert(id, offset);
     }
 }
 
@@ -191,26 +190,6 @@ where
                         Rc::new(compile_block(gen, next_env, rest, and_then)),
                     )
                 }
-                Expr::TypeDef(t) => {
-                    let mut next_env = env.clone();
-                    for (i, c) in t.constructors.iter().enumerate() {
-                        next_env.add_field(c.identifier.clone(), i);
-
-                        for (j, p) in c.parameters.iter().enumerate() {
-                            next_env.add_field(p.id.clone(), j);
-                        }
-                    }
-
-                    compile_expr(
-                        gen,
-                        env,
-                        value,
-                        Box::new(move |gen: &mut _, v| {
-                            next_env.add_variable(identifier.clone(), v);
-                            compile_block(gen, next_env, rest, and_then)
-                        }) as Box<dyn FnOnce(&mut _, _) -> _>,
-                    )
-                }
                 value => {
                     let mut next_env = env.clone();
                     compile_expr(
@@ -292,4 +271,53 @@ fn compile_constructor(gen: &mut VarGen, constructor: &Constructor) -> FnDef {
     );
 
     FnDef(var, all_params.into_boxed_slice(), Rc::new(body))
+}
+
+fn collect_fields(fields: &mut HashMap<Identifier, usize>, test: &RunTest) {
+    fn collect_expr(fields: &mut HashMap<Identifier, usize>, e: &Expr) {
+        match e {
+            Expr::NumberLiteral(_) => {}
+            Expr::StringLiteral(_) => {}
+            Expr::Identifier(_) => {}
+            Expr::App(f, args) => {
+                collect_expr(fields, f);
+                for arg in args.iter() {
+                    collect_expr(fields, arg);
+                }
+            }
+            Expr::Function(f) => {
+                collect_expr(fields, &f.body);
+            }
+            Expr::Block(stmts) => {
+                for stmt in stmts.iter() {
+                    collect_stmt(fields, stmt);
+                }
+            }
+            Expr::TypeDef(TypeDef { constructors }) => {
+                for (i, c) in constructors.iter().enumerate() {
+                    fields.insert(c.identifier.clone(), i);
+
+                    for (j, p) in c.parameters.iter().enumerate() {
+                        fields.insert(p.id.clone(), j);
+                    }
+                }
+            }
+            Expr::Access(e, _) => {
+                collect_expr(fields, e);
+            }
+        }
+    }
+
+    fn collect_stmt(fields: &mut HashMap<Identifier, usize>, s: &Statement) {
+        match s {
+            Statement::Binding(binding) => {
+                collect_expr(fields, &binding.value);
+            }
+            Statement::Expr(e) => {
+                collect_expr(fields, e);
+            }
+        }
+    }
+
+    collect_expr(fields, &test.expr);
 }
