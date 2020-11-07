@@ -8,7 +8,9 @@ use crate::bytecode::{Chunk, Instruction, Reg};
 use crate::memory::Memory;
 
 #[derive(Debug)]
-pub enum Error {}
+pub enum Error {
+    OutOfMemory,
+}
 
 pub(crate) struct Vm {
     chunk: Chunk,
@@ -122,6 +124,9 @@ impl Vm {
                     cells_to_allocate,
                 } => {
                     let ptr = self.memory.allocate_cells(cells_to_allocate);
+                    if ptr.is_null() {
+                        return Err(Error::OutOfMemory);
+                    }
                     self.registers[result] = Value::from_ptr(ptr);
                 }
                 Instruction::AllocReg {
@@ -130,6 +135,9 @@ impl Vm {
                 } => {
                     let cells_to_allocate = self.registers[cells_to_allocate].as_u64();
                     let ptr = self.memory.allocate_cells(cells_to_allocate);
+                    if ptr.is_null() {
+                        return Err(Error::OutOfMemory);
+                    }
                     self.registers[result] = Value::from_ptr(ptr);
                 }
                 Instruction::Store {
