@@ -195,6 +195,56 @@ impl KeyHandler for ApplicationArgsKeys {
 }
 
 #[derive(Debug)]
+struct EntityKeys(Datom);
+impl KeyHandler for EntityKeys {
+    fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
+        let core = MetaCore::new(editor.store());
+        let id = &self.0.value;
+        let my_type = core.meta_type(id).map(|d| &d.value);
+
+        if HotKey::new(SysMods::Cmd, KeyCode::KeyD).matches(key) {
+            let new_id = Field::new_id();
+
+            if &self.0.attribute == &ids::FUNCTION_PARAMETER as &Field
+                || &self.0.attribute == &ids::BLOCK_STATEMENT as &Field
+                || &self.0.attribute == &ids::APPLICATION_ARGUMENT as &Field
+                || my_type == Some(&ids::RUN_TEST)
+            {
+                // delete completely
+                editor.with_store(|store| {
+                    store.remove_datom(&self.0);
+                });
+            } else {
+                // just replace with a hole
+                let my_type = my_type.cloned();
+                editor.with_store(|store| {
+                    store.remove_datom(&self.0);
+                    let mut new_datom = self.0.clone();
+                    new_datom.value = new_id.clone();
+                    store.add_datom(&new_datom);
+
+                    if my_type.as_ref() == Some(&ids::IDENTIFIER) {
+                        // Identifier can only occur at specific context where Identifier is always
+                        // expected and no other type makes sense.
+                        store.add_datom(&Datom::eav(
+                            new_id.clone(),
+                            core::A_TYPE.clone(),
+                            my_type.unwrap(),
+                        ));
+                    }
+                });
+
+                editor.goto_cell_id(&[new_id]);
+            }
+
+            return true;
+        }
+
+        false
+    }
+}
+
+#[derive(Debug)]
 struct HoleKeys(Datom);
 impl KeyHandler for HoleKeys {
     fn handle_key(&self, key: KeyEvent, editor: &mut crate::editor::Editor) -> bool {
@@ -373,7 +423,10 @@ fn f_layout(core: &MetaCore, datom: &Datom) -> RDoc {
         .and_then(|type_| HANDLERS.get(&type_.value))
         .copied()
         .unwrap_or(layout_hole);
-    with_id(vec![entity.clone()], handler(core, datom))
+    with_key_handler(
+        Box::new(EntityKeys(datom.clone())),
+        with_id(vec![entity.clone()], handler(core, datom)),
+    )
 }
 
 fn layout_number_literal(core: &MetaCore, datom: &Datom) -> RDoc {
@@ -469,7 +522,9 @@ fn layout_block(core: &MetaCore, datom: &Datom) -> RDoc {
                 concat(
                     stmts
                         .iter()
-                        .map(|stmt| concat(vec![line(), f_layout(core, stmt)]))
+                        .map(|stmt| {
+                            concat(vec![line(), f_layout(core, stmt)]).with_key(stmt.id.to_string())
+                        })
                         .intersperse_with(|| punctuation(";")),
                 ),
             ),
