@@ -636,7 +636,7 @@ fn layout_application(core: &MetaCore, datom: &Datom) -> RDoc {
     let entity = &datom.value;
     let args = core.ordered_values(entity, &ids::APPLICATION_ARGUMENT);
 
-    group(concat(vec![
+    concat(vec![
         core.store
             .value(entity, &ids::APPLICATION_FN)
             .map_or_else(empty, |d| {
@@ -659,7 +659,7 @@ fn layout_application(core: &MetaCore, datom: &Datom) -> RDoc {
                     .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
             )),
         ),
-    ]))
+    ])
 }
 
 fn layout_block(core: &MetaCore, datom: &Datom) -> RDoc {
@@ -716,16 +716,15 @@ fn layout_typedef(core: &MetaCore, datom: &Datom) -> RDoc {
             text("type"),
             whitespace(" "),
             group(braces(concat(vec![
-                line(),
                 nest(
                     2,
                     concat(
                         constructors
                             .iter()
-                            .map(|c| f_layout(core, c).with_key(c.id.to_string()))
-                            .intersperse_with(|| {
-                                concat(vec![line(), punctuation("|"), whitespace(" ")])
-                            }),
+                            .map(|c| {
+                                concat(vec![line(), f_layout(core, c)]).with_key(c.id.to_string())
+                            })
+                            .intersperse_with(|| punctuation(",")),
                     ),
                 ),
                 line(),
@@ -771,7 +770,10 @@ fn layout_access(core: &MetaCore, datom: &Datom) -> RDoc {
         .value(entity, &ids::ACCESS_FIELD)
         .map_or_else(empty, |d| f_layout(core, d));
 
-    concat(vec![object, punctuation("."), identifier])
+    concat(vec![
+        object,
+        nest(2, concat(vec![linebreak(), punctuation("."), identifier])),
+    ])
 }
 
 fn layout_hole(_core: &MetaCore, datom: &Datom) -> RDoc {
@@ -789,14 +791,19 @@ fn layout_run_test(core: &MetaCore, entity: &Field) -> RDoc {
                     2,
                     concat(vec![
                         line(),
-                        text("expression"),
-                        whitespace(" "),
-                        punctuation("="),
-                        whitespace(" "),
-                        core.store
-                            .value(entity, &ids::RUN_TEST_EXPR)
-                            .map_or_else(empty, |expr| f_layout(core, expr)),
-                        punctuation(";"),
+                        group(nest(
+                            2,
+                            concat(vec![
+                                text("expression"),
+                                whitespace(" "),
+                                punctuation("="),
+                                line(),
+                                core.store
+                                    .value(entity, &ids::RUN_TEST_EXPR)
+                                    .map_or_else(empty, |expr| f_layout(core, expr)),
+                                punctuation(";"),
+                            ]),
+                        )),
                         line(),
                         text("expected result"),
                         whitespace(" "),
