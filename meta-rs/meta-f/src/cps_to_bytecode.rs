@@ -1,7 +1,9 @@
-use crate::bytecode::{Chunk, Instruction, Reg};
-use crate::cps::*;
 use im::HashMap;
 use std::io::{Cursor, Write};
+
+use crate::bytecode::{Chunk, Instruction, Reg};
+use crate::cps::*;
+use crate::value::Value as VmValue;
 
 pub(crate) fn compile(exp: &Exp) -> Chunk {
     let mut compilation = Compilation::new();
@@ -65,26 +67,26 @@ impl Compilation {
                     match val {
                         Value::Var(var) => {
                             let val_reg = self.register_of(*var);
-                            self.chunk.write(&Instruction::Store {
+                            self.chunk.write(&Instruction::StoreReg {
                                 addr: reg,
                                 offset,
                                 reg_to_store: val_reg,
                             })?;
                         }
                         Value::Label(var) => {
-                            let pos = self.chunk.write(&Instruction::StoreConst {
+                            let pos = self.chunk.write(&Instruction::StoreValue {
                                 addr: reg,
                                 offset,
-                                constant: 100000 + var.0 as u64,
+                                value: VmValue::invalid(var.0 as i32),
                             })?;
 
                             self.to_patch.insert(pos, *var);
                         }
                         Value::Int(v) => {
-                            self.chunk.write(&Instruction::StoreConst {
+                            self.chunk.write(&Instruction::StoreValue {
                                 addr: reg,
                                 offset,
-                                constant: *v as u64,
+                                value: VmValue::number(*v),
                             })?;
                         }
                         Value::String(_) => {
@@ -112,14 +114,10 @@ impl Compilation {
                 if let Value::Var(op1) = val {
                     let reg = self.register_for(*var);
                     let op1 = self.register_of(*op1);
-                    self.chunk.write(&Instruction::Constant {
-                        result: reg,
-                        constant: (*i * 8) as u64,
-                    })?;
-                    self.chunk.write(&Instruction::Add {
+                    self.chunk.write(&Instruction::Offset {
                         result: reg,
                         op1,
-                        op2: reg,
+                        offset: *i as i32,
                     })?;
                 } else {
                     panic!("Operator of offset is not a variable");
@@ -188,16 +186,16 @@ impl Compilation {
                     match val {
                         Value::Var(_) => panic!(),
                         Value::Label(label) => {
-                            let pos = self.chunk.write(&Instruction::Constant {
+                            let pos = self.chunk.write(&Instruction::ConstantValue {
                                 result: reg,
-                                constant: 100000 + label.0,
+                                value: VmValue::invalid(label.0 as i32),
                             })?;
                             self.to_patch.insert(pos, *label);
                         }
                         Value::Int(i) => {
-                            self.chunk.write(&Instruction::Constant {
+                            self.chunk.write(&Instruction::ConstantValue {
                                 result: reg,
-                                constant: *i as u64,
+                                value: VmValue::number(*i),
                             })?;
                         }
                         Value::String(_) => {
@@ -256,8 +254,8 @@ impl Compilation {
                     self.chunk.write(&Instruction::HaltReg { reg })?;
                 }
                 (Primop::Halt, [Value::Int(constant)], [], []) => {
-                    self.chunk.write(&Instruction::HaltConst {
-                        constant: *constant as u64,
+                    self.chunk.write(&Instruction::HaltValue {
+                        value: VmValue::number(*constant),
                     })?;
                 }
                 (Primop::Plus, [Value::Var(op1), Value::Var(op2)], [res], [e]) => {
@@ -285,21 +283,14 @@ impl Compilation {
             let instruction = Instruction::read(&mut code)?;
             code.set_position(*pos as u64);
             match instruction {
-                Instruction::StoreConst {
+                Instruction::StoreValue {
                     addr,
                     offset,
-                    constant: _,
-                } => Instruction::StoreConst {
+                    value: _,
+                } => Instruction::StoreValue {
                     addr,
                     offset,
-                    constant: *var_position as u64,
-                },
-                Instruction::Constant {
-                    result,
-                    constant: _,
-                } => Instruction::Constant {
-                    result,
-                    constant: *var_position as u64,
+                    value: VmValue::number(*var_position as i32),
                 },
                 Instruction::JumpConst { offset: _ } => {
                     let offset = (*var_position as i64) - (*pos as i64);

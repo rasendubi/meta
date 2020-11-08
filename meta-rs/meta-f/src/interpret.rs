@@ -10,6 +10,7 @@ use crate::compiler::entry_to_cps;
 use crate::cps::VarGen;
 use crate::cps_to_bytecode::compile;
 use crate::parser::{parse, Error as ParseError};
+use crate::value::Value;
 use crate::vm::{Error as VmError, Vm};
 
 #[derive(Debug)]
@@ -18,7 +19,7 @@ pub enum Error {
     RunError(VmError),
 }
 
-pub fn interpret(store: &Store, entry: &Field) -> Result<Option<u64>, Error> {
+pub fn interpret(store: &Store, entry: &Field) -> Result<Option<Value>, Error> {
     let core = MetaCore::new(store);
 
     let expr = parse(&core, entry)?;
@@ -35,7 +36,7 @@ pub fn interpret(store: &Store, entry: &Field) -> Result<Option<u64>, Error> {
     let chunk = compile(&cps);
 
     let mut vm = Vm::new(chunk);
-    Ok(vm.run()?.map(|r| r.as_u64()))
+    Ok(vm.run()?)
 }
 
 impl From<Vec<ParseError>> for Error {

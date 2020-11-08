@@ -6,6 +6,7 @@ use log::{log_enabled, trace, Level};
 
 use crate::bytecode::{Chunk, Instruction, Reg};
 use crate::memory::Memory;
+use crate::value::*;
 
 #[derive(Debug)]
 pub enum Error {
@@ -27,39 +28,11 @@ impl Debug for Vm {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub(crate) struct Value(u64);
-impl Value {
-    pub fn from_u64(v: u64) -> Self {
-        Self(v)
-    }
-
-    pub fn from_i64(v: i64) -> Self {
-        Self(v as u64)
-    }
-
-    pub fn from_ptr(ptr: *mut Value) -> Self {
-        Self(ptr as u64)
-    }
-
-    pub fn as_u64(&self) -> u64 {
-        self.0
-    }
-
-    pub fn as_i64(&self) -> i64 {
-        self.0 as i64
-    }
-
-    pub fn as_ptr(&self) -> *mut Value {
-        self.0 as *mut Value
-    }
-}
-
 struct Registers([Value; 256]);
 
 impl Registers {
     pub fn new() -> Self {
-        Self([Value(0); 256])
+        Self([Value::invalid(0); 256])
     }
 
     pub fn swap(&mut self, reg1: Reg, reg2: Reg) {
@@ -116,14 +89,14 @@ impl Vm {
                 Instruction::HaltReg { reg } => {
                     return Ok(Some(self.registers[reg]));
                 }
-                Instruction::HaltConst { constant } => {
-                    return Ok(Some(Value::from_u64(constant)));
+                Instruction::HaltValue { value } => {
+                    return Ok(Some(value));
                 }
                 Instruction::AllocConst {
                     result,
                     cells_to_allocate,
                 } => {
-                    let ptr = self.memory.allocate_cells(cells_to_allocate);
+                    let ptr = self.memory.allocate_cells(cells_to_allocate as usize);
                     if ptr.is_null() {
                         return Err(Error::OutOfMemory);
                     }
@@ -133,14 +106,14 @@ impl Vm {
                     result,
                     cells_to_allocate,
                 } => {
-                    let cells_to_allocate = self.registers[cells_to_allocate].as_u64();
+                    let cells_to_allocate = self.registers[cells_to_allocate].as_number() as usize;
                     let ptr = self.memory.allocate_cells(cells_to_allocate);
                     if ptr.is_null() {
                         return Err(Error::OutOfMemory);
                     }
                     self.registers[result] = Value::from_ptr(ptr);
                 }
-                Instruction::Store {
+                Instruction::StoreReg {
                     addr,
                     offset,
                     reg_to_store,
@@ -149,14 +122,14 @@ impl Vm {
                     let addr = addr.offset(offset as isize);
                     *addr = self.registers[reg_to_store];
                 },
-                Instruction::StoreConst {
+                Instruction::StoreValue {
                     addr,
                     offset,
-                    constant,
+                    value,
                 } => unsafe {
                     let addr = self.registers[addr].as_ptr();
                     let addr = addr.offset(offset as isize);
-                    *addr = Value::from_u64(constant);
+                    *addr = value;
                 },
                 Instruction::Load {
                     result,
@@ -167,23 +140,33 @@ impl Vm {
                     let addr = addr.offset(offset as isize);
                     self.registers[result] = *addr;
                 },
-                Instruction::Constant { result, constant } => {
-                    self.registers[result] = Value::from_u64(constant);
+                Instruction::ConstantValue { result, value } => {
+                    self.registers[result] = value;
                 }
                 Instruction::Switch { reg: _, offsets: _ } => {
                     todo!();
                 }
                 Instruction::JumpReg { reg } => {
-                    let addr = self.registers[reg].as_u64();
-                    cursor.set_position(addr);
+                    let addr = self.registers[reg].as_number();
+                    cursor.set_position(addr as u64);
                 }
                 Instruction::JumpConst { offset } => {
                     let addr = (position as i64) + offset;
                     cursor.set_position(addr as u64);
                 }
+                Instruction::Offset {
+                    result,
+                    op1,
+                    offset,
+                } => {
+                    self.registers[result] = Value::from_ptr(unsafe {
+                        self.registers[op1].as_ptr().offset(offset as isize)
+                    })
+                }
                 Instruction::Add { result, op1, op2 } => {
-                    self.registers[result] = Value::from_i64(
-                        self.registers[op1].as_i64() + self.registers[op2].as_i64(),
+                    // TODO: check they are actually numbers
+                    self.registers[result] = Value::number(
+                        self.registers[op1].as_number() + self.registers[op2].as_number(),
                     );
                 }
                 Instruction::Move { result, from } => {
@@ -199,8 +182,8 @@ impl Vm {
 
 #[cfg(test)]
 mod tests {
+    use super::Value;
     use super::*;
-    use crate::cps::Value;
     use crate::{closure_conversion::closure_conversion, cps::*, cps_to_bytecode::compile};
     use std::rc::Rc;
 
@@ -219,9 +202,9 @@ mod tests {
     fn run_constant() {
         let mut chunk = Chunk::new();
         &[
-            Instruction::Constant {
+            Instruction::ConstantValue {
                 result: Reg(0),
-                constant: 42,
+                value: Value::number(42),
             },
             Instruction::Halt,
         ]
@@ -233,7 +216,7 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(Value(42), vm.registers[Reg(0)]);
+        assert_eq!(Value::number(42), vm.registers[Reg(0)]);
     }
 
     #[test]
@@ -241,13 +224,13 @@ mod tests {
         let mut chunk = Chunk::new();
 
         [
-            Instruction::Constant {
+            Instruction::ConstantValue {
                 result: Reg(1),
-                constant: 1,
+                value: Value::number(1),
             },
-            Instruction::Constant {
+            Instruction::ConstantValue {
                 result: Reg(2),
-                constant: 2,
+                value: Value::number(2),
             },
             Instruction::Add {
                 result: Reg(3),
@@ -264,11 +247,13 @@ mod tests {
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
 
-        assert_eq!(Value(3), vm.registers[Reg(3)]);
+        assert_eq!(Value::number(3), vm.registers[Reg(3)]);
     }
 
     #[test]
     fn run_complex() {
+        use crate::cps::Value;
+
         let input = Rc::new(Exp::Fix(
             Box::new([
                 // (define (f0 i1 k2) (k2 (+ i1 i1)))
@@ -319,23 +304,5 @@ mod tests {
 
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();
-    }
-
-    #[test]
-    fn value_align_u64() {
-        assert_eq!(std::mem::align_of::<Value>(), std::mem::align_of::<u64>());
-    }
-
-    #[test]
-    fn value_align_f64() {
-        assert_eq!(std::mem::align_of::<Value>(), std::mem::align_of::<f64>());
-    }
-
-    #[test]
-    fn value_align_ptr() {
-        assert_eq!(
-            std::mem::align_of::<Value>(),
-            std::mem::align_of::<*mut u64>()
-        );
     }
 }

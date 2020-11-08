@@ -65,7 +65,7 @@ pub(crate) enum Statement {
 
 #[derive(Debug)]
 pub(crate) enum Expr {
-    NumberLiteral(i64),
+    NumberLiteral(i32),
     StringLiteral(String),
     Identifier(Identifier),
     App(Box<Expr>, Vec<Expr>),

@@ -26,7 +26,7 @@ impl VarGen {
 pub(crate) enum Value {
     Var(Var),
     Label(Var),
-    Int(i64),
+    Int(i32),
     String(String),
 }
 

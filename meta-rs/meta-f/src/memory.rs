@@ -1,7 +1,7 @@
 use std::alloc::Layout;
 use std::mem::{align_of, size_of};
 
-use crate::vm::Value;
+use crate::value::Value;
 
 pub(crate) struct Memory {
     memory: *mut Value,
@@ -24,15 +24,19 @@ impl Memory {
         }
     }
 
-    pub fn allocate_cells(&mut self, n_cells: u64) -> *mut Value {
-        let next = unsafe { self.next.add(n_cells as usize) };
-        if next <= self.limit {
-            let ptr = self.next;
+    pub fn allocate_cells(&mut self, n_cells: usize) -> *mut Value {
+        unsafe {
+            let n_cells = n_cells + 1; // add one cell for size tag
+            let next = self.next.add(n_cells);
+            if next > self.limit {
+                // TODO: unlikely
+                return std::ptr::null_mut();
+            }
+
+            *self.next = Value::size_tag(n_cells);
+            let ptr = self.next.add(1);
             self.next = next;
             ptr
-        } else {
-            // TODO: unlikely
-            std::ptr::null_mut()
         }
     }
 

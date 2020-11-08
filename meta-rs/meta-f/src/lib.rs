@@ -7,10 +7,12 @@ pub mod ids;
 mod interpret;
 mod memory;
 mod parser;
+mod value;
 mod vm;
 
 pub use interpret::interpret;
 pub use interpret::Error;
+pub use value::Value;
 
 #[cfg(test)]
 mod tests {
@@ -28,7 +30,7 @@ mod tests {
 
         let result = interpret(&store, &meta_f_test).unwrap();
 
-        assert_eq!(Some(42), result);
+        assert_eq!(Some(Value::number(42)), result);
 
         Ok(())
     }
@@ -53,7 +55,7 @@ mod tests {
 
         let result = interpret(&store, &meta_f_test).unwrap();
 
-        assert_eq!(Some(43), result);
+        assert_eq!(Some(Value::number(43)), result);
 
         Ok(())
     }
@@ -66,7 +68,7 @@ mod tests {
 
         let result = interpret(&store, &meta_f_test).unwrap();
 
-        assert_eq!(Some(31), result);
+        assert_eq!(Some(Value::number(31)), result);
 
         Ok(())
     }
@@ -79,7 +81,7 @@ mod tests {
 
         let result = interpret(&store, &meta_f_test).unwrap();
 
-        assert_eq!(Some(100), result);
+        assert_eq!(Some(Value::number(100)), result);
 
         Ok(())
     }
@@ -92,7 +94,7 @@ mod tests {
 
         let result = interpret(&store, &meta_f_test).unwrap();
 
-        assert_eq!(Some(15), result);
+        assert_eq!(Some(Value::number(15)), result);
 
         Ok(())
     }
