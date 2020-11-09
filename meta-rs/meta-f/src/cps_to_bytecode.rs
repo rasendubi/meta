@@ -159,24 +159,43 @@ impl Compilation {
                     }
                 }) {
                     let reg_from = self.register_of(*var);
-                    if reg_from != reg {
+                    if reg_from == reg {
+                        // Nothing to do. Variable is already in place.
+                    } else if reg_from.0 < reg.0 {
+                        // Same argument is passed multiple times. Copy it without invalidating the
+                        // previous register.
                         if let Some(prev_var) = self.registers[reg.0 as usize] {
+                            // if there was a previous var, stash it somewhere else.
+                            let new_reg = self.register_for(prev_var);
+                            self.chunk.write(&Instruction::Move {
+                                from: reg,
+                                result: new_reg,
+                            })?;
+                        }
+                        self.chunk.write(&Instruction::Move {
+                            from: reg_from,
+                            result: reg,
+                        })?;
+                        self.registers[reg.0 as usize] = Some(*var);
+                    } else {
+                        // Swap/move register in place, forgetting the previous location.
+                        if self.registers[reg.0 as usize].is_some() {
                             self.chunk.write(&Instruction::Swap {
                                 from: reg_from,
                                 to: reg,
                             })?;
-                            self.registers[reg_from.0 as usize] = Some(prev_var);
+                            self.registers.swap(reg_from.0 as usize, reg.0 as usize);
                         } else {
                             self.chunk.write(&Instruction::Move {
-                                result: reg,
                                 from: reg_from,
+                                result: reg,
                             })?;
                             self.registers[reg_from.0 as usize] = None;
+                            self.registers[reg.0 as usize] = Some(*var);
                         }
-
-                        self.registers[reg.0 as usize] = Some(*var);
                     }
                 }
+
                 for (reg, val) in vals
                     .iter()
                     .enumerate()
