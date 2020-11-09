@@ -1,14 +1,13 @@
 use std::io::Cursor;
 
-use crate::value::Value;
+use num_enum::{IntoPrimitive, UnsafeFromPrimitive};
 
-#[derive(Debug)]
-pub enum Error {}
+use crate::value::Value;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct Reg(pub u8);
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, IntoPrimitive, UnsafeFromPrimitive)]
 #[repr(u8)]
 pub(crate) enum OpCode {
     // u64 = 8 bytes
@@ -252,7 +251,7 @@ impl Instruction {
         r.read_exact(&mut instruction)?;
         let instruction = u64::from_ne_bytes(instruction);
 
-        let opcode: OpCode = (instruction as u8).into();
+        let opcode = unsafe { OpCode::from_unchecked(instruction as u8) };
         Ok(match opcode {
             OpCode::Halt => Instruction::Halt,
             OpCode::HaltReg => {
@@ -373,18 +372,6 @@ impl Instruction {
                 Instruction::Swap { from, to }
             }
         })
-    }
-}
-
-impl From<OpCode> for u8 {
-    fn from(code: OpCode) -> Self {
-        unsafe { std::mem::transmute(code) }
-    }
-}
-
-impl From<u8> for OpCode {
-    fn from(byte: u8) -> Self {
-        unsafe { std::mem::transmute(byte) }
     }
 }
 
