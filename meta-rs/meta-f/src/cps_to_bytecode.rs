@@ -92,6 +92,13 @@ impl Compilation {
                         Value::String(_) => {
                             todo!("Strings are not supported");
                         }
+                        Value::ConstructorTag(var, n_cons) => {
+                            self.chunk.write(&Instruction::StoreValue {
+                                addr: reg,
+                                offset,
+                                value: VmValue::constructor(var.0, *n_cons),
+                            })?;
+                        }
                     }
                 }
                 self.compile_exp(e)?;
@@ -219,6 +226,12 @@ impl Compilation {
                         }
                         Value::String(_) => {
                             todo!("Strings are not supported");
+                        }
+                        Value::ConstructorTag(v, n_cons) => {
+                            self.chunk.write(&Instruction::ConstantValue {
+                                result: reg,
+                                value: VmValue::constructor(v.0, *n_cons),
+                            })?;
                         }
                     }
                 }

@@ -28,6 +28,7 @@ pub(crate) enum Value {
     Label(Var),
     Int(i32),
     String(String),
+    ConstructorTag(/* type: */ Var, /* constructor: */ u16),
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]

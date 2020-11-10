@@ -18,7 +18,7 @@ pub enum ValueTag {
     Invalid = 0b111,
 }
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Value(u64);
 impl Value {
     pub(crate) fn from_repr(repr: u64) -> Self {

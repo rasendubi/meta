@@ -129,9 +129,11 @@ where
             )
         }
         Expr::TypeDef(TypeDef { constructors }) => {
+            let t = gen.next();
+
             let fndefs = constructors
                 .iter()
-                .map(|c| compile_constructor(gen, c))
+                .map(|c| compile_constructor(gen, &env, t, c))
                 .collect::<Box<[FnDef]>>();
             let vars = fndefs
                 .iter()
@@ -248,29 +250,37 @@ fn compile_fndef(gen: &mut VarGen, env: Env, f: &Function, f_var: Var) -> FnDef 
     )
 }
 
-fn compile_constructor(gen: &mut VarGen, constructor: &Constructor) -> FnDef {
+fn compile_constructor(gen: &mut VarGen, env: &Env, t: Var, constructor: &Constructor) -> FnDef {
     let Constructor {
         parameters,
-        identifier: _,
+        identifier,
     } = constructor;
 
-    let var = gen.next();
-
+    let var = gen.next(); // constructor function
     let parameters = parameters.iter().map(|_| gen.next()).collect::<Vec<_>>();
 
-    let mut all_params = parameters.clone();
-    let k = gen.next();
-    all_params.push(k);
+    let mut constructor_vals = Vec::new();
+    constructor_vals.push(Value::ConstructorTag(
+        t,
+        *env.get_field(identifier).unwrap() as u16,
+    ));
+    constructor_vals.extend(parameters.iter().copied().map(Value::Var));
 
-    let r = gen.next();
+    let mut fn_params = parameters;
+    let k = gen.next(); // return continuation
+    fn_params.push(k);
 
-    let body = CExp::Record(
-        parameters.iter().copied().map(Value::Var).collect(),
-        r,
-        Rc::new(CExp::App(Value::Var(k), Box::new([Value::Var(r)]))),
-    );
+    let r = gen.next(); // result record
 
-    FnDef(var, all_params.into_boxed_slice(), Rc::new(body))
+    FnDef(
+        var,
+        fn_params.into_boxed_slice(),
+        Rc::new(CExp::Record(
+            constructor_vals.into_boxed_slice(),
+            r,
+            Rc::new(CExp::App(Value::Var(k), Box::new([Value::Var(r)]))),
+        )),
+    )
 }
 
 fn collect_fields(fields: &mut HashMap<Identifier, usize>, test: &RunTest) {
@@ -298,7 +308,8 @@ fn collect_fields(fields: &mut HashMap<Identifier, usize>, test: &RunTest) {
                     fields.insert(c.identifier.clone(), i);
 
                     for (j, p) in c.parameters.iter().enumerate() {
-                        fields.insert(p.id.clone(), j);
+                        // offset by 1 because 0-th value is constructor tag
+                        fields.insert(p.id.clone(), j + 1);
                     }
                 }
             }
