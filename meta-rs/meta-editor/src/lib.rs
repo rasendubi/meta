@@ -6,6 +6,7 @@ mod editor;
 mod f_layout;
 mod key;
 mod layout;
+mod reorder_keys;
 
 use druid_shell::Application;
 

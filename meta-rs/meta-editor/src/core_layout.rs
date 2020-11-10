@@ -9,6 +9,7 @@ use meta_store::{Datom, Field, Store};
 use crate::editor::Editor;
 use crate::key::KeyHandler;
 use crate::layout::*;
+use crate::reorder_keys::ReorderKeys;
 
 #[derive(Debug)]
 struct EntityKeys {
@@ -312,14 +313,17 @@ pub fn core_layout_language(core: &MetaCore, id: &Field) -> RDoc {
                 entities
                     .iter()
                     .map(|e| {
-                        concat(vec![
-                            with_id(
-                                vec![id.clone(), e.value.clone()],
-                                core_layout_entity(core, &e.value),
-                            )
-                            .with_key(e.value.to_string()),
-                            linebreak(),
-                        ])
+                        with_id(
+                            vec![id.clone(), e.value.clone()],
+                            concat(vec![
+                                with_key_handler(
+                                    Box::new(ReorderKeys((*e).clone())),
+                                    core_layout_entity(core, &e.value),
+                                ),
+                                linebreak(),
+                            ]),
+                        )
+                        .with_key(e.value.to_string())
                     })
                     .intersperse_with(linebreak),
             ),

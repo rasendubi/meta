@@ -10,6 +10,7 @@ use meta_store::{Datom, Field, Store};
 
 use crate::key::KeyHandler;
 use crate::layout::*;
+use crate::reorder_keys::ReorderKeys;
 
 lazy_static! {
     static ref HANDLERS: HashMap<Field, fn(&MetaCore, &Datom) -> RDoc> = {
@@ -619,7 +620,10 @@ fn layout_function(core: &MetaCore, datom: &Datom) -> RDoc {
             parentheses(concat(
                 params
                     .iter()
-                    .map(|d| f_layout(core, d))
+                    .map(|d| {
+                        with_key_handler(Box::new(ReorderKeys((*d).clone())), f_layout(core, d))
+                            .with_key(d.id.to_string())
+                    })
                     .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
             )),
         ),
@@ -655,7 +659,10 @@ fn layout_application(core: &MetaCore, datom: &Datom) -> RDoc {
             Box::new(ApplicationArgsKeys(entity.clone())),
             parentheses(concat(
                 args.iter()
-                    .map(|d| f_layout(core, d))
+                    .map(|d| {
+                        with_key_handler(Box::new(ReorderKeys((*d).clone())), f_layout(core, d))
+                            .with_key(d.id.to_string())
+                    })
                     .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
             )),
         ),
@@ -675,7 +682,11 @@ fn layout_block(core: &MetaCore, datom: &Datom) -> RDoc {
                     stmts
                         .iter()
                         .map(|stmt| {
-                            concat(vec![line(), f_layout(core, stmt)]).with_key(stmt.id.to_string())
+                            with_key_handler(
+                                Box::new(ReorderKeys((*stmt).clone())),
+                                concat(vec![line(), f_layout(core, stmt)]),
+                            )
+                            .with_key(stmt.id.to_string())
                         })
                         .intersperse_with(|| punctuation(";")),
                 ),
@@ -722,7 +733,11 @@ fn layout_typedef(core: &MetaCore, datom: &Datom) -> RDoc {
                         constructors
                             .iter()
                             .map(|c| {
-                                concat(vec![line(), f_layout(core, c)]).with_key(c.id.to_string())
+                                with_key_handler(
+                                    Box::new(ReorderKeys((*c).clone())),
+                                    concat(vec![line(), f_layout(core, c)]),
+                                )
+                                .with_key(c.id.to_string())
                             })
                             .intersperse_with(|| punctuation(",")),
                     ),
@@ -751,7 +766,10 @@ fn layout_constructor(core: &MetaCore, datom: &Datom) -> RDoc {
                 concat(
                     params
                         .iter()
-                        .map(|p| f_layout(core, p))
+                        .map(|p| {
+                            with_key_handler(Box::new(ReorderKeys((*p).clone())), f_layout(core, p))
+                                .with_key(p.id.to_string())
+                        })
                         .intersperse_with(|| concat(vec![punctuation(","), whitespace(" ")])),
                 ),
             )),
