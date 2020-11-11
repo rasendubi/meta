@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use im::HashMap;
 
-use crate::cps::Exp as CExp;
-use crate::cps::*;
+use crate::compiler::cps::Exp as CExp;
+use crate::compiler::cps::*;
 use crate::parser::{
     Binding, Constructor, Expr, Function, Identifier, RunTest, Statement, TypeDef,
 };

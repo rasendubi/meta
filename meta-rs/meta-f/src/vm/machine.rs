@@ -4,9 +4,10 @@ use std::ops::{Index, IndexMut};
 
 use log::{log_enabled, trace, Level};
 
-use crate::bytecode::{Chunk, Instruction, Reg};
-use crate::memory::Memory;
-use crate::value::*;
+use crate::vm::bytecode::Instruction;
+use crate::vm::chunk::Chunk;
+use crate::vm::memory::Memory;
+use crate::vm::value::*;
 
 #[derive(Debug)]
 pub enum Error {
@@ -27,6 +28,9 @@ impl Debug for Vm {
             .finish()
     }
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) struct Reg(pub u8);
 
 struct Registers([Value; 256]);
 
@@ -184,7 +188,9 @@ impl Vm {
 mod tests {
     use super::Value;
     use super::*;
-    use crate::{closure_conversion::closure_conversion, cps::*, cps_to_bytecode::compile};
+    use crate::compiler::closure_conversion::closure_conversion;
+    use crate::compiler::cps::*;
+    use crate::compiler::cps_to_bytecode::cps_to_bytecode;
     use std::rc::Rc;
 
     #[test]
@@ -252,7 +258,7 @@ mod tests {
 
     #[test]
     fn run_complex() {
-        use crate::cps::Value;
+        use crate::compiler::cps::Value;
 
         let input = Rc::new(Exp::Fix(
             Box::new([
@@ -300,7 +306,7 @@ mod tests {
         let mut gen = VarGen { next_var: 9 };
         let result = closure_conversion(&mut gen, &input);
 
-        let chunk = compile(&result);
+        let chunk = cps_to_bytecode(&result);
 
         let mut vm = Vm::new(chunk);
         vm.run().unwrap();

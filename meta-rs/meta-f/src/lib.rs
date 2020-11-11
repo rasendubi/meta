@@ -1,18 +1,12 @@
-mod bytecode;
-mod closure_conversion;
 mod compiler;
-mod cps;
-mod cps_to_bytecode;
 pub mod ids;
-mod interpret;
-mod memory;
+mod interpreter;
 mod parser;
-mod value;
 mod vm;
 
-pub use interpret::interpret;
-pub use interpret::Error;
-pub use value::Value;
+pub use interpreter::interpret;
+pub use interpreter::Error;
+pub use vm::value::Value;
 
 #[cfg(test)]
 mod tests {

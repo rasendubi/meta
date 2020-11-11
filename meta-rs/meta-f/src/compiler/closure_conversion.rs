@@ -3,7 +3,7 @@ use std::rc::Rc;
 use im::HashMap;
 use log::trace;
 
-use crate::cps::*;
+use crate::compiler::cps::*;
 
 pub(crate) fn closure_conversion(gen: &mut VarGen, exp: &Rc<Exp>) -> Rc<Exp> {
     fn lift_functions(

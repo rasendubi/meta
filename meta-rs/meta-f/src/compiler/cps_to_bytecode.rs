@@ -1,11 +1,13 @@
-use im::HashMap;
 use std::io::{Cursor, Write};
 
-use crate::bytecode::{Chunk, Instruction, Reg};
-use crate::cps::*;
-use crate::value::Value as VmValue;
+use im::HashMap;
 
-pub(crate) fn compile(exp: &Exp) -> Chunk {
+use crate::compiler::cps::*;
+use crate::vm::bytecode::{Instruction, Reg};
+use crate::vm::chunk::Chunk;
+use crate::vm::value::Value as VmValue;
+
+pub(crate) fn cps_to_bytecode(exp: &Exp) -> Chunk {
     let mut compilation = Compilation::new();
     compilation.compile(exp).unwrap();
     compilation.chunk
@@ -365,7 +367,7 @@ impl Compilation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::closure_conversion::closure_conversion;
+    use crate::compiler::closure_conversion::closure_conversion;
     use std::rc::Rc;
 
     #[test]
@@ -416,7 +418,7 @@ mod tests {
         let mut gen = VarGen { next_var: 9 };
         let result = closure_conversion(&mut gen, &input);
 
-        let chunk = compile(&result);
+        let chunk = cps_to_bytecode(&result);
 
         chunk.disassemble(&mut std::io::stdout()).unwrap();
     }

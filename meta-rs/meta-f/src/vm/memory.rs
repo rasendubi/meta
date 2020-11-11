@@ -1,7 +1,7 @@
 use std::alloc::Layout;
 use std::mem::{align_of, size_of};
 
-use crate::value::Value;
+use crate::vm::value::Value;
 
 pub(crate) struct Memory {
     memory: *mut Value,
