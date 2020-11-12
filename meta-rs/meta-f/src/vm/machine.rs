@@ -94,7 +94,8 @@ impl Vm {
                     return Ok(Some(self.registers[reg]));
                 }
                 Instruction::HaltValue { value } => {
-                    return Ok(Some(value));
+                    let data = unsafe { *self.chunk.data(value) };
+                    return Ok(Some(data));
                 }
                 Instruction::AllocConst {
                     result,
@@ -133,6 +134,7 @@ impl Vm {
                 } => unsafe {
                     let addr = self.registers[addr].as_ptr();
                     let addr = addr.offset(offset as isize);
+                    let value = *self.chunk.data(value);
                     *addr = value;
                 },
                 Instruction::Load {
@@ -145,6 +147,7 @@ impl Vm {
                     self.registers[result] = *addr;
                 },
                 Instruction::ConstantValue { result, value } => {
+                    let value = unsafe { *self.chunk.data(value) };
                     self.registers[result] = value;
                 }
                 Instruction::Switch { reg: _, offsets: _ } => {
@@ -155,7 +158,7 @@ impl Vm {
                     cursor.set_position(addr as u64);
                 }
                 Instruction::JumpConst { offset } => {
-                    let addr = (position as i64) + offset;
+                    let addr = (position as i64) + (offset as i64);
                     cursor.set_position(addr as u64);
                 }
                 Instruction::Offset {
@@ -207,10 +210,12 @@ mod tests {
     #[test]
     fn run_constant() {
         let mut chunk = Chunk::new();
+        let number_42 = chunk.alloc_data(&[Value::number(42)]);
+
         &[
             Instruction::ConstantValue {
                 result: Reg(0),
-                value: Value::number(42),
+                value: number_42,
             },
             Instruction::Halt,
         ]
@@ -229,14 +234,17 @@ mod tests {
     fn run_1_plus_2() {
         let mut chunk = Chunk::new();
 
+        let number_1 = chunk.alloc_data(&[Value::number(1)]);
+        let number_2 = chunk.alloc_data(&[Value::number(2)]);
+
         [
             Instruction::ConstantValue {
                 result: Reg(1),
-                value: Value::number(1),
+                value: number_1,
             },
             Instruction::ConstantValue {
                 result: Reg(2),
-                value: Value::number(2),
+                value: number_2,
             },
             Instruction::Add {
                 result: Reg(3),

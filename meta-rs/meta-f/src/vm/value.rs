@@ -21,13 +21,6 @@ pub enum ValueTag {
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Value(u64);
 impl Value {
-    pub(crate) fn from_repr(repr: u64) -> Self {
-        Self(repr)
-    }
-    pub(crate) fn to_repr(self) -> u64 {
-        self.0
-    }
-
     pub fn tag(self) -> ValueTag {
         unsafe { ValueTag::from_unchecked(self.0 & 0b111) }
     }

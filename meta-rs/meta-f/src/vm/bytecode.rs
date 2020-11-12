@@ -1,7 +1,7 @@
 use num_enum::{IntoPrimitive, UnsafeFromPrimitive};
 
+pub(crate) use crate::vm::chunk::DataRef;
 pub(crate) use crate::vm::machine::Reg;
-use crate::vm::value::Value;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, IntoPrimitive, UnsafeFromPrimitive)]
 #[repr(u8)]
@@ -12,23 +12,23 @@ pub(crate) enum OpCode {
     Halt,
     // 1B opcode, 1B register
     HaltReg,
-    // 1B opcode | 8B const
+    // 1B opcode 3B reserved 4B value offset (data)
     HaltValue,
 
-    // 1B opcode, 1B result reg, 6B cells to allocate (constant)
+    // 1B opcode, 1B result reg, 2B reserved, 4B cells to allocate (constant)
     AllocConst,
     // 1B opcode, 1B result reg, 1B cells to allocate (reg)
     AllocReg,
 
-    // 1B opcode, 1B addr reg, 4B offset (signed constant), 1B reg to store, 1B reserved
+    // 1B opcode, 1B addr reg, 2B offset (signed constant), 1B reg to store, 3B reserved
     StoreReg,
-    // 1B opcode, 1B addr reg, 4B offset (signed constant), 2B reserved | 8B constant to store
+    // 1B opcode, 1B addr reg, 2B offset (signed constant), 4B value offset (data)
     StoreValue,
 
-    // 1B opcode, 1B result reg, 4B offset (signed constant), 2B reserved
+    // 1B opcode, 1B result reg, 1B addr reg, 1B reserved, 2B offset (signed constant), 2B reserved
     Load,
 
-    // 1B opcode, 1B result reg, 6B reserved | 8B constant
+    // 1B opcode, 1B result reg, 2B reserved, 4B value offset (data)
     ConstantValue,
 
     // 1B opcode, 1B reg to switch on, 4B N=number of cases, 2B reserved | Nx8 offsets to jump to
@@ -36,7 +36,7 @@ pub(crate) enum OpCode {
 
     // 1B opcode, 1B reg to jump to, 6B reserved
     JumpReg,
-    // 1B opcode, 7B relative offset to jump to // TODO: make offset 6B?
+    // 1B opcode, 3B reserved, 4B offset to jump to (signed)
     JumpConst,
 
     // 1B opcode, 1B result reg, 1B op reg, 1B reserved, 4B i32 offset
@@ -56,11 +56,11 @@ pub(crate) enum Instruction {
         reg: Reg,
     },
     HaltValue {
-        value: Value,
+        value: DataRef,
     },
     AllocConst {
         result: Reg,
-        cells_to_allocate: u64,
+        cells_to_allocate: u32,
     },
     AllocReg {
         result: Reg,
@@ -68,22 +68,22 @@ pub(crate) enum Instruction {
     },
     StoreReg {
         addr: Reg,
-        offset: i32,
+        offset: i16,
         reg_to_store: Reg,
     },
     StoreValue {
         addr: Reg,
-        offset: i32,
-        value: Value,
+        offset: i16,
+        value: DataRef,
     },
     Load {
         result: Reg,
         addr: Reg,
-        offset: i32,
+        offset: i16,
     },
     ConstantValue {
         result: Reg,
-        value: Value,
+        value: DataRef,
     },
     Switch {
         reg: Reg,
@@ -93,7 +93,7 @@ pub(crate) enum Instruction {
         reg: Reg,
     },
     JumpConst {
-        offset: i64,
+        offset: i32,
     },
     Offset {
         result: Reg,
@@ -130,9 +130,8 @@ impl Instruction {
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::HaltValue { value } => {
-                let instruction: u64 = OpCode::HaltValue as u64;
-                w.write_all(&instruction.to_ne_bytes())?;
-                w.write_all(&value.to_repr().to_ne_bytes())
+                let instruction: u64 = OpCode::HaltValue as u64 | ((value.0 as u64) << 32);
+                w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::AllocConst {
                 result,
@@ -140,7 +139,7 @@ impl Instruction {
             } => {
                 let instruction: u64 = (OpCode::AllocConst as u64)
                     | ((result.0 as u64) << 8)
-                    | (cells_to_allocate << 16);
+                    | ((*cells_to_allocate as u64) << 32);
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::AllocReg {
@@ -159,8 +158,8 @@ impl Instruction {
             } => {
                 let instruction: u64 = (OpCode::StoreReg as u64)
                     | ((addr.0 as u64) << 8)
-                    | ((*offset as u32 as u64) << (2 * 8))
-                    | ((reg_to_store.0 as u64) << (6 * 8));
+                    | ((*offset as u64) << 16)
+                    | ((reg_to_store.0 as u64) << 32);
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::StoreValue {
@@ -170,9 +169,9 @@ impl Instruction {
             } => {
                 let instruction: u64 = (OpCode::StoreValue as u64)
                     | ((addr.0 as u64) << 8)
-                    | ((*offset as u32 as u64) << (2 * 8));
-                w.write_all(&instruction.to_ne_bytes())?;
-                w.write_all(&value.to_repr().to_ne_bytes())
+                    | ((*offset as u64) << 16)
+                    | ((value.0 as u64) << 32);
+                w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::Load {
                 result,
@@ -182,13 +181,14 @@ impl Instruction {
                 let instruction: u64 = (OpCode::Load as u64)
                     | ((result.0 as u64) << 8)
                     | ((addr.0 as u64) << 16)
-                    | ((*offset as u32 as u64) << 24);
+                    | ((*offset as u64) << 32);
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::ConstantValue { result, value } => {
-                let instruction: u64 = (OpCode::ConstantValue as u64) | ((result.0 as u64) << 8);
-                w.write_all(&instruction.to_ne_bytes())?;
-                w.write_all(&value.to_repr().to_ne_bytes())
+                let instruction: u64 = (OpCode::ConstantValue as u64)
+                    | ((result.0 as u64) << 8)
+                    | ((value.0 as u64) << 32);
+                w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::Switch { reg, offsets } => {
                 let instruction = (OpCode::Switch as u64)
@@ -205,7 +205,7 @@ impl Instruction {
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::JumpConst { offset } => {
-                let instruction = (OpCode::JumpConst as u64) | ((*offset as u64) << 8);
+                let instruction = (OpCode::JumpConst as u64) | ((*offset as u64) << 32);
                 w.write_all(&instruction.to_ne_bytes())
             }
             Instruction::Offset {
@@ -255,15 +255,12 @@ impl Instruction {
                 Instruction::HaltReg { reg }
             }
             OpCode::HaltValue => {
-                let mut value = [0; 8];
-                r.read_exact(&mut value)?;
-                let value = Value::from_repr(u64::from_ne_bytes(value));
-
+                let value = DataRef((instruction >> 32) as u32);
                 Instruction::HaltValue { value }
             }
             OpCode::AllocConst => {
                 let result = Reg((instruction >> 8) as u8);
-                let cells_to_allocate = instruction >> 16;
+                let cells_to_allocate = (instruction >> 32) as u32;
                 Instruction::AllocConst {
                     result,
                     cells_to_allocate,
@@ -279,8 +276,8 @@ impl Instruction {
             }
             OpCode::StoreReg => {
                 let addr = Reg((instruction >> 8) as u8);
-                let offset = (instruction >> 16) as u32 as i32;
-                let reg_to_store = Reg((instruction >> (6 * 8)) as u8);
+                let offset = (instruction >> 16) as i16;
+                let reg_to_store = Reg((instruction >> 32) as u8);
                 Instruction::StoreReg {
                     addr,
                     offset,
@@ -289,12 +286,8 @@ impl Instruction {
             }
             OpCode::StoreValue => {
                 let addr = Reg((instruction >> 8) as u8);
-                let offset = (instruction >> 16) as u32 as i32;
-
-                let mut value = [0; 8];
-                r.read_exact(&mut value)?;
-                let value = Value::from_repr(u64::from_ne_bytes(value));
-
+                let offset = (instruction >> 16) as i16;
+                let value = DataRef((instruction >> 32) as u32);
                 Instruction::StoreValue {
                     addr,
                     offset,
@@ -304,7 +297,7 @@ impl Instruction {
             OpCode::Load => {
                 let result = Reg((instruction >> 8) as u8);
                 let addr = Reg((instruction >> 16) as u8);
-                let offset = (instruction >> 24) as u32 as i32;
+                let offset = (instruction >> 32) as i16;
                 Instruction::Load {
                     result,
                     addr,
@@ -313,11 +306,7 @@ impl Instruction {
             }
             OpCode::ConstantValue => {
                 let result = Reg((instruction >> 8) as u8);
-
-                let mut value = [0; 8];
-                r.read_exact(&mut value)?;
-                let value = Value::from_repr(u64::from_ne_bytes(value));
-
+                let value = DataRef((instruction >> 32) as u32);
                 Instruction::ConstantValue { result, value }
             }
             OpCode::Switch => {
@@ -338,7 +327,7 @@ impl Instruction {
                 Instruction::JumpReg { reg }
             }
             OpCode::JumpConst => {
-                let offset = (instruction as i64) >> 8;
+                let offset = (instruction >> 32) as i32;
                 Instruction::JumpConst { offset }
             }
             OpCode::Offset => {

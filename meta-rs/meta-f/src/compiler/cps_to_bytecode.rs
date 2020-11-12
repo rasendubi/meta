@@ -4,7 +4,7 @@ use im::HashMap;
 
 use crate::compiler::cps::*;
 use crate::vm::bytecode::{Instruction, Reg};
-use crate::vm::chunk::Chunk;
+use crate::vm::chunk::{Chunk, DataRef};
 use crate::vm::value::Value as VmValue;
 
 pub(crate) fn cps_to_bytecode(exp: &Exp) -> Chunk {
@@ -18,7 +18,10 @@ type RegisterAllocation = [Option<Var>; 256];
 struct Compilation {
     chunk: Chunk,
     registers: RegisterAllocation,
+    // TODO: we can deduplicate all constant values if we store
+    // HashMap<Value, /* instructions: */ HashSet<usize>> first.
     to_patch: HashMap<usize, Var>,
+    to_patch_data: HashMap<DataRef, Var>,
     functions: HashMap<Var, usize>,
 }
 
@@ -28,6 +31,7 @@ impl Compilation {
             chunk: Chunk::new(),
             registers: [None; 256],
             to_patch: HashMap::new(),
+            to_patch_data: HashMap::new(),
             functions: HashMap::new(),
         }
     }
@@ -62,10 +66,10 @@ impl Compilation {
                 let reg = self.register_for(*var);
                 self.chunk.write(&Instruction::AllocConst {
                     result: reg,
-                    cells_to_allocate: vals.len() as u64,
+                    cells_to_allocate: vals.len() as u32,
                 })?;
                 for (i, val) in vals.iter().enumerate() {
-                    let offset = i as i32;
+                    let offset = i as i16;
                     match val {
                         Value::Var(var) => {
                             let val_reg = self.register_of(*var);
@@ -76,29 +80,34 @@ impl Compilation {
                             })?;
                         }
                         Value::Label(var) => {
-                            let pos = self.chunk.write(&Instruction::StoreValue {
-                                addr: reg,
-                                offset,
-                                value: VmValue::invalid(var.0 as i32),
-                            })?;
-
-                            self.to_patch.insert(pos, *var);
-                        }
-                        Value::Int(v) => {
+                            let value = self.chunk.alloc_data(&[VmValue::invalid(var.0 as i32)]);
                             self.chunk.write(&Instruction::StoreValue {
                                 addr: reg,
                                 offset,
-                                value: VmValue::number(*v),
+                                value,
+                            })?;
+
+                            self.to_patch_data.insert(value, *var);
+                        }
+                        Value::Int(v) => {
+                            let value = self.chunk.alloc_data(&[VmValue::number(*v)]);
+                            self.chunk.write(&Instruction::StoreValue {
+                                addr: reg,
+                                offset,
+                                value,
                             })?;
                         }
                         Value::String(_) => {
                             todo!("Strings are not supported");
                         }
                         Value::ConstructorTag(var, n_cons) => {
+                            let value = self
+                                .chunk
+                                .alloc_data(&[VmValue::constructor(var.0, *n_cons)]);
                             self.chunk.write(&Instruction::StoreValue {
                                 addr: reg,
                                 offset,
-                                value: VmValue::constructor(var.0, *n_cons),
+                                value,
                             })?;
                         }
                     }
@@ -112,7 +121,7 @@ impl Compilation {
                     self.chunk.write(&Instruction::Load {
                         result,
                         addr: reg,
-                        offset: *i as i32,
+                        offset: *i as i16,
                     })?;
                 } else {
                     panic!("Operator of select is not a variable");
@@ -214,26 +223,24 @@ impl Compilation {
                     match val {
                         Value::Var(_) => panic!(),
                         Value::Label(label) => {
-                            let pos = self.chunk.write(&Instruction::ConstantValue {
-                                result: reg,
-                                value: VmValue::invalid(label.0 as i32),
-                            })?;
-                            self.to_patch.insert(pos, *label);
+                            let value = self.chunk.alloc_data(&[VmValue::invalid(label.0 as i32)]);
+                            self.chunk
+                                .write(&Instruction::ConstantValue { result: reg, value })?;
+                            self.to_patch_data.insert(value, *label);
                         }
                         Value::Int(i) => {
-                            self.chunk.write(&Instruction::ConstantValue {
-                                result: reg,
-                                value: VmValue::number(*i),
-                            })?;
+                            let value = self.chunk.alloc_data(&[VmValue::number(*i)]);
+                            self.chunk
+                                .write(&Instruction::ConstantValue { result: reg, value })?;
                         }
                         Value::String(_) => {
                             todo!("Strings are not supported");
                         }
                         Value::ConstructorTag(v, n_cons) => {
-                            self.chunk.write(&Instruction::ConstantValue {
-                                result: reg,
-                                value: VmValue::constructor(v.0, *n_cons),
-                            })?;
+                            let value =
+                                self.chunk.alloc_data(&[VmValue::constructor(v.0, *n_cons)]);
+                            self.chunk
+                                .write(&Instruction::ConstantValue { result: reg, value })?;
                         }
                     }
                 }
@@ -245,7 +252,7 @@ impl Compilation {
                     }
                     Value::Label(var) => {
                         let pos = self.chunk.write(&Instruction::JumpConst {
-                            offset: 100000 + var.0 as i64,
+                            offset: 100000 + var.0 as i32,
                         })?;
                         self.to_patch.insert(pos, *var);
                     }
@@ -288,9 +295,8 @@ impl Compilation {
                     self.chunk.write(&Instruction::HaltReg { reg })?;
                 }
                 (Primop::Halt, [Value::Int(constant)], [], []) => {
-                    self.chunk.write(&Instruction::HaltValue {
-                        value: VmValue::number(*constant),
-                    })?;
+                    let value = self.chunk.alloc_data(&[VmValue::number(*constant)]);
+                    self.chunk.write(&Instruction::HaltValue { value })?;
                 }
                 (Primop::Plus, [Value::Var(op1), Value::Var(op2)], [res], [e]) => {
                     let result = self.register_for(*res);
@@ -317,22 +323,18 @@ impl Compilation {
             let instruction = Instruction::read(&mut code)?;
             code.set_position(*pos as u64);
             match instruction {
-                Instruction::StoreValue {
-                    addr,
-                    offset,
-                    value: _,
-                } => Instruction::StoreValue {
-                    addr,
-                    offset,
-                    value: VmValue::number(*var_position as i32),
-                },
                 Instruction::JumpConst { offset: _ } => {
-                    let offset = (*var_position as i64) - (*pos as i64);
+                    let offset = (*var_position as i32) - (*pos as i32);
                     Instruction::JumpConst { offset }
                 }
                 _ => panic!("Invalid instruction to patch: {:?}", instruction),
             }
             .write(&mut code)?;
+        }
+
+        for (data, var) in self.to_patch_data.iter() {
+            let var_position = self.functions.get(var).unwrap();
+            *self.chunk.data_mut(*data) = VmValue::number(*var_position as i32);
         }
 
         Ok(())

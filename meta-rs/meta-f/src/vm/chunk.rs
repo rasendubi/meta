@@ -1,15 +1,24 @@
 use std::io::Cursor;
 
 use crate::vm::bytecode::*;
+use crate::vm::value::Value;
+
+/// Index into data segment.
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
+pub(crate) struct DataRef(pub u32);
 
 #[derive(Debug)]
 pub(crate) struct Chunk {
     code: Vec<u8>,
+    data: Vec<Value>,
 }
 
 impl Chunk {
     pub fn new() -> Self {
-        Self { code: Vec::new() }
+        Self {
+            code: Vec::new(),
+            data: Vec::new(),
+        }
     }
 
     pub fn code(&self) -> &[u8] {
@@ -20,13 +29,34 @@ impl Chunk {
         &mut self.code
     }
 
+    pub fn data(&self, data_ref: DataRef) -> *const Value {
+        &self.data[data_ref.0 as usize] as *const Value
+    }
+
+    pub fn data_mut(&mut self, data_ref: DataRef) -> &mut Value {
+        &mut self.data[data_ref.0 as usize]
+    }
+
     pub fn write(&mut self, instruction: &Instruction) -> std::io::Result<usize> {
         let position = self.code.len();
         instruction.write(&mut self.code)?;
         Ok(position)
     }
 
+    pub fn alloc_data(&mut self, vals: &[Value]) -> DataRef {
+        // TODO: prepend tag for garbage collector
+        let cur = self.data.len() as u32;
+        self.data.extend_from_slice(vals);
+        DataRef(cur)
+    }
+
     pub fn disassemble<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
+        writeln!(w, "Data:")?;
+        for (i, value) in self.data.iter().enumerate() {
+            writeln!(w, "{:04} {:?}", i, value)?;
+        }
+
+        writeln!(w, "Code:")?;
         let mut cursor = Cursor::new(&self.code);
         loop {
             let position = cursor.position();
@@ -50,14 +80,17 @@ mod tests {
     fn disassemble() {
         let mut chunk = Chunk::new();
 
+        let number_1 = chunk.alloc_data(&[Value::number(1)]);
+        let number_2 = chunk.alloc_data(&[Value::number(2)]);
+
         [
             Instruction::ConstantValue {
                 result: Reg(1),
-                value: Value::number(1),
+                value: number_1,
             },
             Instruction::ConstantValue {
                 result: Reg(2),
-                value: Value::number(1),
+                value: number_2,
             },
             Instruction::Add {
                 result: Reg(3),
