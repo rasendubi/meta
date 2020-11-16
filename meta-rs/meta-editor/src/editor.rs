@@ -9,7 +9,7 @@ use log::{debug, log_enabled, trace, warn, Level};
 use unicode_segmentation::UnicodeSegmentation;
 
 use meta_core::MetaCore;
-use meta_gui::widgets::{Direction, Inset, List, Scrollable, Scrolled, Stack, Translate};
+use meta_gui::widgets::{Direction, List, Scrollable, ScrolledList, Translate};
 use meta_gui::{Constraint, Event, EventType, GuiContext, Layout, SubscriptionId};
 use meta_pretty::{Cell, Path, RichDocRef, SimpleDocKind};
 use meta_store::{Datom, Field, Store};
@@ -20,6 +20,13 @@ use crate::core_layout::core_layout_languages;
 use crate::doc_view::DocView;
 use crate::key::{GlobalKeys, KeyHandler};
 use crate::layout::{CellClass, Doc, EditorCellPayload, RDoc, SDoc};
+
+const CHAR_HEIGHT: f64 = 12.0;
+const CHAR_WIDTH: f64 = 6.0;
+
+const INSET: f64 = 10.0;
+
+const SCROLLOFF: f64 = 28.0;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CursorPosition {
@@ -257,7 +264,7 @@ impl Editor {
     }
 
     fn handle_mouse(&mut self, mouse: MouseEvent) {
-        let inset: Vec2 = (10.0, 10.0).into();
+        let inset: Vec2 = (INSET, INSET).into();
         let pos = Self::screen_offset_to_position(mouse.pos - inset + self.scroll.offset());
         let cursor = self.cell_position_to_cursor(pos);
         self.set_cursor(cursor);
@@ -471,20 +478,16 @@ impl Editor {
 
     fn cell_position_to_screen_offset(pos: CellPosition) -> Vec2 {
         let CellPosition { row, col } = pos;
-        let char_width = 6.0;
-        let char_height = 12.0;
-        let x_offset = col as f64 * char_width;
-        let y_offset = row as f64 * char_height;
+        let x_offset = col as f64 * CHAR_WIDTH;
+        let y_offset = row as f64 * CHAR_HEIGHT;
         Vec2::new(x_offset, y_offset)
     }
 
     fn screen_offset_to_position(point: Point) -> CellPosition {
         let Point { x, y } = point;
-        let char_width = 6.0;
-        let char_height = 12.0;
         CellPosition::new(
-            (y / char_height) as usize,
-            (x / char_width).round() as usize,
+            (y / CHAR_HEIGHT) as usize,
+            (x / CHAR_WIDTH).round() as usize,
         )
     }
 
@@ -525,21 +528,21 @@ impl Layout for Editor {
 
         if self.try_adjust_scroll {
             trace!(target: "scroll", "adjusting scroll");
-            if let Some(CursorPosition { sdoc, offset: _ }) = &self.cursor {
+            if let Some(CursorPosition { .. }) = &self.cursor {
                 if let Some(pos) = self.current_position() {
-                    let scrolloff = 24.0;
-
                     let offset: Vec2 =
-                        Self::cell_position_to_screen_offset(pos) + Vec2::new(10.0, 10.0);
+                        Self::cell_position_to_screen_offset(pos) + Vec2::new(INSET, INSET);
                     let cell_rect = Rect::from_origin_size(
                         offset.to_point(),
-                        Size::new(6.0 * sdoc.width() as f64, 12.0),
+                        Size::new(CHAR_WIDTH, CHAR_HEIGHT),
                     )
-                    .inset(scrolloff);
+                    .inset(SCROLLOFF);
 
                     let scroll_offset = self.scroll.offset();
                     let screen_rect =
                         Rect::from_origin_size(scroll_offset.to_point(), ctx.window_size());
+
+                    trace!(target: "scroll", "pos: {:?}, cell_rect: {:?}, screen_rect: {:?}", pos, cell_rect, screen_rect);
 
                     let mut target_rect = screen_rect;
                     if cell_rect.x1 > target_rect.x1 {
@@ -568,23 +571,22 @@ impl Layout for Editor {
         let scroll = &mut self.scroll;
         let layout = self.doc_view.layout();
 
-        Scrolled::new(
+        ScrolledList::new(
             scroll,
-            Inset::new(
-                Stack::new(
-                    [
-                        &mut List::new(layout.iter().map(|line| {
-                            List::new(line.iter().map(|x| CellWidget(x, &cursor)))
-                                .with_direction(Direction::Horizontal)
-                        })) as &mut dyn Layout,
-                        &mut self.autocomplete,
-                    ]
-                    .iter_mut(),
-                ),
-                Insets::uniform(10.0),
-            ),
+            CHAR_HEIGHT,
+            layout.iter().map(|line| {
+                List::new(line.iter().map(|x| CellWidget(x, &cursor)))
+                    .with_direction(Direction::Horizontal)
+            }),
         )
+        .with_insets(Insets::uniform(INSET))
         .layout(ctx, Constraint::tight(ctx.window_size()));
+
+        Translate::new(
+            &mut self.autocomplete,
+            -scroll.offset() + Vec2::new(INSET, INSET),
+        )
+        .layout(ctx, Constraint::loose(ctx.window_size()));
 
         if let Some(autocomplete) = &mut self.autocomplete {
             for e in autocomplete.child_mut().events() {
