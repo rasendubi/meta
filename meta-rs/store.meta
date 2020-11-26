@@ -153,7 +153,7 @@
     "ckgf4zctz00092qmagickgm6t",
     "0",
     "4",
-    "Identifier is a human-friendly name of the element. Usually assumed to be unique, so you could find element by its identifier."
+    "Identifier is a human-friendly name of an entity. Usually assumed to be unique, so you could find entity by its identifier."
   ],
   [
     "ckgf4zctz000a2qmacm41hntr",
@@ -219,7 +219,7 @@
     "ckgf4zctz000k2qmaz63ns5td",
     "7",
     "4",
-    "Element describes an attribute."
+    "Entity describes an attribute."
   ],
   [
     "ckgf4zctz000l2qma5yi72l9p",

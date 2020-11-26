@@ -67,7 +67,7 @@ pub(crate) enum Statement {
 pub(crate) enum Expr {
     NumberLiteral(i32),
     StringLiteral(String),
-    Identifier(Identifier),
+    Reference(Identifier),
     App(Box<Expr>, Vec<Expr>),
     Function(Box<Function>),
     Block(Vec<Statement>),
@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
             Ok(Expr::StringLiteral(value))
         } else if type_ == &IDENTIFIER_REFERENCE as &Field {
             let identifier = self.required_attribute(entry, &IDENTIFIER_REFERENCE_IDENTIFIER)?;
-            Ok(Expr::Identifier(self.parse_identifier(&identifier)?))
+            Ok(Expr::Reference(self.parse_identifier(&identifier)?))
         } else if type_ == &FUNCTION as &Field {
             let body = self.required_attribute(entry, &FUNCTION_BODY)?;
             let body = self.parse_expr(&body)?;

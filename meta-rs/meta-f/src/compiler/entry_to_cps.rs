@@ -75,7 +75,7 @@ where
     match e {
         Expr::NumberLiteral(i) => and_then(gen, Value::Int(*i)),
         Expr::StringLiteral(s) => and_then(gen, Value::String(s.clone())),
-        Expr::Identifier(identifier) => {
+        Expr::Reference(identifier) => {
             let val = env.get_variable(identifier).unwrap();
             and_then(gen, val.clone())
         }
@@ -288,7 +288,7 @@ fn collect_fields(fields: &mut HashMap<Identifier, usize>, test: &RunTest) {
         match e {
             Expr::NumberLiteral(_) => {}
             Expr::StringLiteral(_) => {}
-            Expr::Identifier(_) => {}
+            Expr::Reference(_) => {}
             Expr::App(f, args) => {
                 collect_expr(fields, f);
                 for arg in args.iter() {
